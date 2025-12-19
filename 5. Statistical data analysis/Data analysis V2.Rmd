@@ -1,0 +1,3406 @@
+---
+title: "Data analysis"
+output:
+  html_document:
+    df_print: paged
+---
+
+The objectives of this notebook will be to conduct data and statistical analyses on the Bioavailability Master Spreadsheet Clean version 2.
+
+First, set the working directory
+
+```{r}
+setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/5. Statistical data analysis")
+```
+
+# Identifying Stream Typologies
+
+Cluster analysis of all sites in WaDE Synoptic Survey
+
+Import dataset
+
+```{r}
+library(readxl)
+
+dat <- read_excel("Bioavailability_Master_Spreadsheet_Clean_2.xlsx", 
+    sheet = "HA 10% Closed System")
+
+head(dat)
+```
+
+## 1. Select variables
+
+```{r}
+library(dplyr)
+
+# Variables to select
+vars_to_select <- c("log_Temp_C_std", "pH_std", "log_DOC_uM_std",
+                    "log_DIC_uM_std", "log_Cl_uM_std", "log_Ca_uM_std", 
+                    "log_Mg_uM_std", "log_SO4_uM_std", "log_Na_uM_std", 
+                    "log_K_uM_std")
+
+# Subset of dat
+scaled_blm_predict <- dat %>%
+  dplyr::select(all_of(vars_to_select))
+
+# Peek
+head(scaled_blm_predict)
+```
+
+## 2. Residual plots
+
+```{r}
+# QQ plots
+
+# Load libraries
+library(ggplot2)
+library(tidyr)
+
+dr_long <- scaled_blm_predict %>%
+  pivot_longer(cols = everything(), names_to = "variable", values_to = "value")
+
+ggplot(dr_long, aes(sample = value)) +
+  stat_qq() +
+  stat_qq_line(color = "red") +
+  facet_wrap(~ variable, scales = "free") +
+  theme_minimal()
+```
+
+## 3. Spearman correlation matrix
+
+```{r}
+# Spearman correlation matrix on scaled log BLM predictors
+cor_matrix <- cor(scaled_blm_predict, method="spearman")
+
+# Heatmap
+library(corrplot)
+corrplot(cor_matrix, 
+         method = "color",
+         type = "lower",
+         tl.cex = 0.7,           
+         tl.col = "black",      
+         addCoef.col = "black",  
+         number.cex = 0.6)  
+```
+
+## 4. Adequacy test
+
+```{r}
+library(psych)  
+
+# Scaled predictors
+KMO(scaled_blm_predict)
+```
+
+## 5. Run PCA
+
+```{r}
+pca_result <- prcomp(scaled_blm_predict, center = TRUE, scale. = TRUE)
+pca_result
+
+pca_summary <- summary(pca_result)
+pca_summary
+```
+
+## 6. K-means clustering
+
+### i. Identifying the number of clusters
+
+Run k-means using 2-10 and identify which number of clusters minimizes the overlap
+
+```{r}
+library(cluster)
+
+set.seed(123)
+
+sil_df <- lapply(2:10, function(k) {
+  
+  km <- kmeans(
+    scaled_blm_predict,
+    centers = k,
+    nstart = 50
+  )
+  
+  sil <- silhouette(km$cluster, dist(scaled_blm_predict))
+  
+  data.frame(
+    k = k,
+    mean_silhouette = mean(sil[, 3])
+  )
+}) %>%
+  bind_rows()
+
+best_k <- sil_df$k[which.max(sil_df$mean_silhouette)]
+best_k
+
+```
+
+### ii. Clustering
+
+Run k-means using 4 clusters
+
+```{r}
+# Run k-means
+set.seed(123)
+kmeans_result <- kmeans(scaled_blm_predict, centers = 4, nstart = 50)
+
+# Add cluster labels to your data
+dat <- dat %>%
+  mutate(cluster = as.factor(kmeans_result$cluster))
+
+# Check
+str(dat$cluster)
+```
+
+## 7. Plot of clusters on PCA
+
+Overlay clusters on PCA
+
+```{r}
+library(factoextra)
+
+pca_cluster <- fviz_pca_biplot(
+  pca_result,
+  geom.ind    = "point",                      # points for sites
+  col.var     = "black",                      # arrows in black
+  habillage   = dat$cluster,  # color by cluster
+  addEllipses = TRUE,                         # cluster ellipses
+  legend.title = "Cluster"
+) +
+  labs(title = "PCA Biplot of All Sites by Cluster")
+
+pca_cluster
+
+```
+
+## 8. Characterizing clusters
+
+### i. Frequency table
+
+```{r}
+library(dplyr)
+library(tidyr)
+
+# inherent characteristics 
+site_char <- c("Regime", "Development", "Orientation", "Distance_from_EFPC", "Drainage_area", "Relative_elevation")
+
+cluster_summary_table_pct <- dat %>%
+  dplyr::select(all_of(site_char), cluster) %>%  
+  pivot_longer(
+    cols = -cluster,        # reshape all columns except cluster into long format
+    names_to = "Variable",  # original column names become "Variable"
+    values_to = "Value"     # cell contents become "Value"
+  ) %>%
+  count(Variable, cluster, Value, name = "Freq") %>% 
+  group_by(Variable, cluster) %>%          
+  mutate(RelFreq = prop.table(Freq) * 100)       
+
+cluster_summary_table_pct
+```
+
+### ii. Plot of relative frequencies
+
+```{r}
+library(dplyr)
+# Combine variable and value
+cluster_summary_table_pct <- cluster_summary_table_pct %>%
+  mutate(Value_labeled = paste0(Variable, ": ", Value))
+
+# Change the order of Variable Values
+cluster_summary_table_pct$Value_labeled <- factor(
+  cluster_summary_table_pct$Value_labeled,
+  levels = c(
+    # Development
+    "Development: Low",
+    "Development: Medium",
+    "Development: High",
+    
+    # Distance_from_EFPC
+    "Distance_from_EFPC: Main stem",
+    "Distance_from_EFPC: <0.22 km",
+    "Distance_from_EFPC: 0.22-0.99 km",
+    "Distance_from_EFPC: >0.99 km",
+    
+    # Drainage_area
+    "Drainage_area: <0.94 km2",
+    "Drainage_area: 0.94-11.81 km2",
+    "Drainage_area: >11.81 km2",
+    
+    # Relative_elevation
+    "Relative_elevation: 0 m",
+    "Relative_elevation: <2.1 m",
+    "Relative_elevation: 2.1-10.5 m",
+    "Relative_elevation: >10.5 m",
+    
+    # Orientation
+    "Orientation: Main stem",
+    "Orientation: North slope",
+    "Orientation: South slope",
+    
+    # Regime
+    "Regime: NonPerennial",
+    "Regime: Perennial"
+  )
+)
+
+
+# Create a named color vector for all Value_labeled combinations
+color_map <- c(
+  # Development
+  "Development: Low" = "#fdd49e",
+  "Development: Medium" = "orange2",
+  "Development: High" = "red3",
+  
+  # Distance_from_EFPC
+  "Distance_from_EFPC: Main stem" = "gray",
+  "Distance_from_EFPC: <0.22 km" = "#d9f0d3",
+  "Distance_from_EFPC: 0.22-0.99 km" = "#a6d854",
+  "Distance_from_EFPC: >0.99 km" = "#1b7837",
+  
+  # Drainage_area
+  "Drainage_area: <0.94 km2" = "#c8b69e",
+  "Drainage_area: 0.94-11.81 km2" = "#a6761f",
+  "Drainage_area: >11.81 km2" = "#543005",
+  
+  # Relative_elevation
+  "Relative_elevation: 0 m" = "gray",
+  "Relative_elevation: <2.1 m" = "#dadaeb",
+  "Relative_elevation: 2.1-10.5 m" = "#bcbddc",
+  "Relative_elevation: >10.5 m" = "#756bb1",
+  
+  # Orientation
+  "Orientation: Main stem" = "yellow",
+  "Orientation: North slope" = "pink",
+  "Orientation: South slope" = "brown",
+  
+  # Regime
+  "Regime: NonPerennial" = "#4fb6e4",
+  "Regime: Perennial" = "#1f78a4"
+)
+
+# Plot
+library(ggplot2)
+library(dplyr)
+
+rel_freq <- ggplot(cluster_summary_table_pct, 
+       aes(y = Variable, x = RelFreq, fill = Value_labeled)) +
+  geom_bar(stat = "identity", position = "fill", color = "white", linewidth = 0.2) +
+  facet_wrap(~ cluster, ncol = 1, strip.position = "left") +
+  scale_x_continuous(labels = scales::percent_format(scale = 1)) +
+  labs(x = "Relative Frequency (%)", y = NULL, fill = "Category") +
+  theme_minimal(base_size = 12) +
+  theme(
+  strip.placement = "outside",
+  strip.text.y.left = element_text(angle = 0, face = "bold"),
+  panel.spacing = unit(0.6, "lines"),
+  legend.position = "right",        # move to right
+  legend.box = "vertical",          # keep vertical layout
+  legend.direction = "vertical"     # vertical legend
+) +
+guides(fill = guide_legend(ncol = 1)) + # 1 column
+  scale_fill_manual(values = color_map)
+
+rel_freq
+```
+
+-   Cluster 1: "Baseline" tributaries
+
+-   Cluster 2: Generally perennial highly developed sites
+
+-   Cluster 3: Mostly main stem sites
+
+-   Cluster 4: Non-perennial sites, far from the main stem, draining small areas, with low-medium development
+
+### iii. Rename clusters to typologies
+
+```{r}
+library(dplyr)
+
+dat <- dat %>%
+  mutate(cluster = as.character(cluster)) %>%
+  mutate(cluster = dplyr::recode(
+    cluster,
+    `1` = "Baseline Tributaries",
+    `2` = "Perennial Developed Tributaries",
+    `3` = "Main Stem",
+    `4` = "Pooled Water"
+  )) %>%
+  dplyr::rename(Typology = cluster) %>%
+  dplyr::mutate(Typology = as.factor(Typology)) %>%
+  dplyr::mutate(Typology = factor(Typology, 
+                          levels = c("Pooled Water",
+                                     "Baseline Tributaries",
+                                     "Perennial Developed Tributaries",
+                                     "Main Stem")))
+
+# check
+levels(dat$Typology)
+```
+
+Save to Bioavailability_Master_Spreadsheet.xlsx
+
+```{r}
+library(openxlsx)
+
+# 1. Create a brand-new workbook
+wb <- createWorkbook()
+
+# 2. Add your sheet
+addWorksheet(wb, "HA 10% Closed System")
+
+# 3. Write your updated dat to the sheet
+writeData(wb, sheet = "HA 10% Closed System", dat)
+
+# 4. Save — overwrite the entire file
+saveWorkbook(wb, "Bioavailability_Master_Spreadsheet_Clean_2.xlsx", overwrite = TRUE)
+```
+
+# Identifying Important Predictors of Bioavailability
+
+To determine the relative importance of each BLM predictor on Zn and Cu bioavailability, we will conduct separate multiple linear regressions (MLR) and use step wise selection of the most important predictors.
+
+First, we'll import the Typology tab within the Bioavailability_Master_Spreadsheet_Clean_2.xlsx and name it dat:
+
+```{r}
+library(readxl)
+
+dat <- read_excel("Bioavailability_Master_Spreadsheet_Clean_2.xlsx", 
+    sheet = "HA 10% Closed System")
+
+head(dat)
+```
+
+## 1. Check of assumptions
+
+1.  Linear relationship between dependent and independent variables
+2.  No multicollinearity among independent variables
+3.  Homoscedasticity: constant variance of residuals of dependent variable
+4.  Normality of residuals of dependent variable
+
+## 2. Building the MLRs
+
+### a. Zinc
+
+```{r}
+library(MASS)
+library(car)
+
+# Build a long model considering all predictors
+zn_mod <- lm(log_TBL_Zn_nmol_g_std ~ log_Temp_C_std + pH_std + log_DOC_nM_std +
+               log_Ca_nM_std + log_Mg_nM_std + log_Na_nM_std + log_K_nM_std +
+               log_DIC_nM_std + log_SO4_nM_std + log_Zn_nM_std, data = dat)
+
+# Step-wise selection of the most parsimonious model using AIC
+step.zn_mod <- stepAIC(zn_mod, direction = "both", trace = FALSE)
+
+# Get summary of model
+zn_mod_summary <- summary(step.zn_mod)
+zn_mod_summary
+```
+
+Variance inflation factors
+
+```{r}
+vif_coeff.zn <- vif(step.zn_mod)
+vif_coeff.zn
+```
+
+Diagnostic plots
+
+```{r}
+par(mfrow = c(2, 2))   # 2 rows, 2 columns
+step.zn_mod_plots <- plot(step.zn_mod)
+step.zn_mod_plots
+```
+
+Partial regression plots of log BLM parameters
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(broom)
+
+# 1. Extract retained predictors from stepwise model
+retained_vars <- names(coef(step.zn_mod))[-1]  # drop intercept
+
+# 2. Function to get partial residuals for each predictor
+get_partial_df <- function(model, data, var) {
+  # Construct model formula terms
+  all_terms <- attr(terms(model), "term.labels")
+  other_terms <- setdiff(all_terms, var)
+  
+  # Get residuals of Y on all predictors except the variable of interest
+  y_formula <- reformulate(other_terms, response = all.vars(formula(model))[1])
+  y_resid <- resid(lm(y_formula, data = data))
+  
+  # Get residuals of X_var on all other predictors
+  x_formula <- reformulate(other_terms, response = var)
+  x_resid <- resid(lm(x_formula, data = data))
+  
+  df <- data.frame(
+    predictor = x_resid,
+    response = y_resid,
+    variable = var
+  )
+  return(df)
+}
+
+# 3. Build combined dataset for all retained predictors
+partial_df <- do.call(rbind, lapply(retained_vars, get_partial_df, 
+                                    model = step.zn_mod, data = dat))
+
+# 4. Plot partial regression slopes
+step.zn_mod_partial_slopes <-
+  ggplot(partial_df, aes(x = predictor, y = response)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm", se = TRUE, color = "blue") + #95% CI
+  facet_wrap(~ variable, scales = "free_x") +
+  labs(
+    x = "Predictor (residuals)",
+    y = "Response (residuals)",
+    title = "Partial Regression Plots for Retained Predictors (Zn Model)"
+  ) +
+  theme_minimal(base_size = 12)
+
+step.zn_mod_partial_slopes
+```
+
+Create a summary table
+
+```{r}
+# 1. Create a data frame with raw beta coefficients (partial slopes)
+summary_mlr_zn <- as.data.frame(summary(step.zn_mod)$coefficients)
+
+# 2. Extract term names
+summary_mlr_zn$Term <- rownames(summary_mlr_zn)
+
+# 3. Reorder columns to put Term first
+summary_mlr_zn <- summary_mlr_zn[, c("Term", setdiff(names(summary_mlr_zn), "Term"))]
+
+# 4. Add model label
+summary_mlr_zn$Model <- "Zinc"
+
+# 5. Convert VIF values to data.frame for merging
+vif_zn <- data.frame(
+  Term = names(vif_coeff.zn),
+  VIF = as.numeric(vif_coeff.zn),
+  row.names = NULL
+)
+
+# 6. Merge the result with vif_zn
+summary_zn <- merge(summary_mlr_zn, vif_zn, by = "Term", all.x = TRUE)
+
+# 7. Add model statistics
+zn_mod_summary <- summary(step.zn_mod)
+
+rse <- zn_mod_summary$sigma
+r2 <- zn_mod_summary$r.squared
+adj_r2 <- zn_mod_summary$adj.r.squared
+fstat <- zn_mod_summary$fstatistic[1]
+fnum <- zn_mod_summary$fstatistic[2]
+fden <- zn_mod_summary$fstatistic[3]
+pval <- pf(fstat, fnum, fden, lower.tail = FALSE)
+
+# 8. Create data frame with model statistics matching the structure of summary_zn
+model_stats <- data.frame(
+  Term = c("Residual standard error", "Multiple R-squared", "Adjusted R-squared", "F-statistic", "p-value"),
+  Estimate = c(rse, r2, adj_r2, fstat, pval),
+  `Std. Error` = NA,
+  `t value` = NA,
+  `Pr(>|t|)` = NA,
+  Model = "Zinc",
+  VIF = NA,
+  stringsAsFactors = FALSE
+)
+
+# 9. Check and fix column name mismatches before combining
+
+# 10. Scale both sets of column names
+names(summary_zn) <- c(
+  "Term", "Estimate", "Std. Error", "t value", "Pr(>|t|)", "Model", "VIF")
+names(model_stats) <- c("Term", "Estimate", "Std. Error", "t value", "Pr(>|t|)", "Model", "VIF")
+
+# 10. Combine coefficients and model stats
+summary_zn_final <- rbind(summary_zn, model_stats)
+
+# View
+print(summary_zn_final)
+```
+
+Export to excel
+
+```{r}
+library(openxlsx)
+
+# Load the existing workbook
+wb <- loadWorkbook("Statistical_analyses_all_sites.xlsx")
+
+# Create sheet if it does NOT exist
+if(!"Zn MLR" %in% names(wb)) {
+  addWorksheet(wb, "Zn MLR")
+} 
+
+# Write your new table 
+writeData(wb, "Zn MLR", summary_zn_final)
+
+# Save the workbook (overwrite)
+saveWorkbook(wb, "Statistical_analyses_all_sites.xlsx", overwrite = TRUE)
+
+```
+
+### b. Copper
+
+```{r}
+library(MASS)
+library(car)
+
+# Build a long model considering all predictors
+cu_mod <- lm(log_TBL_Cu_nmol_g_std ~ log_Temp_C_std + pH_std + log_DOC_nM_std +
+               log_Ca_nM_std + log_Mg_nM_std + log_Na_nM_std + log_K_nM_std +
+               log_DIC_nM_std + log_SO4_nM_std + log_Cu_nM_std, data = dat)
+
+# Step-wise selection of the most parsimonious model using AIC
+step.cu_mod <- stepAIC(cu_mod, direction = "both", trace = FALSE)
+
+# Summary of selected model
+summary(step.cu_mod)
+```
+
+Variance inflation factors
+
+```{r}
+vif_coeff.cu <- vif(step.cu_mod)
+vif_coeff.cu
+```
+
+Diagnostic plots
+
+```{r}
+par(mfrow = c(2, 2))
+step.cu_mod_plots <- plot(step.cu_mod)
+step.cu_mod_plots
+```
+
+Partial regression plots
+
+```{r}
+library(ggplot2)
+library(broom)
+library(dplyr)
+
+# 1. Extract retained predictors from stepwise model
+retained_vars <- names(coef(step.cu_mod))[-1]  # drop intercept
+
+# 2. Function to get partial residuals for each predictor
+get_partial_df <- function(model, data, var) {
+  # Construct model formula terms
+  all_terms <- attr(terms(model), "term.labels")
+  other_terms <- setdiff(all_terms, var)
+  
+  # Get residuals of Y on all predictors except the variable of interest
+  y_formula <- reformulate(other_terms, response = all.vars(formula(model))[1])
+  y_resid <- resid(lm(y_formula, data = data))
+  
+  # Get residuals of X_var on all other predictors
+  x_formula <- reformulate(other_terms, response = var)
+  x_resid <- resid(lm(x_formula, data = data))
+  
+  df <- data.frame(
+    predictor = x_resid,
+    response = y_resid,
+    variable = var
+  )
+  return(df)
+}
+
+# 3. Build combined dataset for all retained predictors
+partial_df <- do.call(rbind, lapply(retained_vars, get_partial_df, 
+                                    model = step.cu_mod, data = dat))
+
+# 4. Plot partial regression slopes
+step.cu_mod_partial_slopes <-
+  ggplot(partial_df, aes(x = predictor, y = response)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm", se = TRUE, color = "blue") + #95% CI
+  facet_wrap(~ variable, scales = "free_x") +
+  labs(
+    x = "Predictor (residuals)",
+    y = "Response (residuals)",
+    title = "Partial Regression Plots for Retained Predictors (Cu Model)"
+  ) +
+  theme_minimal(base_size = 12)
+
+step.cu_mod_partial_slopes
+```
+
+Summary table & export to excel
+
+```{r}
+# 1. Create a data frame with raw beta coefficients (partial slopes)
+summary_mlr_cu <- as.data.frame(summary(step.cu_mod)$coefficients)
+
+# 2. Extract term names
+summary_mlr_cu$Term <- rownames(summary_mlr_cu)
+
+# 3. Reorder columns to put Term first
+summary_mlr_cu <- summary_mlr_cu[, c("Term", setdiff(names(summary_mlr_cu), "Term"))]
+
+# 4. Add model label
+summary_mlr_cu$Model <- "Copper"
+
+# 5. Convert VIF values to data.frame for merging
+vif_cu <- data.frame(
+  Term = names(vif_coeff.cu),
+  VIF = as.numeric(vif_coeff.cu),
+  row.names = NULL
+)
+
+# 6. Merge the result with vif_cu
+summary_cu <- merge(summary_mlr_cu, vif_cu, by = "Term", all.x = TRUE)
+
+# 7. Add model statistics
+cu_mod_summary <- summary(step.cu_mod)
+
+rse <- cu_mod_summary$sigma
+r2 <- cu_mod_summary$r.squared
+adj_r2 <- cu_mod_summary$adj.r.squared
+fstat <- cu_mod_summary$fstatistic[1]
+fnum <- cu_mod_summary$fstatistic[2]
+fden <- cu_mod_summary$fstatistic[3]
+pval <- pf(fstat, fnum, fden, lower.tail = FALSE)
+
+# 8. Create data frame with model statistics matching the structure of summary_cu
+model_stats <- data.frame(
+  Term = c("Residual standard error", "Multiple R-squared", "Adjusted R-squared", "F-statistic", "p-value"),
+  Estimate = c(rse, r2, adj_r2, fstat, pval),
+  `Std. Error` = NA,
+  `t value` = NA,
+  `Pr(>|t|)` = NA,
+  Model = "Copper",
+  VIF = NA,
+  stringsAsFactors = FALSE
+)
+
+# 9. Check and fix column name mismatches before combining
+
+# Scale both sets of column names
+names(summary_cu) <- c("Term", "Estimate", "Std. Error", "t value", "Pr(>|t|)", "Model", "VIF")
+names(model_stats) <- c("Term", "Estimate", "Std. Error", "t value", "Pr(>|t|)", "Model", "VIF")
+
+# 10. Combine coefficients and model stats
+summary_cu_final <- rbind(summary_cu, model_stats)
+
+# View
+print(summary_cu_final)
+```
+
+Export to excel
+
+```{r}
+library(openxlsx)
+
+# Load the existing workbook
+wb <- loadWorkbook("Statistical_analyses_all_sites.xlsx")
+
+# Create sheet if it does NOT exist
+if(!"Cu MLR" %in% names(wb)) {
+  addWorksheet(wb, "Cu MLR")
+} 
+
+# Write your new table
+writeData(wb, "Cu MLR", summary_cu_final)
+
+# Save the workbook (overwrite)
+saveWorkbook(wb, "Statistical_analyses_all_sites.xlsx", overwrite = TRUE)
+```
+
+## 3. Outlier Detection
+
+### i. Zinc Bioavailability
+
+```{r}
+# 1. Get model diagnostics
+model_diag_zn <- influence.measures(step.zn_mod)
+
+# 2. Extract indices of influential points flagged by diagnostics
+infl_points_zn <- which(apply(model_diag_zn$is.inf, 1, any))
+
+# 3. Create a dataframe with their info
+flagged_obs_zn <- data.frame(
+  Sample_ID = dat$Sample_ID[infl_points_zn],
+  Fitted = fitted(step.zn_mod)[infl_points_zn],
+  Residual = residuals(step.zn_mod)[infl_points_zn],
+  Std_Residual = rstandard(step.zn_mod)[infl_points_zn],
+  Leverage = hatvalues(step.zn_mod)[infl_points_zn],
+  Cooks_D = cooks.distance(step.zn_mod)[infl_points_zn])
+
+# View flagged observations
+flagged_obs_zn
+```
+
+Determine whether these flagged observations are clustered around a certain characteristic
+
+```{r}
+library(dplyr)
+
+# 1. Add descriptive variables from dat to flagged observations (already done)
+flagged_obs_zn <- flagged_obs_zn %>%
+  left_join(dat %>% 
+              dplyr::select(Sample_ID, Site, Date, Typology), by = "Sample_ID")
+
+### ---- By Typology ----
+# 2a. Summarize how many flagged points per cluster
+by_typ_zn <- flagged_obs_zn %>% count(Typology)
+
+# 2b. Proportion of flagged by cluster
+prop_typ_zn <- flagged_obs_zn %>%
+  count(Typology) %>%
+  mutate(prop_flagged = n / sum(n))
+
+# 2c. Overall proportions in dataset
+overall_typ_zn <- dat %>%
+  count(Typology) %>%
+  mutate(prop_overall = n / sum(n))
+
+# 2d. Compare flagged vs overall
+compare_typ_zn <- left_join(prop_typ_zn, overall_typ_zn, by = "Typology")
+
+
+### ---- By Site ----
+# 3a. Summarize flagged points per site
+by_site_zn <- flagged_obs_zn %>% count(Site)
+
+# 3b. Proportion flagged per site
+prop_site_zn <- flagged_obs_zn %>%
+  count(Site) %>%
+  mutate(prop_flagged = n / sum(n))
+
+# 3c. Overall proportions in dataset
+overall_site_zn <- dat %>%
+  count(Site) %>%
+  mutate(prop_overall = n / sum(n))
+
+# 3d. Compare flagged vs overall
+compare_site_zn <- left_join(prop_site_zn, overall_site_zn, by = "Site")
+
+
+### ---- By Date ----
+# 4a. Summarize flagged points per date
+by_date_zn <- flagged_obs_zn %>% count(Date)
+
+# 4b. Proportion flagged per date
+prop_date_zn <- flagged_obs_zn %>%
+  count(Date) %>%
+  mutate(prop_flagged = n / sum(n))
+
+# 4c. Overall proportions in dataset
+overall_date_zn <- dat %>%
+  count(Date) %>%
+  mutate(prop_overall = n / sum(n))
+
+# 4d. Compare flagged vs overall
+compare_date_zn <- left_join(prop_date_zn, overall_date_zn, by = "Date")
+
+# 5. Combine plots
+library(dplyr)
+
+compare_typ_zn2 <- compare_typ_zn %>% 
+  rename(Value = Typology)
+
+compare_site_zn2 <- compare_site_zn %>% 
+  rename(Value = Site)
+
+compare_date_zn2 <- compare_date_zn %>% 
+  rename(Value = Date) %>% 
+  mutate(Value = as.character(Value))   # ✅ convert date to character
+
+# Now combine all tables
+combined_zn <- bind_rows(compare_typ_zn2, compare_site_zn2, compare_date_zn2)
+
+# Check result
+combined_zn
+```
+
+Export to excel
+
+```{r}
+library(openxlsx)
+
+# Load the existing workbook
+wb <- loadWorkbook("Statistical_analyses_all_sites.xlsx")
+
+# Create sheet if it does NOT exist
+if(!"Zn outliers" %in% names(wb)) {
+  addWorksheet(wb, "Zn outliers")
+}
+
+# Write your new table
+writeData(wb, "Zn outliers", combined_zn)
+
+# Save the workbook (overwrite)
+saveWorkbook(wb, "Statistical_analyses_all_sites.xlsx", overwrite = TRUE)
+
+```
+
+### ii. Copper Bioavailability
+
+```{r}
+# 1. Get model diagnostics
+model_diag_cu <- influence.measures(step.cu_mod)
+
+# 2. Extract indices of influential points flagged by diagnostics
+infl_points_cu <- which(apply(model_diag_cu$is.inf, 1, any))
+
+# 3. Create a dataframe with their info
+flagged_obs_cu <- data.frame(
+  Sample_ID = dat$Sample_ID[infl_points_cu],
+  Fitted = fitted(step.zn_mod)[infl_points_cu],
+  Residual = residuals(step.zn_mod)[infl_points_cu],
+  Std_Residual = rstandard(step.zn_mod)[infl_points_cu],
+  Leverage = hatvalues(step.zn_mod)[infl_points_cu],
+  Cooks_D = cooks.distance(step.zn_mod)[infl_points_cu])
+
+# View flagged observations
+flagged_obs_cu
+```
+
+Determine whether these flagged observations are clustered around a certain characteristic
+
+```{r}
+library(dplyr)
+
+# 1. Add descriptive variables from dat to flagged observations (already done)
+flagged_obs_cu <- flagged_obs_cu %>%
+  left_join(dat %>% dplyr::select(Sample_ID, Site, Date, Typology), by = "Sample_ID")
+
+### ---- By Typology ----
+# 2a. Summarize how many flagged points per cluster
+by_typ_cu <- flagged_obs_cu %>% count(Typology)
+
+# 2b. Proportion of flagged by cluster
+prop_typ_cu <- flagged_obs_cu %>%
+  count(Typology) %>%
+  mutate(prop_flagged = n / sum(n))
+
+# 2c. Overall proportions in dataset
+overall_typ_cu <- dat %>%
+  count(Typology) %>%
+  mutate(prop_overall = n / sum(n))
+
+# 2d. Compare flagged vs overall
+compare_typ_cu <- left_join(prop_typ_cu, overall_typ_cu, by = "Typology")
+
+
+### ---- By Site ----
+# 3a. Summarize flagged points per site
+by_site_cu <- flagged_obs_cu %>% count(Site)
+
+# 3b. Proportion flagged per site
+prop_site_cu <- flagged_obs_cu %>%
+  count(Site) %>%
+  mutate(prop_flagged = n / sum(n))
+
+# 3c. Overall proportions in dataset
+overall_site_cu <- dat %>%
+  count(Site) %>%
+  mutate(prop_overall = n / sum(n))
+
+# 3d. Compare flagged vs overall
+compare_site_cu <- left_join(prop_site_cu, overall_site_cu, by = "Site")
+
+
+### ---- By Date ----
+# 4a. Summarize flagged points per date
+by_date_cu <- flagged_obs_cu %>% count(Date)
+
+# 4b. Proportion flagged per date
+prop_date_cu <- flagged_obs_cu %>%
+  count(Date) %>%
+  mutate(prop_flagged = n / sum(n))
+
+# 4c. Overall proportions in dataset
+overall_date_cu <- dat %>%
+  count(Date) %>%
+  mutate(prop_overall = n / sum(n))
+
+# 4d. Compare flagged vs overall
+compare_date_cu <- left_join(prop_date_cu, overall_date_cu, by = "Date")
+
+# 5. Combine into one table
+library(dplyr)
+
+compare_typ_cu2 <- compare_typ_cu %>% 
+  rename(Value = Typology)
+
+compare_site_cu2 <- compare_site_cu %>% 
+  rename(Value = Site)
+
+compare_date_cu2 <- compare_date_cu %>% 
+  rename(Value = Date) %>% 
+  mutate(Value = as.character(Value))   # convert date to character
+
+# Now combine all tables
+combined_cu <- bind_rows(compare_typ_cu2, compare_site_cu2, compare_date_cu2)
+
+# Check result
+combined_cu
+```
+
+Export to excel
+
+```{r}
+library(openxlsx)
+
+# Load the existing workbook
+wb <- loadWorkbook("Statistical_analyses_all_sites.xlsx")
+
+# Create sheet if it does NOT exist
+if(!"Cu outliers" %in% names(wb)) {
+  addWorksheet(wb, "Cu outliers")
+}
+
+# Write your new table
+writeData(wb, "Cu outliers", combined_cu)
+
+# Save the workbook (overwrite)
+saveWorkbook(wb, "Statistical_analyses_all_sites.xlsx", overwrite = TRUE)
+```
+
+Determine which samples were outliers for both Zn and Cu bioavailability
+
+```{r}
+common_outliers <- flagged_obs_zn %>%
+  filter(Sample_ID %in% intersect(flagged_obs_zn$Sample_ID,
+                                  flagged_obs_cu$Sample_ID))
+
+common_outliers
+```
+
+Export to excel
+
+```{r}
+library(openxlsx)
+
+# Load the existing workbook
+wb <- loadWorkbook("Statistical_analyses_all_sites.xlsx")
+
+# Create sheet if it does NOT exist
+if(!"Common outliers" %in% names(wb)) {
+  addWorksheet(wb, "Common outliers")
+}
+
+# Write your new table
+writeData(wb, "Common outliers", common_outliers)
+
+# Save the workbook (overwrite)
+saveWorkbook(wb, "Statistical_analyses_all_sites.xlsx", overwrite = TRUE)
+```
+
+# Assessing Variables by Typology
+
+First, we'll import the the Bioavailability_Master_Spreadsheet_Clean_2.xlsx and name it dat:
+
+```{r}
+library(readxl)
+
+dat <- read_excel("Bioavailability_Master_Spreadsheet_Clean_2.xlsx", 
+    sheet = "HA 10% Closed System")
+
+head(dat)
+```
+
+Set order of Typologies
+
+```{r}
+# Rearrange order
+dat$Typology <- as.factor(dat$Typology)
+dat$Typology <- factor(dat$Typology, 
+                          levels = c("Pooled Water",
+                                     "Baseline Tributaries",
+                                     "Perennial Developed Tributaries",
+                                     "Main Stem"))
+
+# Check
+levels(dat$Typology)
+```
+
+## 1. Summary Statistics
+
+Mean and standard error by typology
+
+```{r}
+library(dplyr)
+library(tidyr)
+
+# Standard error function
+se <- function(x) {
+  sd(x, na.rm = TRUE) / sqrt(sum(!is.na(x)))
+}
+
+# Mode function (returns the most frequent value)
+get_mode <- function(x) {
+  x <- x[!is.na(x)]
+  if (length(x) == 0) return(NA)
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+summary_table <- dat %>%
+  dplyr::select(Typology, where(is.numeric)) %>%  # keep Typology + numeric vars
+  pivot_longer(
+    cols = -Typology,
+    names_to = "Variable",
+    values_to = "Value"
+  ) %>%
+  group_by(Variable, Typology) %>%
+  summarise(
+    Mean     = mean(Value, na.rm = TRUE),
+    Median   = median(Value, na.rm = TRUE),
+    Mode     = get_mode(Value),
+    Variance = var(Value, na.rm = TRUE),
+    SE       = se(Value),
+    .groups = "drop"
+  )
+
+summary_table
+```
+
+Export to excel
+
+```{r}
+library(openxlsx)
+
+# ----------------------------------------------------------
+# 1. File name
+# ----------------------------------------------------------
+file_path <- "Statistical_analyses_by_typology.xlsx"
+
+# ----------------------------------------------------------
+# 2. Load workbook if exists, otherwise create a new one
+# ----------------------------------------------------------
+if (file.exists(file_path)) {
+  wb <- loadWorkbook(file_path)
+} else {
+  wb <- createWorkbook()
+}
+
+# ----------------------------------------------------------
+# 3. Create sheet if it does NOT exist
+# ----------------------------------------------------------
+if (!"Summary Stats" %in% names(wb)) {
+  addWorksheet(wb, "Summary Stats")
+}
+
+# ----------------------------------------------------------
+# 4. Write data to the sheet
+# ----------------------------------------------------------
+writeData(wb, "Summary Stats", summary_table)
+
+# ----------------------------------------------------------
+# 5. Save workbook (overwrite = TRUE allows updating)
+# ----------------------------------------------------------
+saveWorkbook(wb, file_path, overwrite = TRUE)
+
+```
+
+## 2. Check of ANOVA Assumptions
+
+To determine whether variables significantly differ by typology, we could use a parametric ANOVA which assumes variables are normally distributed and have homogeneity of variance by typology. We already determined that most variables were not normally distributed (**Preparing Variables** section), even after log-transforming them. Now we will assess homogeneity of variance by typology.
+
+### a. Homogeneity of Variance
+
+Using the Levene Test
+
+```{r}
+library(car)  # for leveneTest()
+library(dplyr)
+
+# Set alpha for homogeneity check
+alpha <- 0.05
+
+# Identify all numeric variables EXCEPT Typology
+numeric_vars <- dat %>%
+  dplyr::select(where(is.numeric)) %>%
+  names()
+
+# Initialize results dataframe
+levene_results <- data.frame(
+  Variable = character(),
+  F_value = numeric(),
+  p_value = numeric(),
+  Homogeneous = logical(),
+  stringsAsFactors = FALSE
+)
+
+# Loop over all numeric variables
+for (var in numeric_vars) {
+  
+  # Run Levene's test
+  test <- car::leveneTest(as.formula(paste(var, "~ Typology")), data = dat)
+  
+  # Extract F and p-values
+  F_val <- test[1, "F value"]
+  p_val <- test[1, "Pr(>F)"]
+  
+  # Determine homogeneity
+  homogeneous <- p_val > alpha
+  
+  # Add results to dataframe
+  levene_results <- rbind(
+    levene_results, 
+    data.frame(
+      Variable = var,
+      F_value = F_val,
+      p_value = p_val,
+      Homogeneous = homogeneous
+    )
+  )
+}
+
+# View results
+levene_results
+```
+
+Most variables do not have homogeneous variance.
+
+Export results to excel
+
+```{r}
+library(openxlsx)
+
+# Load the existing workbook
+wb <- loadWorkbook("Statistical_analyses_by_typology.xlsx")
+
+# Create sheet if it does NOT exist
+if(!"Homog Var by Typology" %in% names(wb)) {
+  addWorksheet(wb, "Homog Var by Typology")
+}
+
+# Write your new table
+writeData(wb, "Homog Var by Typology", levene_results)
+
+# Save the workbook (overwrite)
+saveWorkbook(wb, "Statistical_analyses_by_typology.xlsx", overwrite = TRUE)
+```
+
+## 3. Kruskal Wallis Test
+
+Since most variables fail the assumptions for an ANOVA, we will use a non-parametric rank-based test to determine whether variables significantly differ by stream typology; the Kruskal Wallis (KW) test. We will also use the Holm-Bonferroni correction factor for multiple comparisons when conducting pairwise comparisons of variables by typology.
+
+**Assumptions of the KW test** according to geeksforgeeks.org
+
+1.  ***For ordinal, interval, or ratio data:*** While most of our variables fail this assumption, we can make an exception while being aware of this.
+
+2.  ***The samples are independent of each other and within each group:*** Our variables meet this assumption.
+
+3.  ***The distributions of the groups should have the same shape.***
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# Choose variables whose distributions you want to compare by Typology
+vars_to_check <- c(
+  "log_Zn_nM",
+  "log_TBL_Zn_nmol_g_std",
+  "log_Cu_nM",
+  "log_TBL_Cu_nmol_g_std",
+  "log_Temp_C_std", 
+  "pH_std", 
+  "log_DOC_nM_std",
+  "log_DIC_nM_std", 
+  "log_Cl_nM_std", 
+  "log_Ca_nM_std",
+  "log_Mg_nM_std", 
+  "log_SO4_nM_std", 
+  "log_Na_nM_std",
+  "log_K_nM_std"
+)
+
+# Change to long format
+dat_long <- dat %>%
+  # Keep Typology and the variables you want to check
+  dplyr::select(Typology, all_of(vars_to_check)) %>%
+  
+  # Turn columns into rows: Variable, Value
+  pivot_longer(
+    cols      = -Typology,
+    names_to  = "Variable",
+    values_to = "Value"
+  )
+
+# Density plots by Typology
+ggplot(dat_long, aes(x = Value, fill = Typology)) +
+  geom_density(alpha = 0.4) +   # alpha for transparent fill
+  facet_wrap(~ Variable, scales = "free") +  # one panel per Variable
+  labs(
+    title = "Distributions by Typology",
+    x = "Value",
+    y = "Density"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 30, hjust = 1)
+  )
+```
+
+Generally, the distributions are similar by Typology for each Variable except for Ca, Cu, Zn, and DIC.
+
+The KW test also can't handle variables with missing values and no variance, we'll check to see if any variables have these two conditions
+
+```{r}
+library(dplyr)
+
+na_counts <- dat %>%
+  dplyr::select(where(is.numeric)) %>%
+  summarise(across(everything(), ~sum(is.na(.)))) %>%
+  pivot_longer(everything(),
+               names_to = "Variable",
+               values_to = "NA_count") %>%
+  filter(NA_count > 0)
+
+na_counts
+```
+
+No variables have missing values, now we'll check for lack of variance
+
+```{r}
+no_variance <- dat %>%
+  dplyr::select(where(is.numeric)) %>%
+  summarise(across(everything(), ~dplyr::n_distinct(., na.rm = TRUE))) %>%
+  pivot_longer(everything(),
+               names_to = "Variable",
+               values_to = "Distinct_values") %>%
+  filter(Distinct_values <= 1)
+
+no_variance
+```
+
+If there are variables with no variance, it's likely an error from running BLM.
+
+Now we can perform the KW test
+
+```{r}
+library(tibble)
+library(agricolae)
+library(dplyr)
+
+alpha <- 0.05
+
+# 1. Get all numeric variables in dat
+numeric_vars <- dat %>%
+  dplyr::select(where(is.numeric)) %>%
+  names()
+
+# 2. Create an empty list to store rows
+combined_list <- list()
+
+# 3. Loop through each numeric variable 
+i <- 1
+for (v in numeric_vars) {
+  
+  # Kruskal-Wallis test
+  formula <- as.formula(paste(v, "~ Typology"))
+  kw_test <- kruskal.test(formula, data = dat)
+  
+  chi_sq     <- kw_test$statistic
+  df_val     <- kw_test$parameter
+  p_val      <- kw_test$p.value
+  significant <- p_val < alpha   # significant when p < 0.05
+  
+  # agricolae::kruskal to assign groups (letters)
+  k_out <- agricolae::kruskal(
+    y    = dat[[v]],
+    trt  = dat$Typology,
+    alpha = alpha,
+    group = TRUE
+  )
+  
+  # Create a data frame from the groups table
+  groups_df <- k_out$groups %>%
+    rownames_to_column("Typology")
+  
+  # Combine test results with group letters
+  combined_list[[i]] <- groups_df %>%
+    mutate(
+      Variable   = v,
+      Chi_sq     = as.numeric(chi_sq),
+      df         = as.numeric(df_val),
+      p_value    = as.numeric(p_val),
+      Significant = significant
+    )
+  
+  i <- i + 1
+}
+
+# 5. Bind everything together
+combined_kruskal <- bind_rows(combined_list)
+
+# View
+combined_kruskal
+```
+
+Export to excel
+
+```{r}
+library(openxlsx)
+
+# Load the existing workbook
+wb <- loadWorkbook("Statistical_analyses_by_typology.xlsx")
+
+# Create sheet if it does NOT exist
+if(!"K-W test by Typology" %in% names(wb)) {
+  addWorksheet(wb, "K-W test by Typology")
+}
+
+# Write your new table
+writeData(wb, "K-W test by Typology", combined_kruskal)
+
+# Save the workbook (overwrite)
+saveWorkbook(wb, "Statistical_analyses_by_typology.xlsx", overwrite = TRUE)
+```
+
+## 4. Boxplots by Typology
+
+We first need to create an object with the pair-wise comparison letters
+
+```{r}
+# Create letters_df from combined_kruskal
+letters_df <- combined_kruskal %>%
+  dplyr::select(Variable, Typology, groups) %>%
+  dplyr::distinct() %>%
+  dplyr::rename(Letters = groups)
+
+```
+
+### a. BLM Predictors
+
+Create a boxplots for each BLM predictor
+
+```{r}
+library(fBasics)
+library(tibble)
+library(agricolae)
+library(ggplot2)
+library(dplyr)
+
+# 1. Titles for each variable's plot (panel title)
+title_lookup <- c(
+  "log_Temp_C" = "Temperature",
+  "pH"         = "pH",
+  "log_DOC_uM" = "Dissolved Organic Carbon",
+  "log_DIC_uM" = "Dissolved Inorganic Carbon",
+  "log_Ca_uM"  = "Calcium",
+  "log_Mg_uM"  = "Magnesium",
+  "log_Na_uM"  = "Sodium",
+  "log_K_uM"   = "Potassium",
+  "log_SO4_uM" = "Sulfate",
+  "log_Cl_uM"  = "Chloride"
+)
+
+# 2. Custom y-axis labels for each variable
+y_label_lookup <- c(
+  "log_Temp_C" = "Temperature (°C)",
+  "pH"         = "pH",
+  "log_DOC_uM" = "log DOC (µM)",
+  "log_DIC_uM" = "log DIC (µM)",
+  "log_Ca_uM"  = "log Ca (µM)",
+  "log_Mg_uM"  = "log Mg (µM)",
+  "log_Na_uM"  = "log Na (µM)",
+  "log_K_uM"   = "log K (µM)",
+  "log_SO4_uM" = "log SO₄ (µM)",
+  "log_Cl_uM"  = "log Cl (µM)"
+)
+
+# 3. Colors for each Typology abbreviation
+typology_colors <- c(
+  "Pooled Water"        = "#E69F00",
+  "Baseline Tributaries"         = "#56B4E9",
+  "Perennial Developed Tributaries" = "#D55E00",
+  "Main Stem"           = "#999999"
+)
+
+# 4. Create output folder (if it doesn't exist)
+output_dir <- "Plots of All Sites"
+if (!dir.exists(output_dir)) dir.create(output_dir)
+
+# 5. Loop through variables in title_lookup
+for (var in names(title_lookup)) {
+
+  # a) y-position for letters: e.g. 1.25 * max per Typology
+  y_pos_df <- dat %>%
+    group_by(Typology) %>%
+    summarise(
+      y_pos = max(.data[[var]], na.rm = TRUE) * 1.25,
+      .groups = "drop"
+    )
+
+  # b) SUBSET your letters table for this variable 
+  #    letters_df must have columns: Variable, Typology, Letters
+  letters_sub <- letters_df %>%
+    filter(Variable == var) %>%
+    dplyr::select(Typology, Letters)
+
+  # c) JOIN letters with y positions
+  letters_plot_df <- letters_sub %>%
+    left_join(y_pos_df, by = "Typology")
+
+  # d) Build ggplot
+  p <- ggplot(dat, aes(
+      x = Typology,
+      y = .data[[var]],
+      color = Typology
+    )) +
+    geom_boxplot(fill = NA, width = 0.6) +
+    geom_jitter(
+      width = 0.15,
+      size = 2,
+      alpha = 0.7
+    ) +
+    geom_text(
+      data = letters_plot_df,
+      aes(
+        x = Typology,
+        y = y_pos,
+        label = Letters
+      ),
+      inherit.aes = FALSE,
+      size = 5
+    ) +
+    scale_color_manual(values = typology_colors) +
+    labs(
+      title = title_lookup[[var]],
+      y     = y_label_lookup[[var]],
+      x     = ""
+    ) +
+    scale_y_continuous(expand = expansion(mult = c(0, 0.1))) +
+    theme_minimal(base_size = 12) +
+    theme(
+      legend.position = "none",
+      axis.text.x  = element_text(size = 11, angle = 0, vjust = 0.5),
+      axis.title.x = element_text(size = 12),
+      axis.text.y  = element_text(size = 11),
+      axis.title.y = element_text(size = 12),
+      plot.title   = element_text(size = 14)
+    )
+
+  print(p)
+}
+
+```
+
+Save plot
+
+```{r}
+  ggsave(
+    filename = file.path(output_dir, paste0(var, ".png")),
+    plot     = p,
+    width    = 5,
+    height   = 4,
+    dpi      = 300
+  )
+```
+
+Boxplots of BLM predictors on a single pane - fix
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# ------------------------------------------------------------------
+# 0. Typology colors (exactly as you specified)
+# ------------------------------------------------------------------
+typology_colors <- c(
+  "Pooled Water"          = "#E69F00",
+  "Baseline Tributaries"           = "#56B4E9",
+  "Perennial Developed Tributaries" = "#D55E00",
+  "Main Stem"             = "#999999"
+)
+
+# 1. Make sure output folder exists
+output_dir <- "Plots of All Sites"
+if (!dir.exists(output_dir)) dir.create(output_dir)
+
+# 2. Put data into long format: one row = 1 observation of 1 variable
+dat_long <- dat %>%
+  dplyr::select(Typology, all_of(names(title_lookup))) %>%  
+  pivot_longer(
+    cols      = -Typology,
+    names_to  = "Variable",
+    values_to = "Value"
+  ) %>%
+  filter(!is.na(Value))
+
+# 3. Prepare letters for all variables in one table ----
+
+# 3a. Get max y per Variable x Typology from the long data
+y_pos_df <- dat_long %>%
+  group_by(Variable, Typology) %>%
+  summarise(y_max = max(Value, na.rm = TRUE), .groups = "drop")
+
+# 3b. Subset letters_df to only the variables you are plotting
+#     letters_df must have: Variable, Typology, Letters
+letters_long <- letters_df %>%
+  filter(Variable %in% names(title_lookup)) %>%
+  # join to get y_max for each Variable x Typology
+  left_join(y_pos_df, by = c("Variable", "Typology")) %>%
+  # position letters slightly above the max
+  mutate(
+    y_pos = y_max * 1.05
+  )
+
+# 4. Facet labels using title_lookup
+facet_labels <- as_labeller(title_lookup)
+
+# 5. Build one faceted plot
+all_vars_panel <- ggplot(dat_long, aes(
+    x     = Typology,
+    y     = Value,
+    color = Typology
+  )) +
+  # Boxplots
+  geom_boxplot(fill = NA, width = 0.6) +
+  
+  # Jittered points
+  geom_jitter(
+    width = 0.15,
+    size  = 1.5,
+    alpha = 0.7
+  ) +
+  
+  # Letters from Kruskal groups
+  geom_text(
+    data = letters_long,
+    aes(
+      x     = Typology,
+      y     = y_pos,
+      label = Letters
+    ),
+    inherit.aes = FALSE,
+    size = 3
+  ) +
+  
+  # Typology colors
+  scale_color_manual(values = typology_colors) +
+  
+  # Facet by Variable, with nice titles
+  facet_wrap(
+    ~ Variable,
+    scales  = "free_y",
+    ncol    = 3,
+    labeller = facet_labels
+  ) +
+  
+  labs(
+    title = "BLM Predictors by Stream Typology",
+    x     = "Stream Typology",
+    y     = "Log Concentration (µM)"
+  ) +
+  
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "none",
+    axis.text.x  = element_text(size = 9, angle = 30, hjust = 1),
+    strip.text   = element_text(size = 11),
+    plot.title   = element_text(size = 14)
+  )
+
+# 6. Show in RStudio
+all_vars_panel
+
+```
+
+Save plot
+
+```{r}
+ggsave(
+  filename = file.path(output_dir, "All_BLM_predictors_square.png"),
+  plot     = all_vars_panel,
+  width    = 9,
+  height   = 9,
+  dpi      = 300
+)
+```
+
+### b. Trace Elements
+
+Response variables (Zn and Cu species) - fix
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+#-------------------------------------------------
+# 1. Colors by response variable (your mapping)
+#-------------------------------------------------
+response_colors <- c(
+  "Total Zn (nM)"                              = "slategray",
+  "Bioavailable Zn (nmol/g wet weight)"        = "darkslategray3",
+  "Proportion of Bioavailable Zn (Free/Total)" = "turquoise",
+  "Total Cu (nM)"                              = "chocolate4",
+  "Bioavailable Cu (nmol/g wet weight)"        = "peru",
+  "Proportion of Bioavailable Cu (Free/Total)" = "chocolate1"
+)
+
+#-------------------------------------------------
+# 2. Map variable names -> response labels
+#-------------------------------------------------
+response_lookup <- c(
+  "log_Zn_nM"         = "Total Zn (nM)",
+  "log_TBL_Zn_nmol_g" = "Bioavailable Zn (nmol/g wet weight)",
+  "log_rel_prop_Zn"   = "Proportion of Bioavailable Zn (Free/Total)",
+  "log_Cu_nM"         = "Total Cu (nM)",
+  "log_TBL_Cu_nmol_g" = "Bioavailable Cu (nmol/g wet weight)",
+  "log_rel_prop_Cu"   = "Proportion of Bioavailable Cu (Free/Total)"
+)
+
+vars_trace <- names(response_lookup)
+
+#-------------------------------------------------
+# 3. Custom multipliers for letter heights per plot
+#    (names must match Response labels)
+#-------------------------------------------------
+letter_nudge <- c(
+  "Total Zn (nM)"                              = 1,
+  "Bioavailable Zn (nmol/g wet weight)"        = 2,
+  "Proportion of Bioavailable Zn (Free/Total)" = 1,
+  "Total Cu (nM)"                              = 1,
+  "Bioavailable Cu (nmol/g wet weight)"        = 2,
+  "Proportion of Bioavailable Cu (Free/Total)" = 1
+)
+
+#-------------------------------------------------
+# 4. Long data for plotting (use Typology)
+#-------------------------------------------------
+dat_long_trace <- dat %>%
+  dplyr::select(Typology, all_of(vars_trace)) %>%
+  pivot_longer(
+    cols      = -Typology,
+    names_to  = "Variable",
+    values_to = "Value"
+  ) %>%
+  filter(!is.na(Value)) %>%
+  mutate(
+    Response = response_lookup[Variable],
+    Response = factor(Response, levels = names(response_colors))
+  )
+
+#-------------------------------------------------
+# 5. Letters (from letters_df) for all 6 variables
+#-------------------------------------------------
+
+# 5a. Max y per Variable x Typology
+y_pos_df <- dat_long_trace %>%
+  group_by(Variable, Typology) %>%
+  summarise(y_max = max(Value, na.rm = TRUE), .groups = "drop")
+
+# 5b. Attach Response + y positions + nudges to letters_df
+#     letters_df must have: Variable, Typology, Letters
+letters_long_trace <- letters_df %>%
+  filter(Variable %in% vars_trace) %>%
+  mutate(
+    Response = response_lookup[Variable],
+    Response = factor(Response, levels = names(response_colors))
+  ) %>%
+  left_join(
+    y_pos_df,
+    by = c("Variable", "Typology")
+  ) %>%
+  mutate(
+    # add different nudge per facet
+    y_pos = y_max + letter_nudge[as.character(Response)]
+  )
+
+#-------------------------------------------------
+# 6. One faceted trace element panel (x = Typology)
+#-------------------------------------------------
+bioavail_panel <- ggplot(dat_long_trace, aes(
+    x     = Typology,
+    y     = Value,
+    color = Response
+  )) +
+  # Boxplots
+  geom_boxplot(fill = NA, width = 0.6) +
+  
+  # Jittered points
+  geom_jitter(
+    width = 0.15,
+    size  = 1,
+    alpha = 0.7
+  ) +
+  
+  # Letters from Kruskal groups
+  geom_text(
+    data = letters_long_trace,
+    aes(
+      x     = Typology,
+      y     = y_pos,
+      label = Letters
+    ),
+    inherit.aes = FALSE,
+    size = 3.5
+  ) +
+  
+  # Colors by response (your palette)
+  scale_color_manual(values = response_colors) +
+  
+  # One facet per response variable
+  facet_wrap(
+    ~ Response,
+    scales = "free_y",
+    ncol   = 3
+  ) +
+  
+  labs(
+    title = "Trace Elements by Stream Typology",
+    x     = "Stream Typology"
+  ) +
+  
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "none",
+    axis.text.x  = element_text(size = 10, angle = 30, hjust = 1),
+    axis.text.y  = element_text(size = 10),
+    strip.text   = element_text(size = 11),
+    plot.title   = element_text(size = 14)
+  )
+
+# View
+bioavail_panel
+
+```
+
+Save plot as a square
+
+```{r}
+ggsave(
+  filename = file.path("Plots of All Sites", "Trace_elements_panel_square.png"),
+  plot     = bioavail_panel,
+  width    = 8.5,
+  height   = 6,
+  dpi      = 300
+)
+```
+
+Save plot as a rectangle for presentations
+
+```{r}
+ggsave(
+  filename = file.path("Plots of All Sites", "Trace_elements_panel_long.png"),
+  plot     = bioavail_panel,
+  width    = 12,
+  height   = 6,
+  dpi      = 300
+)
+```
+
+Separate panels
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+#-------------------------------------------------
+# 1. Colors by response variable (your mapping)
+#-------------------------------------------------
+response_colors <- c(
+  "Total Zn (nM)"                              = "slategray",
+  "Bioavailable Zn (nmol/g wet weight)"        = "darkslategray3",
+  "Proportion of Bioavailable Zn (Free/Total)" = "turquoise",
+  "Total Cu (nM)"                              = "chocolate4",
+  "Bioavailable Cu (nmol/g wet weight)"        = "peru",
+  "Proportion of Bioavailable Cu (Free/Total)" = "chocolate1"
+)
+
+#-------------------------------------------------
+# 2. Map variable names -> response labels
+#-------------------------------------------------
+response_lookup <- c(
+  "log_Zn_nM"         = "Total Zn (nM)",
+  "log_TBL_Zn_nmol_g" = "Bioavailable Zn (nmol/g wet weight)",
+  "log_rel_prop_Zn"   = "Proportion of Bioavailable Zn (Free/Total)",
+  "log_Cu_nM"         = "Total Cu (nM)",
+  "log_TBL_Cu_nmol_g" = "Bioavailable Cu (nmol/g wet weight)",
+  "log_rel_prop_Cu"   = "Proportion of Bioavailable Cu (Free/Total)"
+)
+
+vars_trace <- names(response_lookup)
+
+#-------------------------------------------------
+# 3. Custom multipliers for letter heights per plot
+#    (names must match Response levels)
+#-------------------------------------------------
+letter_nudge <- c(
+  "Total Zn (nM)"                              = 1,
+  "Bioavailable Zn (nmol/g wet weight)"        = 2,
+  "Proportion of Bioavailable Zn (Free/Total)" = 1,
+  "Total Cu (nM)"                              = 1,
+  "Bioavailable Cu (nmol/g wet weight)"        = 2,
+  "Proportion of Bioavailable Cu (Free/Total)" = 1
+)
+
+#-------------------------------------------------
+# 4. Long data for plotting (use Typology)
+#-------------------------------------------------
+dat_long_trace <- dat %>%
+  dplyr::select(Typology, all_of(vars_trace)) %>%
+  pivot_longer(
+    cols      = -Typology,
+    names_to  = "Variable",
+    values_to = "Value"
+  ) %>%
+  filter(!is.na(Value)) %>%
+  mutate(
+    Response = response_lookup[Variable],
+    Response = factor(Response, levels = names(response_colors))
+  )
+
+#-------------------------------------------------
+# 5. Letters (from letters_df) for all 6 variables
+#-------------------------------------------------
+
+# 5a. Max y per Variable x Typology
+y_pos_df <- dat_long_trace %>%
+  group_by(Variable, Typology) %>%
+  summarise(y_max = max(Value, na.rm = TRUE), .groups = "drop")
+
+# 5b. Attach Response + y positions + nudges to letters_df
+#     letters_df must have: Variable, Typology, Letters
+letters_long_trace <- letters_df %>%
+  filter(Variable %in% vars_trace) %>%
+  mutate(
+    Response = response_lookup[Variable],
+    Response = factor(Response, levels = names(response_colors))
+  ) %>%
+  left_join(
+    y_pos_df,
+    by = c("Variable", "Typology")
+  ) %>%
+  mutate(
+    y_pos = y_max + letter_nudge[as.character(Response)]
+  )
+
+#=================================================
+# 6. SPLIT INTO ZINC vs COPPER PANELS
+#=================================================
+
+zn_responses <- c(
+  "Total Zn (nM)",
+  "Bioavailable Zn (nmol/g wet weight)",
+  "Proportion of Bioavailable Zn (Free/Total)"
+)
+
+cu_responses <- c(
+  "Total Cu (nM)",
+  "Bioavailable Cu (nmol/g wet weight)",
+  "Proportion of Bioavailable Cu (Free/Total)"
+)
+
+# ---- Zinc-only data ----
+dat_long_zn <- dat_long_trace %>%
+  filter(Response %in% zn_responses)
+
+letters_long_zn <- letters_long_trace %>%
+  filter(Response %in% zn_responses)
+
+bioavail_panel_zn <- ggplot(
+  dat_long_zn,
+  aes(x = Typology, y = Value, color = Response)
+) +
+  geom_boxplot(fill = NA, width = 0.6) +
+  geom_jitter(width = 0.15, size = 1, alpha = 0.7) +
+  geom_text(
+    data = letters_long_zn,
+    aes(x = Typology, y = y_pos, label = Letters),
+    inherit.aes = FALSE,
+    size = 3.5
+  ) +
+  scale_color_manual(values = response_colors) +
+  facet_wrap(
+    ~ Response,
+    scales = "free_y",
+    ncol   = 3
+  ) +
+  labs(
+    title = "Zinc Responses by Stream Typology",
+    x     = "Stream Typology",
+    y     = "Log Concentrations"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "none",
+    axis.text.x  = element_text(size = 10, angle = 30, hjust = 1),
+    axis.text.y  = element_text(size = 10),
+    strip.text   = element_text(size = 11),
+    plot.title   = element_text(size = 14)
+  )
+
+# ---- Copper-only data ----
+dat_long_cu <- dat_long_trace %>%
+  filter(Response %in% cu_responses)
+
+letters_long_cu <- letters_long_trace %>%
+  filter(Response %in% cu_responses)
+
+bioavail_panel_cu <- ggplot(
+  dat_long_cu,
+  aes(x = Typology, y = Value, color = Response)
+) +
+  geom_boxplot(fill = NA, width = 0.6) +
+  geom_jitter(width = 0.15, size = 1, alpha = 0.7) +
+  geom_text(
+    data = letters_long_cu,
+    aes(x = Typology, y = y_pos, label = Letters),
+    inherit.aes = FALSE,
+    size = 3.5
+  ) +
+  scale_color_manual(values = response_colors) +
+  facet_wrap(
+    ~ Response,
+    scales = "free_y",
+    ncol   = 3
+  ) +
+  labs(
+    title = "Copper Responses by Stream Typology",
+    x     = "Stream Typology",
+    y     = "Log Concentrations"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "none",
+    axis.text.x  = element_text(size = 10, angle = 30, hjust = 1),
+    axis.text.y  = element_text(size = 10),
+    strip.text   = element_text(size = 11),
+    plot.title   = element_text(size = 14)
+  )
+
+# View each separately:
+bioavail_panel_zn
+bioavail_panel_cu
+
+```
+
+Save plots
+
+```{r}
+ggsave(
+  filename = file.path("Plots of All Sites", "Zinc_panel_long.png"),
+  plot     = bioavail_panel_zn,
+  width    = 10,
+  height   = 4,
+  dpi      = 300
+)
+
+ggsave(
+  filename = file.path("Plots of All Sites", "Copper_panel_long.png"),
+  plot     = bioavail_panel_cu,
+  width    = 10,
+  height   = 4,
+  dpi      = 300
+)
+```
+
+### c. Factors Affecting Zinc Bioavailability
+
+#### i. Carbonates
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# ------------------------------------------------
+# 0. Variable titles and (optional) y-axis labels
+# ------------------------------------------------
+title_lookup <- c(
+  "log_ZnCO3_nM"  = "Zinc(II) Carbonate",
+  "log_ZnHCO3_nM" = "Zinc(I) Bicarbonate"
+)
+
+# Custom y-axis labels (optional)
+y_label_lookup <- c(
+  "log_ZnCO3_nM"  = "log ZnCO3 (nM)",
+  "log_ZnHCO3_nM" = "log ZnHCO3 (nM)"
+)
+
+vars_zn_spec <- names(title_lookup)
+
+# ------------------------------------------------
+# 1. Make sure output folders exist
+# ------------------------------------------------
+output_dir <- "Plots of All Sites"
+if (!dir.exists(output_dir)) dir.create(output_dir)
+
+zn_dir <- file.path(output_dir, "Zn Speciation")
+if (!dir.exists(zn_dir)) dir.create(zn_dir)
+
+# ------------------------------------------------
+# 2. Long-format data for these variables (use Typology)
+# ------------------------------------------------
+dat_long <- dat %>%
+  dplyr::select(Typology, all_of(vars_zn_spec)) %>%
+  pivot_longer(
+    cols      = -Typology,
+    names_to  = "Variable",
+    values_to = "Value"
+  ) %>%
+  filter(!is.na(Value))
+
+# ------------------------------------------------
+# 3. Letters for these variables only (from letters_df)
+# ------------------------------------------------
+
+# 3a. Max y per Variable x Typology
+y_pos_df <- dat_long %>%
+  group_by(Variable, Typology) %>%
+  summarise(y_max = max(Value, na.rm = TRUE), .groups = "drop")
+
+# 3b. Join letters with y positions
+#     letters_df must have: Variable, Typology, Letters
+letters_long <- letters_df %>%
+  filter(Variable %in% vars_zn_spec) %>%
+  left_join(
+    y_pos_df,
+    by = c("Variable", "Typology")
+  ) %>%
+  mutate(
+    y_pos = y_max + 0.5   # Letters above boxplots
+  )
+
+# ------------------------------------------------
+# 4. Facet labels using title_lookup
+# ------------------------------------------------
+facet_labels <- as_labeller(title_lookup)
+
+# ------------------------------------------------
+# 5. Build faceted Zn speciation panel
+# ------------------------------------------------
+zn_speciation_panel <- ggplot(dat_long, aes(
+    x     = Typology,
+    y     = Value,
+    color = Typology
+  )) +
+  geom_boxplot(fill = NA, width = 0.6) +
+  geom_jitter(
+    width = 0.15,
+    size  = 1.5,
+    alpha = 0.7
+  ) +
+  geom_text(
+    data = letters_long,
+    aes(x = Typology, y = y_pos, label = Letters),
+    inherit.aes = FALSE,
+    size = 4
+  ) +
+  # use your full Typology palette
+  scale_color_manual(values = typology_colors) +
+  facet_wrap(
+    ~ Variable,
+    scales   = "free_y",
+    ncol     = 3,
+    labeller = facet_labels
+  ) +
+  labs(
+    title = "Zinc Carbonate Speciation by Stream Typology",
+    x     = "Stream Typology",
+    y     = "Log Concentration (µM)"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "none",
+    axis.text.x  = element_text(size = 9, angle = 30, hjust = 1),
+    strip.text   = element_text(size = 14),
+    plot.title   = element_text(size = 14)
+  )
+
+# 6. Show in RStudio
+zn_speciation_panel
+```
+
+Save plot into Zn Speciation subfolder of Plots of All Sites
+
+```{r}
+ggsave(
+  filename = file.path(zn_dir, "Zn_speciation_carbonates_panel.png"),
+  plot     = zn_speciation_panel,
+  width    = 8,
+  height   = 4,
+  dpi      = 300
+)
+```
+
+#### ii. Calcium
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# ---------------------------------------------
+# 1. Titles and (optional) y-axis labels
+# ---------------------------------------------
+zn_title_lookup <- c(
+  "log_Ca_nM"           = "Total Calcium",
+  "log_BL_Ca_nmol_g_Zn" = "Biotic Ligand-Bound Calcium"
+)
+
+# Optional: custom y-axis labels if you want later
+zn_y_label_lookup <- c(
+  "log_Ca_nM"           = "log Ca (nM)",
+  "log_BL_Ca_nmol_g_Zn" = "log BL-Ca (nmol/g wet weight)"
+)
+
+vars_zn_spec <- names(zn_title_lookup)
+
+# ---------------------------------------------
+# 2. Output folder: Plots of All Sites/Zn Speciation
+# ---------------------------------------------
+output_dir <- "Plots of All Sites"
+if (!dir.exists(output_dir)) dir.create(output_dir)
+
+zn_dir <- file.path(output_dir, "Zn Speciation")
+if (!dir.exists(zn_dir)) dir.create(zn_dir)
+
+# ---------------------------------------------
+# 3. Long-format data for Zn speciation variables (use Typology)
+# ---------------------------------------------
+dat_long_zn <- dat %>%
+  dplyr::select(Typology, all_of(vars_zn_spec)) %>%
+  pivot_longer(
+    cols      = -Typology,
+    names_to  = "Variable",
+    values_to = "Value"
+  ) %>%
+  filter(!is.na(Value))
+
+# ---------------------------------------------
+# 4. Custom multipliers for letter height per variable
+# ---------------------------------------------
+letter_nudge_zn <- c(
+  "log_Ca_nM"           = 0.2, 
+  "log_BL_Ca_nmol_g_Zn" = 0.2
+)
+
+# ---------------------------------------------
+# 5. Letters for Zn speciation variables (from letters_df)
+# ---------------------------------------------
+
+# 5a. Max y per Variable x Typology
+y_pos_df_zn <- dat_long_zn %>%
+  group_by(Variable, Typology) %>%
+  summarise(y_max = max(Value, na.rm = TRUE), .groups = "drop")
+
+# 5b. Join letters with y positions
+#     letters_df must have: Variable, Typology, Letters
+letters_long_zn <- letters_df %>%
+  filter(Variable %in% vars_zn_spec) %>%
+  left_join(
+    y_pos_df_zn,
+    by = c("Variable", "Typology")
+  ) %>%
+  mutate(
+    # add a small offset instead of multiplying
+    y_pos = y_max + letter_nudge_zn[Variable]
+  )
+
+# ---------------------------------------------
+# 6. Build faceted Zn speciation panel
+# ---------------------------------------------
+facet_labels_zn <- as_labeller(zn_title_lookup)
+
+ca_on_zn_panel <- ggplot(dat_long_zn, aes(
+    x     = Typology,
+    y     = Value,
+    color = Typology
+  )) +
+  # Boxplots
+  geom_boxplot(fill = NA, width = 0.6) +
+  # Jittered points
+  geom_jitter(
+    width = 0.15,
+    size  = 1.8,
+    alpha = 0.7
+  ) +
+  # Letters from Kruskal groups
+  geom_text(
+    data = letters_long_zn,
+    aes(x = Typology, y = y_pos, label = Letters),
+    inherit.aes = FALSE,
+    size = 4.5
+  ) +
+  # Typology colors (use your Typology palette)
+  scale_color_manual(values = typology_colors) +
+  # One facet per Zn variable
+  facet_wrap(
+    ~ Variable,
+    scales   = "free_y",
+    ncol     = 2,
+    labeller = facet_labels_zn
+  ) +
+  labs(
+    title = "Calcium Effects on Zinc Bioavailability",
+    x     = "Stream Typology",
+    y     = "Log Concentration (nM)"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "none",
+    axis.text.x  = element_text(size = 9, angle = 30, hjust = 1),
+    strip.text   = element_text(size = 14),
+    plot.title   = element_text(size = 14)
+  )
+
+# Show in RStudio
+ca_on_zn_panel
+
+```
+
+```{r}
+ggsave(
+  filename = file.path(zn_dir, "Ca_on_Zn_bioavailability_panel.png"),
+  plot     = ca_on_zn_panel,
+  width    = 8,
+  height   = 4,
+  dpi      = 300
+)
+```
+
+#### iii. Sodium
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# ---------------------------------------------
+# 1. Titles and (optional) y-axis labels
+# ---------------------------------------------
+na_title_lookup <- c(
+  "log_Na_nM"           = "Total Sodium",
+  "log_BL_Na_nmol_g_Zn" = "Biotic Ligand-Bound Sodium"
+)
+
+# Optional: y-axis labels
+na_y_label_lookup <- c(
+  "log_Na_nM"           = "log Na (nM)",
+  "log_BL_Na_nmol_g_Zn" = "log BL-Na (nmol/g wet weight)"
+)
+
+vars_zn_spec <- names(na_title_lookup)
+
+# ---------------------------------------------
+# 2. Output directories
+# ---------------------------------------------
+output_dir <- "Plots of All Sites"
+if (!dir.exists(output_dir)) dir.create(output_dir)
+
+zn_dir <- file.path(output_dir, "Zn Speciation")
+if (!dir.exists(zn_dir)) dir.create(zn_dir)
+
+# ---------------------------------------------
+# 3. Long data for Zn speciation (use Typology)
+# ---------------------------------------------
+dat_long_zn <- dat %>%
+  dplyr::select(Typology, all_of(vars_zn_spec)) %>%
+  pivot_longer(
+    cols      = -Typology,
+    names_to  = "Variable",
+    values_to = "Value"
+  ) %>%
+  filter(!is.na(Value))
+
+# ---------------------------------------------
+# 4. Letter nudges per variable
+# ---------------------------------------------
+letter_nudge_zn <- c(
+  "log_Na_nM"           = 2,
+  "log_BL_Na_nmol_g_Zn" = 0.9
+)
+
+# ---------------------------------------------
+# 5. Letters for Zn speciation variables
+# ---------------------------------------------
+
+# 5a. Mean y per Variable x Typology
+y_pos_df_zn <- dat_long_zn %>%
+  group_by(Variable, Typology) %>%
+  summarise(y_mean = mean(Value, na.rm = TRUE), .groups = "drop")
+
+# 5b. Join letters with y positions
+#     letters_df must have: Variable, Typology, Letters
+letters_long_zn <- letters_df %>%
+  filter(Variable %in% vars_zn_spec) %>%
+  left_join(
+    y_pos_df_zn,
+    by = c("Variable", "Typology")
+  ) %>%
+  mutate(
+    y_pos = y_mean + letter_nudge_zn[Variable]
+  )
+
+# ---------------------------------------------
+# 6. Faceted panel for Na effects on Zn
+# ---------------------------------------------
+facet_labels_zn <- as_labeller(na_title_lookup)
+
+na_on_zn_panel <- ggplot(dat_long_zn, aes(
+    x     = Typology,
+    y     = Value,
+    color = Typology
+  )) +
+  geom_boxplot(fill = NA, width = 0.6) +
+  geom_jitter(width = 0.15, size = 1.8, alpha = 0.7) +
+  geom_text(
+    data = letters_long_zn,
+    aes(x = Typology, y = y_pos, label = Letters),
+    inherit.aes = FALSE,
+    size = 4.5
+  ) +
+  scale_color_manual(values = typology_colors) +
+  facet_wrap(
+    ~ Variable,
+    scales   = "free_y",
+    ncol     = 2,
+    labeller = facet_labels_zn
+  ) +
+  labs(
+    title = "Sodium Effects on Zinc Bioavailability",
+    x     = "Stream Typology",
+    y     = "Log Concentration (nM)"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "none",
+    axis.text.x  = element_text(size = 9, angle = 30, hjust = 1),
+    strip.text   = element_text(size = 14),
+    plot.title   = element_text(size = 14)
+  )
+
+na_on_zn_panel
+
+```
+
+Save
+
+```{r}
+ggsave(
+  filename = file.path(zn_dir, "Na_on_Zn_bioavailability_panel.png"),
+  plot     = na_on_zn_panel,
+  width    = 8,
+  height   = 4,
+  dpi      = 300
+)
+```
+
+#### iv. Sulfate
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# ---------------------------------------------
+# 1. Titles and (optional) y-axis labels
+# ---------------------------------------------
+na_title_lookup <- c(
+  "log_SO4_nM"   = "Sulfate",
+  "log_ZnSO4_nM" = "Zinc Sulfate"
+)
+
+# Optional: y-axis labels
+na_y_label_lookup <- c(
+  "log_SO4_nM"   = "log SO4 (nM)",
+  "log_ZnSO4_nM" = "log ZnSO4 (nM)"
+)
+
+vars_zn_spec <- names(na_title_lookup)
+
+# ---------------------------------------------
+# 2. Output directories
+# ---------------------------------------------
+output_dir <- "Plots of All Sites"
+if (!dir.exists(output_dir)) dir.create(output_dir)
+
+zn_dir <- file.path(output_dir, "Zn Speciation")
+if (!dir.exists(zn_dir)) dir.create(zn_dir)
+
+# ---------------------------------------------
+# 3. Long data for Zn speciation (use Typology)
+# ---------------------------------------------
+dat_long_zn <- dat %>%
+  dplyr::select(Typology, all_of(vars_zn_spec)) %>%
+  pivot_longer(
+    cols      = -Typology,
+    names_to  = "Variable",
+    values_to = "Value"
+  ) %>%
+  filter(!is.na(Value))
+
+# ---------------------------------------------
+# 4. Letter nudges per variable
+# ---------------------------------------------
+letter_nudge_zn <- c(
+  "log_SO4_nM"   = 2,
+  "log_ZnSO4_nM" = 2
+)
+
+# ---------------------------------------------
+# 5. Letters for Zn speciation variables
+# ---------------------------------------------
+
+# 5a. Mean y per Variable x Typology
+y_pos_df_zn <- dat_long_zn %>%
+  group_by(Variable, Typology) %>%
+  summarise(y_mean = mean(Value, na.rm = TRUE), .groups = "drop")
+
+# 5b. Join letters with y positions
+#     letters_df must have: Variable, Typology, Letters
+letters_long_zn <- letters_df %>%
+  filter(Variable %in% vars_zn_spec) %>%
+  left_join(
+    y_pos_df_zn,
+    by = c("Variable", "Typology")
+  ) %>%
+  mutate(
+    y_pos = y_mean + letter_nudge_zn[Variable]
+  )
+
+# ---------------------------------------------
+# 6. Faceted panel for sulfate effects on Zn
+# ---------------------------------------------
+facet_labels_zn <- as_labeller(na_title_lookup)
+
+doc_on_zn_panel <- ggplot(dat_long_zn, aes(
+    x     = Typology,
+    y     = Value,
+    color = Typology
+  )) +
+  geom_boxplot(fill = NA, width = 0.6) +
+  geom_jitter(width = 0.15, size = 1.8, alpha = 0.7) +
+  geom_text(
+    data = letters_long_zn,
+    aes(x = Typology, y = y_pos, label = Letters),
+    inherit.aes = FALSE,
+    size = 4.5
+  ) +
+  scale_color_manual(values = typology_colors) +
+  facet_wrap(
+    ~ Variable,
+    scales   = "free_y",
+    ncol     = 2,
+    labeller = facet_labels_zn
+  ) +
+  labs(
+    title = "Sulfate Effects on Zinc Bioavailability",
+    x     = "Stream Typology",
+    y     = "Log Concentration (nM)"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "none",
+    axis.text.x  = element_text(size = 9, angle = 30, hjust = 1),
+    strip.text   = element_text(size = 14),
+    plot.title   = element_text(size = 14)
+  )
+
+doc_on_zn_panel
+
+```
+
+Save
+
+```{r}
+ggsave(
+  filename = file.path(zn_dir, "DOC_on_Zn_bioavailability_panel.png"),
+  plot     = doc_on_zn_panel,
+  width    = 8,
+  height   = 4,
+  dpi      = 300
+)d
+```
+
+### d. Factors Affecting Copper Bioavailability
+
+#### i. Sulfate
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+#-------------------------------------------------
+# 0. Name of the variable you want to plot
+#-------------------------------------------------
+var_name <- "log_CuSO4_uM"
+
+#-------------------------------------------------
+# 1. Titles and y-axis label for this variable
+#-------------------------------------------------
+title_var   <- "Copper Sulfate"
+y_label_var <- "log CuSO₄ (µM)"
+
+#-------------------------------------------------
+# 2. Save to an output folder
+#-------------------------------------------------
+output_dir <- "Plots of All Sites"
+if (!dir.exists(output_dir)) dir.create(output_dir)
+
+cu_dir <- file.path(output_dir, "Cu Speciation")
+if (!dir.exists(cu_dir)) dir.create(cu_dir)
+
+#-------------------------------------------------
+# 3. Letters for this variable only (from letters_df)
+#-------------------------------------------------
+letters_sub <- letters_df %>%
+  filter(Variable == var_name)
+# letters_df already has columns: Variable, Typology, Letters
+
+#-------------------------------------------------
+# 4. y-position for letters: mean + constant offset
+#-------------------------------------------------
+y_pos_df <- dat %>%
+  group_by(Typology) %>%
+  summarise(
+    y_pos = mean(.data[[var_name]], na.rm = TRUE) + 3,
+    .groups = "drop"
+  )
+
+# join y_pos into letters_sub by Typology
+letters_sub <- letters_sub %>%
+  left_join(y_pos_df, by = "Typology")
+
+#-------------------------------------------------
+# 5. Build ggplot for log_CuSO4_uM
+#-------------------------------------------------
+p_cuso4_cu <- ggplot(dat, aes(
+    x     = Typology,
+    y     = .data[[var_name]],
+    color = Typology
+  )) +
+  geom_boxplot(fill = NA, width = 0.6) +
+  geom_jitter(
+    width = 0.15,
+    size  = 2,
+    alpha = 0.7
+  ) +
+  geom_text(
+    data = letters_sub,
+    aes(
+      x = Typology,
+      y = y_pos,
+      label = Letters
+    ),
+    inherit.aes = FALSE,
+    size = 5
+  ) +
+  scale_color_manual(values = typology_colors) +
+  labs(
+    title = title_var,
+    y     = y_label_var,
+    x     = ""
+  ) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.1))) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "none",
+    axis.text.x  = element_text(size = 11),
+    axis.title.x = element_text(size = 12),
+    axis.text.y  = element_text(size = 11),
+    axis.title.y = element_text(size = 12),
+    plot.title   = element_text(size = 14)
+  )
+
+# Show the plot
+p_cuso4_cu
+
+```
+
+Save plot into Cu Speciation subfolder of Plots of All Sites
+
+```{r}
+ggsave(
+  filename = file.path(cu_dir, "CuSO4.png"),
+  plot     = p_cuso4_cu,
+  width    = 5,
+  height   = 4,
+  dpi      = 300
+)
+```
+
+#### ii. Dissolved organic carbon
+
+Just total organic Cu
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+#-------------------------------------------------
+# 0. Name of the variable you want to plot
+#-------------------------------------------------
+var_name <- "log_TOrg_Cu_nM"   # or "log_Torg_Cu_nM" if that's the exact name
+
+#-------------------------------------------------
+# 1. Titles and y-axis label for this variable
+#-------------------------------------------------
+title_var   <- "Total Organic Copper"
+y_label_var <- "log TOrg Cu (nM)"
+
+# -----------------------------------------------
+# 3. Save to an output folder
+# -----------------------------------------------
+output_dir <- "Plots of All Sites"
+if (!dir.exists(output_dir)) dir.create(output_dir)
+
+cu_dir <- file.path(output_dir, "Cu Speciation")
+if (!dir.exists(cu_dir)) dir.create(cu_dir)
+
+#-------------------------------------------------
+# 4. Letters for this variable only (from letters_df)
+#-------------------------------------------------
+# letters_df has: Variable, Typology, Letters
+letters_sub <- letters_df %>%
+  filter(Variable == var_name)
+
+#-------------------------------------------------
+# 5. y-position for letters: 1.25 * max per Typology
+#-------------------------------------------------
+y_pos_df <- dat %>%
+  group_by(Typology) %>%
+  summarise(
+    y_pos = max(.data[[var_name]], na.rm = TRUE) * 1.25,
+    .groups = "drop"
+  )
+
+# join y_pos into letters_sub
+letters_sub <- letters_sub %>%
+  left_join(y_pos_df, by = "Typology")
+
+#-------------------------------------------------
+# 6. Build ggplot for log_TOrg_Cu_nM
+#-------------------------------------------------
+p_torg_cu <- ggplot(dat, aes(
+    x     = Typology,
+    y     = .data[[var_name]],
+    color = Typology
+  )) +
+  geom_boxplot(fill = NA, width = 0.6) +
+  geom_jitter(
+    width = 0.15,
+    size  = 2,
+    alpha = 0.7
+  ) +
+  geom_text(
+    data = letters_sub,
+    aes(
+      x = Typology,
+      y = y_pos,
+      label = Letters
+    ),
+    inherit.aes = FALSE,
+    size = 5
+  ) +
+  scale_color_manual(values = typology_colors) +
+  labs(
+    title = title_var,
+    y     = y_label_var,
+    x     = ""
+  ) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.1))) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "none",
+    axis.text.x  = element_text(size = 11),
+    axis.title.x = element_text(size = 12),
+    axis.text.y  = element_text(size = 11),
+    axis.title.y = element_text(size = 12),
+    plot.title   = element_text(size = 14)
+  )
+
+# Show the plot
+p_torg_cu
+
+```
+
+```{r}
+  ggsave(
+    filename = file.path(cu_dir, "Torg_Cu_panel.png"),
+    plot     = p_torg_cu,
+    width    = 5,
+    height   = 4,
+    dpi      = 300
+  )
+```
+
+#### iii. Competing cations
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# ------------------------------------------------
+# 0. Variable titles and (optional) y-axis labels
+# ------------------------------------------------
+title_lookup <- c(
+  "log_BL_Na_nmol_g_Cu"  = "Biotic Ligand-Bound Sodium",
+  "log_BL_Ca_nmol_g_Cu"  = "Biotic Ligand-Bound Calcium"
+)
+
+# Custom y-axis labels (optional)
+y_label_lookup <- c(
+  "log_BL_Na_nmol_g_Cu"  = "log BL-Na (nM)",
+  "log_BL_Ca_nmol_g_Cu"  = "log BL-Ca (nM)"
+)
+
+vars_zn_spec <- names(title_lookup)
+
+# ------------------------------------------------
+# 1. Make sure output folders exist
+# ------------------------------------------------
+output_dir <- "Plots of All Sites"
+if (!dir.exists(output_dir)) dir.create(output_dir)
+
+zn_dir <- file.path(output_dir, "Zn Speciation")
+if (!dir.exists(zn_dir)) dir.create(zn_dir)
+
+# ------------------------------------------------
+# 2. Long-format data for these variables (use Typology)
+# ------------------------------------------------
+dat_long <- dat %>%
+  dplyr::select(Typology, all_of(vars_zn_spec)) %>%
+  pivot_longer(
+    cols      = -Typology,
+    names_to  = "Variable",
+    values_to = "Value"
+  ) %>%
+  filter(!is.na(Value))
+
+# ------------------------------------------------
+# 3. Letters for these variables only (from letters_df)
+# ------------------------------------------------
+
+# 3a. Max y per Variable x Typology
+y_pos_df <- dat_long %>%
+  group_by(Variable, Typology) %>%
+  summarise(y_max = max(Value, na.rm = TRUE), .groups = "drop")
+
+# 3b. Join letters with y positions
+#     letters_df has: Variable, Typology, Letters
+letters_long <- letters_df %>%
+  filter(Variable %in% vars_zn_spec) %>%
+  left_join(
+    y_pos_df,
+    by = c("Variable", "Typology")
+  ) %>%
+  mutate(
+    y_pos = y_max + 0.5   # Letters above boxplots
+  )
+
+# ------------------------------------------------
+# 4. Facet labels using title_lookup
+# ------------------------------------------------
+facet_labels <- as_labeller(title_lookup)
+
+# ------------------------------------------------
+# 5. Build faceted Cu competing cations panel
+# ------------------------------------------------
+cu_cc_panel <- ggplot(dat_long, aes(
+    x     = Typology,
+    y     = Value,
+    color = Typology
+  )) +
+  geom_boxplot(fill = NA, width = 0.6) +
+  geom_jitter(
+    width = 0.15,
+    size  = 1.5,
+    alpha = 0.7
+  ) +
+  geom_text(
+    data = letters_long,
+    aes(x = Typology, y = y_pos, label = Letters),
+    inherit.aes = FALSE,
+    size = 4
+  ) +
+  scale_color_manual(values = typology_colors) +
+  facet_wrap(
+    ~ Variable,
+    scales   = "free_y",
+    ncol     = 3,
+    labeller = facet_labels
+  ) +
+  labs(
+    title = "Copper Competing Cations by Stream Typology",
+    x     = "Stream Typology",
+    y     = "Log Concentration (µM)"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "none",
+    axis.text.x  = element_text(size = 9, angle = 30, hjust = 1),
+    strip.text   = element_text(size = 14),
+    plot.title   = element_text(size = 14)
+  )
+
+# 6. Show in RStudio
+cu_cc_panel
+
+```
+
+Save plot
+
+```{r}
+ggsave(
+  filename = file.path(cu_dir, "Cu_competing_cations.png"),
+  plot     = cu_cc_panel,
+  width    = 8,
+  height   = 4,
+  dpi      = 300
+)
+```
+
+### e. Toxicity
+
+Zinc toxicity to daphnia
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+## -------------------------------
+## ZINC: Measured vs Toxic to Daphnia
+## -------------------------------
+
+# 1. Pivot to long format
+dat_zn_daph <- dat %>%
+  dplyr::select(Typology, log_Zn_uM, log_Zn_Toxicity_Daphnia_uM) %>%
+  pivot_longer(
+    cols      = c(log_Zn_uM, log_Zn_Toxicity_Daphnia_uM),
+    names_to  = "Zinc_Concentrations",
+    values_to = "Value"
+  ) %>%
+  mutate(
+    Zinc_Concentrations = dplyr::recode(
+      Zinc_Concentrations,
+      "log_Zn_uM"                  = "Measured Zinc",
+      "log_Zn_Toxicity_Daphnia_uM" = "Toxic to Daphnia"
+    ),
+    # Set plotting order of lines in legend
+    Zinc_Concentrations = factor(
+      Zinc_Concentrations,
+      levels = c("Measured Zinc", "Toxic to Daphnia")
+    )
+  ) %>%
+  filter(!is.na(Value))
+
+# 2. Density plot faceted by Typology
+p_zn_daph_density <- ggplot(
+  dat_zn_daph,
+  aes(x = Value, fill = Zinc_Concentrations, color = Zinc_Concentrations)
+) +
+  geom_density(alpha = 0.35, linewidth = 0.6) +
+  facet_wrap(~ Typology, ncol = 2) +
+  scale_fill_manual(values = c(
+    "Measured Zinc"    = "slategray",
+    "Toxic to Daphnia" = "maroon"
+  )) +
+  scale_color_manual(values = c(
+    "Measured Zinc"    = "slategray",
+    "Toxic to Daphnia" = "maroon"
+  )) +
+  labs(
+    title = "Zinc Toxicity Threshold vs Measured Zn",
+    x     = "Log Zn (uM)",
+    y     = "Density",
+    fill  = "Zinc Concentration",
+    color = "Zinc Concentration"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "bottom",
+    legend.title    = element_text(size = 11),
+    legend.text     = element_text(size = 10),
+    strip.text      = element_text(size = 11),
+    axis.text.x     = element_text(size = 10),
+    axis.text.y     = element_text(size = 10),
+    plot.title      = element_text(size = 14)
+  )
+
+p_zn_daph_density
+```
+
+Copper toxicity to daphnia
+
+```{r}
+library(dplyr)
+## -------------------------------
+## COPPER: Measured vs Chronic / Acute Toxicity
+## -------------------------------
+
+# 1. Pivot to long format
+dat_cu_daph <- dat %>%
+  dplyr::select(
+    Typology,
+    log_Cu_nM,
+    log_Cu_Chronic_Toxicity_Daphnia_nM,
+    log_Cu_Acute_Toxicity_Daphnia_nM
+  ) %>%
+  pivot_longer(
+    cols      = c(
+      log_Cu_nM,
+      log_Cu_Chronic_Toxicity_Daphnia_nM,
+      log_Cu_Acute_Toxicity_Daphnia_nM
+    ),
+    names_to  = "Copper_Concentrations",
+    values_to = "Value"
+  ) %>%
+  mutate(
+    Copper_Concentrations = dplyr::recode(
+      Copper_Concentrations,
+      "log_Cu_nM"                          = "Measured Copper",
+      "log_Cu_Chronic_Toxicity_Daphnia_nM" = "Chronically Toxic to Daphnia",
+      "log_Cu_Acute_Toxicity_Daphnia_nM"   = "Acutely Toxic to Daphnia"
+    ),
+    Copper_Concentrations = factor(
+      Copper_Concentrations,
+      levels = c(
+        "Measured Copper",
+        "Chronically Toxic to Daphnia",
+        "Acutely Toxic to Daphnia"
+      )
+    )
+  ) %>%
+  filter(!is.na(Value))
+
+# 2. Density plot faceted by Typology
+p_cu_daph_density <- ggplot(
+    dat_cu_daph,
+    aes(x = Value, fill = Copper_Concentrations)
+  ) +
+  geom_density(alpha = 0.5, linewidth = 0.6) +
+  facet_wrap(~ Typology, ncol = 2) +
+  scale_fill_manual(values = c(
+    "Measured Copper"              = "chocolate4",
+    "Chronically Toxic to Daphnia" = "maroon",
+    "Acutely Toxic to Daphnia"     = "red"
+  )) +
+  labs(
+    title = "Copper Toxicity Thresholds vs Measured Cu",
+    x     = "Log Cu (nM)",
+    y     = "Density",
+    fill  = "Copper Concentration"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "bottom",
+    legend.title    = element_text(size = 11),
+    legend.text     = element_text(size = 10),
+    strip.text      = element_text(size = 11),
+    axis.text.x     = element_text(size = 10),
+    axis.text.y     = element_text(size = 10),
+    plot.title      = element_text(size = 14)
+  )
+
+p_cu_daph_density
+
+```
+
+Copper toxicity to minnow
+
+```{r}
+## -------------------------------
+## COPPER: Measured vs Chronic / Acute Toxicity
+## -------------------------------
+
+# 1. Pivot to long format
+dat_cu_minn <- dat %>%
+  dplyr::select(
+    Typology,
+    log_Cu_nM,
+    log_Cu_Chronic_Toxicity_Minnow_nM,
+    log_Cu_Acute_Toxicity_Minnow_nM
+  ) %>%
+  pivot_longer(
+    cols      = c(
+      log_Cu_nM,
+      log_Cu_Chronic_Toxicity_Minnow_nM,
+      log_Cu_Acute_Toxicity_Minnow_nM
+    ),
+    names_to  = "Copper_Concentrations",
+    values_to = "Value"
+  ) %>%
+  mutate(
+    Copper_Concentrations = dplyr::recode(
+      Copper_Concentrations,
+      "log_Cu_nM"                          = "Measured Copper",
+      "log_Cu_Chronic_Toxicity_Minnow_nM" = "Chronically Toxic to Minnow",
+      "log_Cu_Acute_Toxicity_Minnow_nM"   = "Acutely Toxic to Minnow"
+    ),
+    Copper_Concentrations = factor(
+      Copper_Concentrations,
+      levels = c(
+        "Measured Copper",
+        "Chronically Toxic to Minnow",
+        "Acutely Toxic to Minnow"
+      )
+    )
+  ) %>%
+  filter(!is.na(Value))
+
+# 2. Density plot faceted by Typology
+p_cu_daph_density_minn <- ggplot(
+    dat_cu_minn,
+    aes(x = Value, fill = Copper_Concentrations)
+  ) +
+  geom_density(alpha = 0.5, linewidth = 0.6) +
+  facet_wrap(~ Typology, ncol = 2) +
+  scale_fill_manual(values = c(
+    "Measured Copper"              = "chocolate4",
+    "Chronically Toxic to Minnow" = "maroon",
+    "Acutely Toxic to Minnow"     = "red"
+  )) +
+  labs(
+    title = "Copper Toxicity Thresholds vs Measured Cu",
+    x     = "Log Cu (nM)",
+    y     = "Density",
+    fill  = "Copper Concentration"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "bottom",
+    legend.title    = element_text(size = 11),
+    legend.text     = element_text(size = 10),
+    strip.text      = element_text(size = 11),
+    axis.text.x     = element_text(size = 10),
+    axis.text.y     = element_text(size = 10),
+    plot.title      = element_text(size = 14)
+  )
+
+p_cu_daph_density_minn
+```
+
+Calculate probability of overlapping measured zinc with toxic levels of zinc by stream typology
+
+```{r}
+#Quantify overlapping area of measured zinc with toxic concentrations by typology
+
+# Extract the two vectors
+x1 <- dat$log_Zn_nM
+x2 <- dat$log_Zn_Toxicity_Daphnia_nM
+
+library(dplyr)
+
+# --- Define overlap function ---
+overlap_area <- function(x, y, n = 512) {
+  d1 <- density(x, na.rm = TRUE, n = n)
+  d2 <- density(y, na.rm = TRUE, n = n)
+  
+  x_start <- max(min(d1$x), min(d2$x))
+  x_end   <- min(max(d1$x), max(d2$x))
+  
+  if(x_start >= x_end) return(0)  # No overlap
+  
+  x_common <- seq(x_start, x_end, length.out = n)
+  y1 <- approx(d1$x, d1$y, x_common)$y
+  y2 <- approx(d2$x, d2$y, x_common)$y
+  
+  sum(pmin(y1, y2)) * diff(x_common[1:2])
+}
+
+
+# --- Compute overlaps by Typology ---
+overlap_Zn_by_typology <- dat %>%
+  group_by(Typology) %>%
+  summarise(
+    Overlap_Daphnia = overlap_area(log_Zn_nM, log_Zn_Toxicity_Daphnia_nM)
+  ) %>%
+  ungroup()
+
+# View results
+overlap_Zn_by_typology
+
+```
+
+Calculate probability of overlapping measured copper with toxic levels of copper by stream typology
+
+```{r}
+#Quantify overlapping area of measured copper with toxic concentrations by typology
+
+# Extract the two vectors
+x1 <- dat$log_Cu_nM
+x2 <- dat$log_Cu_Chronic_Toxicity_Daphnia_nM
+x3 <- dat$log_Cu_Acute_Toxicity_Daphnia_nM
+x4 <- dat$log_Cu_Chronic_Toxicity_Minnow_nM
+x5 <- dat$log_Cu_Acute_Toxicity_Minnow_nM
+
+# Compute density overlaps between measured Cu and toxicity thresholds
+library(dplyr)
+
+overlap_area <- function(x, y, n = 512) {
+  d1 <- density(x, n = n)
+  d2 <- density(y, n = n)
+  
+  # Common x grid
+  x_common <- seq(max(min(d1$x), min(d2$x)), min(max(d1$x), max(d2$x)), length.out = n)
+  
+  y1 <- approx(d1$x, d1$y, x_common)$y
+  y2 <- approx(d2$x, d2$y, x_common)$y
+  
+  # Area under the minimum of both density curves
+  overlap <- sum(pmin(y1, y2)) * diff(x_common[1:2])
+  return(overlap)
+}
+
+# --- Compute overlaps by Typology ---
+overlap_results_by_typology <- dat %>%
+  group_by(Typology) %>%
+  summarise(
+    
+    Overlap_Chronic_Toxicity_Daphnia = 
+      overlap_area(log_Cu_nM, log_Cu_Chronic_Toxicity_Daphnia_nM),
+    
+    Overlap_Acute_Toxicity_Daphnia   = 
+      overlap_area(log_Cu_nM, log_Cu_Acute_Toxicity_Daphnia_nM),
+    
+    Overlap_Chronic_Toxicity_Minnow  = 
+      overlap_area(log_Cu_nM, log_Cu_Chronic_Toxicity_Minnow_nM),
+    
+    Overlap_Acute_Toxicity_Minnow    = 
+      overlap_area(log_Cu_nM, log_Cu_Acute_Toxicity_Minnow_nM)
+  
+    ) %>%
+  ungroup()
+
+# View
+overlap_results_by_typology
+```
+
+# Variables by Site within Typology
+
+## **1. Main Stem**
+
+```{r}
+# Isolate Main Stem typology and order the sites
+main_stem <- dat %>%
+  filter(Typology == "Main Stem") %>%
+  mutate(Site = factor(Site, 
+                       levels = unique(Site[order(Dist_from_EFPC_km)])))
+
+
+# Plot by site
+library(ggplot2)
+
+# Zinc
+main_stem_plot_zn <- ggplot(
+  main_stem,
+  aes(x = Site, y = log_TBL_Zn_nmol_g)
+) +
+  geom_boxplot(
+    fill = "darkslategray1",    
+    color = "black",             
+    position = position_dodge(width = 0.75)
+  ) +
+  labs(
+    title = "Bioavailable Zn in Main Stem",
+    x = "Site (upstream to downstream)",
+    y = "Log TBL Zn (umol/g wet weight)"
+  ) +
+  theme_test() +
+  theme(
+    axis.text.x = element_text(angle = 30, hjust = 1),
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    legend.position = "none"
+  )
+
+# Copper 
+main_stem_plot_cu <- ggplot(
+  main_stem,
+  aes(x = Site, y = log_TBL_Cu_nmol_g)
+) +
+  geom_boxplot(
+    fill = "chocolate1",    
+    color = "black",             
+    position = position_dodge(width = 0.75)
+  ) +
+  labs(
+    title = "Bioavailable Cu in Main Stem",
+    x = "Site (upstream to downstream)",
+    y = "Log TBL Cu (umol/g wet weight)"
+  ) +
+  theme_test() +
+  theme(
+    axis.text.x = element_text(angle = 30, hjust = 1),
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    legend.position = "none"
+  ) 
+
+# View
+main_stem_plot_zn
+main_stem_plot_cu
+```
+
+## **2. Flowing Tribs**
+
+```{r}
+# Isolate Flowing Tribs typology and order the sites
+f_tribs <- dat %>%
+  filter(Typology == "Other Flowing Tribs") %>%
+  mutate(Site = factor(Site, 
+                       levels = unique(Site[order(Dist_from_EFPC_km)])))
+
+
+# Plot by site colored by Network
+library(ggplot2)
+
+# Zinc
+f_tribs_plot_zn <- ggplot(f_tribs, aes(x = Site, y = log_TBL_Zn_nmol_g, fill = Network)) +
+  geom_boxplot(color = "black", position = position_dodge(width = 0.75)) +
+  labs(
+    title = "Bioavailable Zn in Flowing Tributaries",
+    x = "Site (grouped by network)",
+    y = " Log TBL Zn (umol/g wet weight)"
+  ) +
+  theme_test() +
+  theme(
+    axis.text.x = element_text(angle = 30, hjust = 1),
+    legend.position = "none",
+    plot.title = element_text(hjust = 0.5, face = "bold")
+  ) +
+
+  # Add vertical dividers between networks
+  facet_grid(~Network, scales = "free_x", space = "free_x", switch = "x")
+
+# Copper
+f_tribs_plot_cu <- ggplot(f_tribs, aes(x = Site, y = log_TBL_Cu_nmol_g, fill = Network)) +
+  geom_boxplot(color = "black", position = position_dodge(width = 0.75)) +
+  labs(
+    title = "Bioavailable Cu in Flowing Tributaries",
+    x = "Site (grouped by network)",
+    y = " Log TBL Cu (umol/g wet weight)"
+  ) +
+  theme_test() +
+  theme(
+    axis.text.x = element_text(angle = 30, hjust = 1),
+    legend.position = "none",
+    plot.title = element_text(hjust = 0.5, face = "bold")
+  ) +
+
+  # Add vertical dividers between networks
+  facet_grid(~Network, scales = "free_x", space = "free_x", switch = "x")
+
+# View 
+f_tribs_plot_zn
+f_tribs_plot_cu
+```
+
+## 3. Non-Perennial Pooled Tribs
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+# 1. Isolate Non-Perennial Pooled Tribs typology and order the sites
+np_tribs <- dat %>%
+  filter(Typology == "Pooled Non-Perennial Tribs") %>%
+  mutate(
+    Site = factor(
+      Site,
+      levels = unique(Site[order(Dist_from_EFPC_km)])
+    )
+  )
+
+# 2. Zinc plot
+np_tribs_plot_zn <- ggplot(np_tribs, aes(x = Site, y = log_TBL_Zn_nmol_g, fill = Network)) +
+  geom_boxplot(color = "black", position = position_dodge(width = 0.75)) +
+  labs(
+    title = "Bioavailable Zn in Non-Perennial Pooled Tributaries",
+    x = "Site (grouped by network)",
+    y = "Log TBL Zn (umol/g wet weight)"
+  ) +
+  theme_test() +
+  theme(
+    axis.text.x = element_text(angle = 30, hjust = 1),
+    legend.position = "none",
+    plot.title = element_text(hjust = 0.5, face = "bold")
+  ) +
+  facet_grid(~Network, scales = "free_x", space = "free_x", switch = "x")
+
+# 3. Copper plot
+np_tribs_plot_cu <- ggplot(np_tribs, aes(x = Site, y = log_TBL_Cu_nmol_g, fill = Network)) +
+  geom_boxplot(color = "black", position = position_dodge(width = 0.75)) +
+  labs(
+    title = "Bioavailable Cu in Non-Perennial Pooled Tributaries",
+    x = "Site (grouped by network)",
+    y = "Log TBL Cu (umol/g wet weight)"
+  ) +
+  theme_test() +
+  theme(
+    axis.text.x = element_text(angle = 30, hjust = 1),
+    legend.position = "none",
+    plot.title = element_text(hjust = 0.5, face = "bold")
+  ) +
+  facet_grid(~Network, scales = "free_x", space = "free_x", switch = "x")
+
+# 4. View
+np_tribs_plot_zn
+np_tribs_plot_cu
+
+```
+
+## 4. Perennial Developed Tribs
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+# 1. Isolate Perennial Developed Tribs typology and order sites
+pd_tribs <- dat %>%
+  filter(Typology == "Perennial Developed Tribs") %>%
+  mutate(
+    Site = factor(
+      Site,
+      levels = unique(Site[order(Dist_from_EFPC_km)])
+    )
+  )
+
+# 2. Zinc plot
+pd_tribs_plot_zn <- ggplot(pd_tribs, aes(x = Site, y = log_TBL_Zn_nmol_g, fill = Network)) +
+  geom_boxplot(color = "black", position = position_dodge(width = 0.75)) +
+  labs(
+    title = "Bioavailable Zn in Perennial Developed Tributaries",
+    x = "Site (grouped by network)",
+    y = "Log TBL Zn (umol/g wet weight)"
+  ) +
+  theme_test() +
+  theme(
+    axis.text.x = element_text(angle = 30, hjust = 1),
+    legend.position = "none",
+    plot.title = element_text(hjust = 0.5, face = "bold")
+  ) +
+  facet_grid(~Network, scales = "free_x", space = "free_x", switch = "x")
+
+# 3. Copper plot
+pd_tribs_plot_cu <- ggplot(pd_tribs, aes(x = Site, y = log_TBL_Cu_nmol_g, fill = Network)) +
+  geom_boxplot(color = "black", position = position_dodge(width = 0.75)) +
+  labs(
+    title = "Bioavailable Cu in Perennial Developed Tributaries",
+    x = "Site (grouped by network)",
+    y = "Log TBL Cu (umol/g wet weight)"
+  ) +
+  theme_test() +
+  theme(
+    axis.text.x = element_text(angle = 30, hjust = 1),
+    legend.position = "none",
+    plot.title = element_text(hjust = 0.5, face = "bold")
+  ) +
+  facet_grid(~Network, scales = "free_x", space = "free_x", switch = "x")
+
+# 4. View
+pd_tribs_plot_zn
+pd_tribs_plot_cu
+
+```

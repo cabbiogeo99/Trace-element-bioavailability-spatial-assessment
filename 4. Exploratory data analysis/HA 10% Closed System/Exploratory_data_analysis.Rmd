@@ -1,0 +1,421 @@
+---
+title: "Exploratory_data_analysis"
+output:
+  html_document:
+    df_print: paged
+---
+
+The objectives of this notebook will be to conduct exploratory data analyses on the Bioavailability Master Spreadsheet Clean version using the HA 10% Closed System (default) scenario.
+
+# Preparing the Variables
+
+Set the working directory to the HA 10% Closed System folder
+
+```{r}
+setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/4. Exploratory data analysis/HA 10% Closed System")
+```
+
+Upload the Bioavailability Master Spreadsheet dataset in the 2. Dataset merging folder
+
+```{r}
+library(readxl)
+
+dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/3. Dataset cleaning/Bioavailability_Master_Spreadsheet_Clean.xlsx", 
+    sheet = "HA 10% Closed System")
+
+# Preview
+head(dat)
+```
+
+Check that variables have the correct structure
+
+```{r}
+str(dat)
+```
+
+## 1. Normality Check of Variables
+
+### i. Raw Variables
+
+Now continuous variables must be checked for Normality by Shapiro-Wilk's method.
+
+Identify which columns contain the variables of interest
+
+```{r}
+library(dplyr)
+
+# Create a string of variable names that are numeric
+numeric_vars <- dat %>%
+  dplyr::select(where(is.numeric)) %>%
+  names()
+
+# Call out variable names
+numeric_vars
+```
+
+Normality and skewness checks of numeric variables
+
+```{r}
+
+#load package (must be installed first)
+library(fBasics)
+
+# Initialize results data frame
+normality_results <- data.frame(
+  Variable = numeric_vars,
+  Normality = NA_character_,
+  Skewness = NA_real_,
+  stringsAsFactors = FALSE
+)
+
+# Loop over columns
+for (i in seq_along(numeric_vars)) {
+  var_data <- dat[[numeric_vars[i]]]
+  
+  # Ensure numeric
+  if (!is.numeric(var_data)) {
+    normality_results$Normality[i] <- "Not numeric"
+    normality_results$Skewness[i] <- NA
+    next
+  }
+  
+  # Run Shapiro-Wilk normality test
+  test_result <- tryCatch({
+    normalTest(var_data, method = "sw")
+  }, error = function(e) NULL)
+  
+  if (!is.null(test_result)) {
+    # Normality Pass/Fail
+    normality_results$Normality[i] <- ifelse(test_result@test$p.value > 0.05, "Pass", "Fail")
+  } else {
+    normality_results$Normality[i] <- "Error"
+  }
+  
+  # Calculate skewness
+  normality_results$Skewness[i] <- skewness(var_data)
+}
+
+# View results
+print(normality_results)
+```
+
+Save to excel
+
+```{r}
+library(openxlsx)
+
+# Create a new workbook for flowing tributary sites
+wb <- createWorkbook("EDA_HA10%_Closed_System.xlsx")
+
+# Create sheet if it does NOT exist
+if(!"Normality checks" %in% names(wb)) {
+  addWorksheet(wb, "Normality checks")
+}
+
+# Write your new table
+writeData(wb, "Normality checks", normality_results)
+
+# Save the workbook (overwrite)
+saveWorkbook(wb, "EDA_HA10%_Closed_System.xlsx", overwrite = TRUE)
+```
+
+All but 2 variables were not Normally distributed and, generally, variables were left-skewed (positive)
+
+### ii. Log-Transformed Variables
+
+Now we'll perform the same functions on the log-transformed variables (except pH since it's already log-transformed). We'll add a +1 constant to variables since log-transformations cannot be performed on 0 values.
+
+```{r}
+library(dplyr)
+
+# Exclude the following variables from being log-transformed
+exclude_vars <- c(
+  "pH",
+  "Relative_elevation_m",
+  "Dist_from_EFPC_km",
+  "Drainage_area_km2",
+  "Developed_lulc"
+)
+
+numeric_vars_log <- setdiff(numeric_vars, exclude_vars)
+
+# Log-transform selected columns and add 'log_' prefix
+dat <- dat %>%
+  mutate(across(
+    all_of(numeric_vars_log),
+    ~ log10(.),
+    .names = "log_{col}"
+  ))
+
+# Initialize results data frame for log-transformed variables
+normality_results_log_dat <- data.frame(
+  Variable  = paste0("log_", numeric_vars_log),
+  Normality = NA_character_,
+  Skewness  = NA_real_,
+  stringsAsFactors = FALSE
+)
+
+# Loop over log-transformed columns
+for (i in seq_along(numeric_vars_log)) {
+  
+  var_name <- paste0("log_", numeric_vars_log[i])
+  var_data <- dat[[var_name]]
+  
+  # Ensure numeric
+  if (!is.numeric(var_data)) {
+    normality_results_log_dat$Normality[i] <- "Not numeric"
+    normality_results_log_dat$Skewness[i]  <- NA
+    next
+  }
+  
+  # Run Shapiro-Wilk normality test
+  test_result <- tryCatch({
+    normalTest(var_data, method = "sw")
+  }, error = function(e) NULL)
+  
+  if (!is.null(test_result)) {
+    normality_results_log_dat$Normality[i] <-
+      ifelse(test_result@test$p.value > 0.05, "Pass", "Fail")
+  } else {
+    normality_results_log_dat$Normality[i] <- "Error"
+  }
+  
+  # Calculate skewness
+  normality_results_log_dat$Skewness[i] <- skewness(var_data)
+}
+
+# View results
+normality_results_log_dat
+```
+
+Save to excel
+
+```{r}
+library(openxlsx)
+
+file_path <- "EDA_HA10%_Closed_System.xlsx"
+
+# 1. Load workbook if it exists, otherwise create
+if (file.exists(file_path)) {
+  wb <- loadWorkbook(file_path)
+} else {
+  wb <- createWorkbook()
+}
+
+# 2. Create sheet if it does NOT exist
+sheet_name <- "Normality checks log vars"
+
+if (!sheet_name %in% names(wb)) {
+  addWorksheet(wb, sheet_name)
+}
+
+# 3. Write data
+writeData(wb, sheet_name, normality_results_log_dat)
+
+# 4. Save workbook
+saveWorkbook(wb, file_path, overwrite = TRUE)
+```
+
+While Normality was still not achieved for most variables, skewness is less pronounced (closer to 0) and small concentration values are better represented on the log-scale.
+
+### iii. Standardized Log-Transformed Variables
+
+Standardize the log-transformed variables and check for normality
+
+```{r}
+library(dplyr)
+
+# -----------------------------------------------------
+# 1. Standardize all log_ variables + pH
+# -----------------------------------------------------
+dat <- dat %>%
+  mutate(
+    across(
+      paste0("log_", numeric_vars_log),   # ONLY these log-transformed vars
+      ~ as.numeric(scale(.)),
+      .names = "{col}_std"
+    ),
+    pH_std = as.numeric(scale(pH))
+  )
+
+# ------------------------------------------------------
+# 2. Build vector of standardized variable names
+# ------------------------------------------------------
+std_vars <- c(
+  paste0("log_", numeric_vars_log, "_std"),
+  "pH_std"
+)
+
+# ------------------------------------------------------
+# 3. Initialize results table
+# ------------------------------------------------------
+normality_results_std_log_dat <- data.frame(
+  Variable  = std_vars,
+  Normality = NA_character_,
+  Skewness  = NA_real_,
+  stringsAsFactors = FALSE
+)
+
+# ------------------------------------------------------
+# 4. Loop over standardized variables
+# ------------------------------------------------------
+for (i in seq_along(std_vars)) {
+
+  var_name <- std_vars[i]
+  var_data <- dat[[var_name]]
+
+  # Check numeric
+  if (!is.numeric(var_data)) {
+    normality_results_std_log_dat$Normality[i] <- "Not numeric"
+    normality_results_std_log_dat$Skewness[i]  <- NA
+    next
+  }
+
+  # Shapiro–Wilk test
+  test_result <- tryCatch({
+    normalTest(var_data, method = "sw")
+  }, error = function(e) NULL)
+
+  if (!is.null(test_result)) {
+    normality_results_std_log_dat$Normality[i] <-
+      ifelse(test_result@test$p.value > 0.05, "Pass", "Fail")
+  } else {
+    normality_results_std_log_dat$Normality[i] <- "Error"
+  }
+
+  # Skewness
+  normality_results_std_log_dat$Skewness[i] <- skewness(var_data)
+}
+
+# ------------------------------------------------------
+# 5. View results
+# ------------------------------------------------------
+normality_results_std_log_dat
+```
+
+Save results to Excel
+
+```{r}
+library(openxlsx)
+
+file_path <- "EDA_HA10%_Closed_System.xlsx"
+
+# 1. Load workbook if it exists, otherwise create
+if (file.exists(file_path)) {
+  wb <- loadWorkbook(file_path)
+} else {
+  wb <- createWorkbook()
+}
+
+# 2. Create sheet if it does NOT exist
+sheet_name <- "Normality checks log-std vars"
+
+if (!sheet_name %in% names(wb)) {
+  addWorksheet(wb, sheet_name)
+}
+
+# 3. Write data
+writeData(wb, sheet_name, normality_results_std_log_dat)
+
+# 4. Save workbook
+saveWorkbook(wb, file_path, overwrite = TRUE)
+```
+
+## 3. Save Transformed Variables
+
+Export to excel by overwriting the Bioavailability_Master_Spreadsheet_Clean_2.xlsx
+
+```{r}
+setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/4. Exploratory data analysis")
+
+library(openxlsx)
+
+file_path <- "Bioavailability_Master_Spreadsheet_Clean_2.xlsx"
+
+# 1. Load workbook if it exists, otherwise create
+if (file.exists(file_path)) {
+  wb <- loadWorkbook(file_path)
+} else {
+  wb <- createWorkbook()
+}
+
+# 2. Create sheet if it does NOT exist
+sheet_name <- "HA 10% Closed System"
+
+if (!sheet_name %in% names(wb)) {
+  addWorksheet(wb, sheet_name)
+}
+
+# 3. Write data
+writeData(wb, sheet_name, dat)
+
+# 4. Save workbook
+saveWorkbook(wb, file_path, overwrite = TRUE)
+```
+
+## 4. Summary Statistics
+
+We'll calculate summary statistics for all numeric variables across all sites.
+
+```{r}
+library(purrr)
+library(tidyr)
+library(dplyr)
+
+# 1. Identify all numeric variables in dat
+numeric_vars <- names(dat)[sapply(dat, is.numeric)]
+
+# 2. Mode function (same as you had)
+get_mode <- function(x) {
+  x <- x[!is.na(x)]
+  if (length(x) == 0) return(NA)
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+# 3. Compute summary stats for ALL numeric variables
+summary_numeric_table <- map_dfr(numeric_vars, function(colname) {
+  vec <- dat[[colname]]
+  n_non_na <- sum(!is.na(vec))
+  tibble(
+    variable = colname,
+    mean     = mean(vec, na.rm = TRUE),
+    median   = median(vec, na.rm = TRUE),
+    mode     = get_mode(vec),
+    variance = var(vec, na.rm = TRUE),
+    se       = sd(vec, na.rm = TRUE) / sqrt(n_non_na)
+  )
+}) %>%
+  arrange(variable)
+
+# 4. View
+summary_numeric_table
+```
+
+Save to excel
+
+```{r}
+library(openxlsx)
+
+file_path <- "EDA_HA10%_Closed_System.xlsx"
+
+# 1. Load workbook if it exists, otherwise create
+if (file.exists(file_path)) {
+  wb <- loadWorkbook(file_path)
+} else {
+  wb <- createWorkbook()
+}
+
+# 2. Create sheet if it does NOT exist
+sheet_name <- "Summary stats"
+
+if (!sheet_name %in% names(wb)) {
+  addWorksheet(wb, sheet_name)
+}
+
+# 3. Write data
+writeData(wb, sheet_name, summary_numeric_table)
+
+# 4. Save workbook
+saveWorkbook(wb, file_path, overwrite = TRUE)
+```

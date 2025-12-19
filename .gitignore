@@ -1,0 +1,16 @@
+# R junk
+.Rhistory
+.RData
+.Rproj.user/
+
+# OS junk
+desktop.ini
+.DS_Store
+
+# Outputs / plots (recommended)
+*.png
+*.pdf
+
+# Optional: large data files
+*.csv
+*.xlsx
