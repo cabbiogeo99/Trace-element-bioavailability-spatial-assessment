@@ -7,7 +7,7 @@ output: html_document
 
 # Overview
 
-The following variables will be merged from these datasets to create a Bioavailability_Master_Spreadsheet.xlsx.
+The following variables will be merged from these datasets to create a Bioavailability Master Spreadsheet
 
 **I. WaDE Synoptic Survey dataset - clean version**
 
@@ -39,19 +39,13 @@ Variable from each dataset: concentration of element that causes given toxicity 
 
 **IV. BLM Sensitivity Analysis**
 
-High humic acid content scenario
+Closed system (DIC input) and low humic acid content (10%) (baseline conditions)
 
--   Zn Speciation HA 80%
+Closed system with high humic acid content scenario (80%)
 
--   Cu Speciation HA 80%
+Open System (alkalinity based on charge balance) under low humic acid content (10%)
 
-Open System (estimated alkalinity instead of DIC input)
-
--   Zn Speciation Open System
-
--   Cu Speciation Open System
-
-Set the working directory to 2. Data merging
+## Set the working directory
 
 ```{r}
 setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/2. Dataset merging")
@@ -126,7 +120,7 @@ Inspect the structure
 str(WaDE_Site_Info)
 ```
 
-From WaDE_Synoptic_Summary_2 we'll select network, regime, elevation, upstream distance from main stem, drainage area, developed land cover by site and apply it to all samples by site
+From WaDE_Site_Info we'll select network, regime, elevation, upstream distance from main stem, drainage area, developed land cover by site and apply it to all samples by site
 
 ```{r}
 library(dplyr)
@@ -161,7 +155,7 @@ bio_ms <- bio_ms %>%
 head(bio_ms)
 ```
 
-Inspect the structure
+Inspect the structure again
 
 ```{r}
 str(bio_ms)
@@ -187,42 +181,43 @@ head(Zn_Speciation_det)
 Clean dataset
 
 ```{r}
-library(stringr)
 library(dplyr)
+library(stringr)
 
-# ------------------------------------------------------------
-# 1. Delete rows 1-3, then make the top row the column names
-# ------------------------------------------------------------
-Zn_Speciation_det <- Zn_Speciation_det[-c(1:3), ]
-colnames(Zn_Speciation_det) <- as.character(Zn_Speciation_det[1, ])
-Zn_Speciation_det <- Zn_Speciation_det[-1, ]
-
-# ------------------------------------------------------------
-# 2. Convert to a tibble
-# ------------------------------------------------------------
-Zn_Speciation_det <- tibble::as_tibble(Zn_Speciation_det, .name_repair = "unique")
-
-# ------------------------------------------------------------
-# 3.  Remove the second now
-# ------------------------------------------------------------
-Zn_Speciation_det <- Zn_Speciation_det %>% slice(-1)
-
-# ------------------------------------------------------------
-# 4. Fix Sample_ID format
-# ------------------------------------------------------------
 Zn_Speciation_det_clean <- Zn_Speciation_det %>%
-  # Rename key identifiers
+  # 1) Drop rows 1–3
+  slice(-(1:3)) %>%
+  
+  # 2) Set first remaining row as column names
+  { 
+    nm <- as.character(.[1, ])
+    nm <- make.unique(nm)
+    out <- .[-1, ]
+    names(out) <- nm
+    out
+  } %>%
+  
+  # 3) Remove units row (now the first row)
+  slice(-1) %>%
+  
+  # 4) Rename ID columns
   rename(
     Sample_ID = `Site Label`,
-    Site    = `Sample Label`
+    Site      = `Sample Label`
   ) %>%
+  
+  # 5) Clean Sample_ID and convert others to numeric
   mutate(
-    Sample_ID = str_extract(Sample_ID, "WaDE_\\d+")
+    Sample_ID = str_extract(Sample_ID, "WaDE_\\d+"),
+    across(-c(Sample_ID, Site), ~ as.numeric(str_replace_all(.x, '"', "")))
   )
 
-# ------------------------------------------------------------
-# 5. Make sure Sample_ID matches to that of bio_ms (should be 386)
-# ------------------------------------------------------------
+
+# Preview
+head(Zn_Speciation_det_clean)
+
+# Sanity check: make sure Sample_ID matches to that of the Bioavailability Master Spreadsheet called bio_ms (should be 386)
+
 bio_ms %>%
   inner_join(
     Zn_Speciation_det_clean %>% 
@@ -230,19 +225,6 @@ bio_ms %>%
     by = "Sample_ID"
   ) %>%
   summarise(n_matched = n())
-
-# ------------------------------------------------------------
-# 6. Convert variables to numeric
-# ------------------------------------------------------------
-Zn_Speciation_det_clean <- Zn_Speciation_det_clean %>%
-  mutate(
-    across(
-      -c(Sample_ID, Site),   # all columns except the first two
-      ~ as.numeric(.)
-    )
-  )
-
-str(Zn_Speciation_det_clean)
 ```
 
 Select variables and add to bio_ms
@@ -322,62 +304,47 @@ head(Cu_Speciation_det)
 Clean dataset
 
 ```{r}
-library(stringr)
 library(dplyr)
+library(stringr)
 
-# ------------------------------------------------------------
-# 1. Delete rows 1-3, then make the top row the column names
-# ------------------------------------------------------------
-Cu_Speciation_det <- Cu_Speciation_det[-c(1:3), ]
-colnames(Cu_Speciation_det) <- as.character(Cu_Speciation_det[1, ])
-Cu_Speciation_det <- Cu_Speciation_det[-1, ]
-
-# ------------------------------------------------------------
-# 2. Convert to a tibble
-# ------------------------------------------------------------
-Cu_Speciation_det <- tibble::as_tibble(Cu_Speciation_det, .name_repair = "unique")
-
-# ------------------------------------------------------------
-# 3.  Remove the second row now
-# ------------------------------------------------------------
-Cu_Speciation_det <- Cu_Speciation_det %>% slice(-1)
-
-# ------------------------------------------------------------
-# 4. Fix Sample_ID format
-# ------------------------------------------------------------
 Cu_Speciation_det_clean <- Cu_Speciation_det %>%
-  # Rename key identifiers
+  # 1) Drop rows 1–3
+  slice(-(1:3)) %>%
+  
+  # 2) Set first remaining row as column names (and make them unique)
+  {
+    nm <- as.character(.[1, ])
+    nm <- make.unique(nm)
+    out <- .[-1, ]
+    names(out) <- nm
+    out
+  } %>%
+  
+  # 3) Remove units row (now the first row)
+  slice(-1) %>%
+  
+  # 4) Rename ID columns
   rename(
     Sample_ID = `Site Label`,
     Site      = `Sample Label`
   ) %>%
+  
+  # 5) Clean Sample_ID + strip quotes + convert everything else to numeric
   mutate(
-    Sample_ID = str_extract(Sample_ID, "WaDE_\\d+")
+    Sample_ID = str_extract(Sample_ID, "WaDE_\\d+"),
+    across(-c(Sample_ID, Site), ~ as.numeric(str_replace_all(.x, '"', "")))
   )
 
-# ------------------------------------------------------------
-# 5. Make sure Sample_ID matches to that of bio_ms (should be 386)
-# ------------------------------------------------------------
+# Preview
+head(Cu_Speciation_det_clean)
+
+# Sanity check: match count vs Bioavailability Master Spreadsheet (bio_ms)
 bio_ms %>%
   inner_join(
-    Cu_Speciation_det_clean %>% 
-      dplyr::select(Sample_ID),
+    Cu_Speciation_det_clean %>% dplyr::select(Sample_ID),
     by = "Sample_ID"
   ) %>%
-  summarise(n_matched = n())
-
-# ------------------------------------------------------------
-# 6. Convert variables to numeric
-# ------------------------------------------------------------
-Cu_Speciation_det_clean <- Cu_Speciation_det_clean %>%
-  mutate(
-    across(
-      -c(Sample_ID, Site),   # all columns except the first two
-      ~ as.numeric(.)
-    )
-  )
-
-str(Cu_Speciation_det_clean)
+  summarise(n_matched = dplyr::n())
 ```
 
 Select variables to add to bio_ms and add units
@@ -461,67 +428,47 @@ head(Zn_Toxicity_on_C_dubia_det)
 Data cleaning
 
 ```{r}
-library(stringr)
 library(dplyr)
+library(stringr)
 
-# ------------------------------------------------------------
-# 1. Delete rows 1-3, then make the top row the column names
-# ------------------------------------------------------------
-Zn_Toxicity_on_C_dubia_det <- 
-  Zn_Toxicity_on_C_dubia_det[-c(1:3), ]
-
-colnames(Zn_Toxicity_on_C_dubia_det) <- 
-  as.character(Zn_Toxicity_on_C_dubia_det[1, ])
-
-Zn_Toxicity_on_C_dubia_det <- Zn_Toxicity_on_C_dubia_det[-1, ]
-
-# ------------------------------------------------------------
-# 2. Convert to a tibble
-# ------------------------------------------------------------
-Zn_Toxicity_on_C_dubia_det <- 
-  tibble::as_tibble(Zn_Toxicity_on_C_dubia_det, .name_repair = "unique")
-
-# ------------------------------------------------------------
-# 3.  Remove the second now
-# ------------------------------------------------------------
-Zn_Toxicity_on_C_dubia_det <- Zn_Toxicity_on_C_dubia_det %>% slice(-1)
-
-# ------------------------------------------------------------
-# 4. Fix Sample_ID format
-# ------------------------------------------------------------
 Zn_Toxicity_on_C_dubia_det_clean <- Zn_Toxicity_on_C_dubia_det %>%
-  # Rename key identifiers
+  # 1) Drop rows 1–3
+  slice(-(1:3)) %>%
+  
+  # 2) Set first remaining row as column names (and make them unique)
+  {
+    nm <- as.character(.[1, ])
+    nm <- make.unique(nm)
+    out <- .[-1, ]
+    names(out) <- nm
+    out
+  } %>%
+  
+  # 3) Remove units row (now the first row)
+  slice(-1) %>%
+  
+  # 4) Rename ID columns
   rename(
     Sample_ID = `Site Label`,
-    Site    = `Sample Label`
+    Site      = `Sample Label`
   ) %>%
+  
+  # 5) Clean Sample_ID + strip quotes + convert everything else to numeric
   mutate(
-    Sample_ID = str_extract(Sample_ID, "WaDE_\\d+")
+    Sample_ID = str_extract(Sample_ID, "WaDE_\\d+"),
+    across(-c(Sample_ID, Site), ~ as.numeric(str_replace_all(.x, '"', "")))
   )
 
-# ------------------------------------------------------------
-# 5. Make sure Sample_ID matches to that of bio_ms (should be 386)
-# ------------------------------------------------------------
+# Preview
+head(Zn_Toxicity_on_C_dubia_det_clean)
+
+# Sanity check: match count vs Bioavailability Master Spreadsheet (bio_ms)
 bio_ms %>%
   inner_join(
-    Zn_Toxicity_on_C_dubia_det_clean %>% 
-      dplyr::select(Sample_ID),
+    Zn_Toxicity_on_C_dubia_det_clean %>% dplyr::select(Sample_ID),
     by = "Sample_ID"
   ) %>%
-  summarise(n_matched = n())
-
-# ------------------------------------------------------------
-# 6. Convert variables to numeric
-# ------------------------------------------------------------
-Zn_Toxicity_on_C_dubia_det_clean <- Zn_Toxicity_on_C_dubia_det_clean %>%
-  mutate(
-    across(
-      -c(Sample_ID, Site),   # all columns except the first two
-      ~ as.numeric(.)
-    )
-  )
-
-str(Zn_Toxicity_on_C_dubia_det_clean)
+  summarise(n_matched = dplyr::n())
 ```
 
 Select the T.Zn variable (total amount of Zn to cause the toxicity to the organism) and add to bio_ms
@@ -531,14 +478,17 @@ library(dplyr)
 
 bio_ms_ha10_cs <- bio_ms_ha10_cs %>%
   left_join(
-    Zn_Speciation_det_clean %>%
+    Zn_Toxicity_on_C_dubia_det_clean %>%
       dplyr::rename(
-        Zn_Toxicity_Daphnia_M = T.Zn) %>%
+        Zn_Toxicity_Daphnia_M = T.Zn
+      ) %>%
       dplyr::select(
         Sample_ID,
-        Zn_Toxicity_Daphnia_M),
+        Zn_Toxicity_Daphnia_M
+      ),
     by = "Sample_ID"
   )
+
 
 # Make sure they're numeric
 zn_new_vars <- c("Zn_Toxicity_Daphnia_M")
@@ -567,68 +517,47 @@ head(Cu_Acute_Toxicity_on_C_dubia_det)
 Clean up
 
 ```{r}
-library(stringr)
 library(dplyr)
+library(stringr)
 
-# ------------------------------------------------------------
-# 1. Delete rows 1-3, then make the top row the column names
-# ------------------------------------------------------------
-Cu_Acute_Toxicity_on_C_dubia_det <- 
-  Cu_Acute_Toxicity_on_C_dubia_det[-c(1:3), ]
-
-colnames(Cu_Acute_Toxicity_on_C_dubia_det) <- 
-  as.character(Cu_Acute_Toxicity_on_C_dubia_det[1, ])
-
-Cu_Acute_Toxicity_on_C_dubia_det <- Cu_Acute_Toxicity_on_C_dubia_det[-1, ]
-
-# ------------------------------------------------------------
-# 2. Convert to a tibble
-# ------------------------------------------------------------
-Cu_Acute_Toxicity_on_C_dubia_det <- 
-  tibble::as_tibble(Cu_Acute_Toxicity_on_C_dubia_det, .name_repair = "unique")
-
-# ------------------------------------------------------------
-# 3.  Remove the second now
-# ------------------------------------------------------------
-Cu_Acute_Toxicity_on_C_dubia_det <- Cu_Acute_Toxicity_on_C_dubia_det %>% slice(-1)
-
-# ------------------------------------------------------------
-# 4. Fix Sample_ID format
-# ------------------------------------------------------------
 Cu_Acute_Toxicity_on_C_dubia_det_clean <- Cu_Acute_Toxicity_on_C_dubia_det %>%
-  # Rename key identifiers
+  # 1) Drop rows 1–3
+  slice(-(1:3)) %>%
+  
+  # 2) Set first remaining row as column names (and make them unique)
+  {
+    nm <- as.character(.[1, ])
+    nm <- make.unique(nm)
+    out <- .[-1, ]
+    names(out) <- nm
+    out
+  } %>%
+  
+  # 3) Remove units row (now the first row)
+  slice(-1) %>%
+  
+  # 4) Rename ID columns
   rename(
     Sample_ID = `Site Label`,
-    Site    = `Sample Label`
+    Site      = `Sample Label`
   ) %>%
+  
+  # 5) Clean Sample_ID + strip quotes + convert everything else to numeric
   mutate(
-    Sample_ID = str_extract(Sample_ID, "WaDE_\\d+")
+    Sample_ID = str_extract(Sample_ID, "WaDE_\\d+"),
+    across(-c(Sample_ID, Site), ~ as.numeric(str_replace_all(.x, '"', "")))
   )
 
-# ------------------------------------------------------------
-# 5. Make sure Sample_ID matches to that of bio_ms (should be 386)
-# ------------------------------------------------------------
+# Preview
+head(Cu_Acute_Toxicity_on_C_dubia_det_clean)
+
+# Sanity check: match count vs Bioavailability Master Spreadsheet (bio_ms)
 bio_ms %>%
   inner_join(
-    Cu_Acute_Toxicity_on_C_dubia_det_clean %>% 
-      dplyr::select(Sample_ID),
+    Cu_Acute_Toxicity_on_C_dubia_det_clean %>% dplyr::select(Sample_ID),
     by = "Sample_ID"
   ) %>%
-  summarise(n_matched = n())
-
-# ------------------------------------------------------------
-# 6. Convert variables to numeric
-# ------------------------------------------------------------
-Cu_Acute_Toxicity_on_C_dubia_det_clean <- 
-  Cu_Acute_Toxicity_on_C_dubia_det_clean %>%
-  mutate(
-    across(
-      -c(Sample_ID, Site),   # all columns except the first two
-      ~ as.numeric(.)
-    )
-  )
-
-str(Cu_Acute_Toxicity_on_C_dubia_det_clean)
+  summarise(n_matched = dplyr::n())
 ```
 
 Import **Cu BLM Chronic Toxicity Mode on Daphnia**
@@ -645,69 +574,47 @@ head(Cu_Chronic_Toxicity_on_C_dubia_det)
 Clean up
 
 ```{r}
-library(stringr)
 library(dplyr)
+library(stringr)
 
-# ------------------------------------------------------------
-# 1. Delete rows 1-3, then make the top row the column names
-# ------------------------------------------------------------
-Cu_Chronic_Toxicity_on_C_dubia_det <- 
-  Cu_Chronic_Toxicity_on_C_dubia_det[-c(1:3), ]
-
-colnames(Cu_Chronic_Toxicity_on_C_dubia_det) <- 
-  as.character(Cu_Chronic_Toxicity_on_C_dubia_det[1, ])
-
-Cu_Chronic_Toxicity_on_C_dubia_det <- Cu_Chronic_Toxicity_on_C_dubia_det[-1, ]
-
-# ------------------------------------------------------------
-# 2. Convert to a tibble
-# ------------------------------------------------------------
-Cu_Chronic_Toxicity_on_C_dubia_det <- 
-  tibble::as_tibble(Cu_Chronic_Toxicity_on_C_dubia_det, .name_repair = "unique")
-
-# ------------------------------------------------------------
-# 3.  Remove the second now
-# ------------------------------------------------------------
-Cu_Chronic_Toxicity_on_C_dubia_det <- 
-  Cu_Chronic_Toxicity_on_C_dubia_det %>% slice(-1)
-
-# ------------------------------------------------------------
-# 4. Fix Sample_ID format
-# ------------------------------------------------------------
 Cu_Chronic_Toxicity_on_C_dubia_det_clean <- Cu_Chronic_Toxicity_on_C_dubia_det %>%
-  # Rename key identifiers
+  # 1) Drop rows 1–3
+  slice(-(1:3)) %>%
+  
+  # 2) Set first remaining row as column names (and make them unique)
+  {
+    nm <- as.character(.[1, ])
+    nm <- make.unique(nm)
+    out <- .[-1, ]
+    names(out) <- nm
+    out
+  } %>%
+  
+  # 3) Remove units row (now the first row)
+  slice(-1) %>%
+  
+  # 4) Rename ID columns
   rename(
     Sample_ID = `Site Label`,
-    Site    = `Sample Label`
+    Site      = `Sample Label`
   ) %>%
+  
+  # 5) Clean Sample_ID + strip quotes + convert everything else to numeric
   mutate(
-    Sample_ID = str_extract(Sample_ID, "WaDE_\\d+")
+    Sample_ID = str_extract(Sample_ID, "WaDE_\\d+"),
+    across(-c(Sample_ID, Site), ~ as.numeric(str_replace_all(.x, '"', "")))
   )
 
-# ------------------------------------------------------------
-# 5. Make sure Sample_ID matches to that of bio_ms (should be 386)
-# ------------------------------------------------------------
+# Preview
+head(Cu_Chronic_Toxicity_on_C_dubia_det_clean)
+
+# Sanity check: match count vs Bioavailability Master Spreadsheet (bio_ms)
 bio_ms %>%
   inner_join(
-    Cu_Acute_Toxicity_on_C_dubia_det_clean %>% 
-      dplyr::select(Sample_ID),
+    Cu_Chronic_Toxicity_on_C_dubia_det_clean %>% dplyr::select(Sample_ID),
     by = "Sample_ID"
   ) %>%
-  summarise(n_matched = n())
-
-# ------------------------------------------------------------
-# 6. Convert variables to numeric
-# ------------------------------------------------------------
-Cu_Chronic_Toxicity_on_C_dubia_det_clean <- 
-  Cu_Chronic_Toxicity_on_C_dubia_det_clean %>%
-  mutate(
-    across(
-      -c(Sample_ID, Site),   # all columns except the first two
-      ~ as.numeric(.)
-    )
-  )
-
-str(Cu_Chronic_Toxicity_on_C_dubia_det_clean)
+  summarise(n_matched = dplyr::n())
 ```
 
 Import **Cu BLM Acute Toxicity Mode on Minnow**
@@ -724,70 +631,48 @@ head(Cu_Acute_Toxicity_on_P_promelas_det)
 Clean up
 
 ```{r}
-library(stringr)
 library(dplyr)
+library(stringr)
 
-# ------------------------------------------------------------
-# 1. Delete rows 1-3, then make the top row the column names
-# ------------------------------------------------------------
-Cu_Acute_Toxicity_on_P_promelas_det <- 
-  Cu_Acute_Toxicity_on_P_promelas_det[-c(1:3), ]
-
-colnames(Cu_Acute_Toxicity_on_P_promelas_det) <- 
-  as.character(Cu_Acute_Toxicity_on_P_promelas_det[1, ])
-
-Cu_Acute_Toxicity_on_P_promelas_det <- Cu_Acute_Toxicity_on_P_promelas_det[-1, ]
-
-# ------------------------------------------------------------
-# 2. Convert to a tibble
-# ------------------------------------------------------------
-Cu_Acute_Toxicity_on_P_promelas_det <- 
-  tibble::as_tibble(Cu_Acute_Toxicity_on_P_promelas_det, .name_repair = "unique")
-
-# ------------------------------------------------------------
-# 3.  Remove the second now
-# ------------------------------------------------------------
-Cu_Acute_Toxicity_on_P_promelas_det <- 
-  Cu_Acute_Toxicity_on_P_promelas_det %>% slice(-1)
-
-# ------------------------------------------------------------
-# 4. Fix Sample_ID format
-# ------------------------------------------------------------
-Cu_Acute_Toxicity_on_P_promelas_det_clean <- 
-  Cu_Acute_Toxicity_on_P_promelas_det %>%
-  # Rename key identifiers
+Cu_Acute_Toxicity_on_P_promelas_det_clean <- Cu_Acute_Toxicity_on_P_promelas_det %>%
+  # 1) Drop rows 1–3
+  slice(-(1:3)) %>%
+  
+  # 2) Set first remaining row as column names (and make them unique)
+  {
+    nm <- as.character(.[1, ])
+    nm <- make.unique(nm)
+    out <- .[-1, ]
+    names(out) <- nm
+    out
+  } %>%
+  
+  # 3) Remove units row (now the first row)
+  slice(-1) %>%
+  
+  # 4) Rename ID columns
   rename(
     Sample_ID = `Site Label`,
-    Site    = `Sample Label`
+    Site      = `Sample Label`
   ) %>%
+  
+  # 5) Clean Sample_ID + strip quotes + convert everything else to numeric
   mutate(
-    Sample_ID = str_extract(Sample_ID, "WaDE_\\d+")
+    Sample_ID = str_extract(Sample_ID, "WaDE_\\d+"),
+    across(-c(Sample_ID, Site), ~ as.numeric(str_replace_all(.x, '"', "")))
   )
 
-# ------------------------------------------------------------
-# 5. Make sure Sample_ID matches to that of bio_ms (should be 386)
-# ------------------------------------------------------------
+# Preview
+head(Cu_Acute_Toxicity_on_P_promelas_det_clean)
+
+# Sanity check: match count vs Bioavailability Master Spreadsheet (bio_ms)
 bio_ms %>%
   inner_join(
-    Cu_Acute_Toxicity_on_P_promelas_det_clean %>% 
-      dplyr::select(Sample_ID),
+    Cu_Acute_Toxicity_on_P_promelas_det_clean %>% dplyr::select(Sample_ID),
     by = "Sample_ID"
   ) %>%
-  summarise(n_matched = n())
+  summarise(n_matched = dplyr::n())
 
-# ------------------------------------------------------------
-# 6. Convert variables to numeric
-# ------------------------------------------------------------
-Cu_Acute_Toxicity_on_P_promelas_det_clean <- 
-  Cu_Acute_Toxicity_on_P_promelas_det_clean %>%
-  mutate(
-    across(
-      -c(Sample_ID, Site),   # all columns except the first two
-      ~ as.numeric(.)
-    )
-  )
-
-str(Cu_Acute_Toxicity_on_P_promelas_det_clean)
 ```
 
 Import **Cu BLM Chronic Toxicity Mode on Minnow**
@@ -804,74 +689,50 @@ head(Cu_Chronic_Toxicity_on_P_promelas_det)
 Clean up
 
 ```{r}
-library(stringr)
 library(dplyr)
+library(stringr)
 
-# ------------------------------------------------------------
-# 1. Delete rows 1-3, then make the top row the column names
-# ------------------------------------------------------------
-Cu_Chronic_Toxicity_on_P_promelas_det <- 
-  Cu_Chronic_Toxicity_on_P_promelas_det[-c(1:3), ]
-
-colnames(Cu_Chronic_Toxicity_on_P_promelas_det) <- 
-  as.character(Cu_Chronic_Toxicity_on_P_promelas_det[1, ])
-
-Cu_Chronic_Toxicity_on_P_promelas_det <- 
-  Cu_Chronic_Toxicity_on_P_promelas_det[-1, ]
-
-# ------------------------------------------------------------
-# 2. Convert to a tibble
-# ------------------------------------------------------------
-Cu_Chronic_Toxicity_on_P_promelas_det <- 
-  tibble::as_tibble(Cu_Chronic_Toxicity_on_P_promelas_det, .name_repair = "unique")
-
-# ------------------------------------------------------------
-# 3.  Remove the second now
-# ------------------------------------------------------------
-Cu_Chronic_Toxicity_on_P_promelas_det <- 
-  Cu_Chronic_Toxicity_on_P_promelas_det %>% slice(-1)
-
-# ------------------------------------------------------------
-# 4. Fix Sample_ID format
-# ------------------------------------------------------------
-Cu_Chronic_Toxicity_on_P_promelas_det_clean <- 
-  Cu_Chronic_Toxicity_on_P_promelas_det %>%
-  # Rename key identifiers
+Cu_Chronic_Toxicity_on_P_promelas_det_clean <- Cu_Chronic_Toxicity_on_P_promelas_det %>%
+  # 1) Drop rows 1–3
+  slice(-(1:3)) %>%
+  
+  # 2) Set first remaining row as column names (and make them unique)
+  {
+    nm <- as.character(.[1, ])
+    nm <- make.unique(nm)
+    out <- .[-1, ]
+    names(out) <- nm
+    out
+  } %>%
+  
+  # 3) Remove units row (now the first row)
+  slice(-1) %>%
+  
+  # 4) Rename ID columns
   rename(
     Sample_ID = `Site Label`,
-    Site    = `Sample Label`
+    Site      = `Sample Label`
   ) %>%
+  
+  # 5) Clean Sample_ID + strip quotes + convert everything else to numeric
   mutate(
-    Sample_ID = str_extract(Sample_ID, "WaDE_\\d+")
+    Sample_ID = str_extract(Sample_ID, "WaDE_\\d+"),
+    across(-c(Sample_ID, Site), ~ as.numeric(str_replace_all(.x, '"', "")))
   )
 
-# ------------------------------------------------------------
-# 5. Make sure Sample_ID matches to that of bio_ms (should be 386)
-# ------------------------------------------------------------
+# Preview
+head(Cu_Chronic_Toxicity_on_P_promelas_det_clean)
+
+# Sanity check: match count vs Bioavailability Master Spreadsheet (bio_ms)
 bio_ms %>%
   inner_join(
-    Cu_Chronic_Toxicity_on_P_promelas_det_clean %>% 
-      dplyr::select(Sample_ID),
+    Cu_Chronic_Toxicity_on_P_promelas_det_clean %>% dplyr::select(Sample_ID),
     by = "Sample_ID"
   ) %>%
-  summarise(n_matched = n())
-
-# ------------------------------------------------------------
-# 6. Convert variables to numeric
-# ------------------------------------------------------------
-Cu_Chronic_Toxicity_on_P_promelas_det_clean <- 
-  Cu_Chronic_Toxicity_on_P_promelas_det_clean %>%
-  mutate(
-    across(
-      -c(Sample_ID, Site),   # all columns except the first two
-      ~ as.numeric(.)
-    )
-  )
-
-str(Cu_Chronic_Toxicity_on_P_promelas_det_clean)
+  summarise(n_matched = dplyr::n())
 ```
 
-Select the T.Cu variable (total amount of Cu to cause the toxicity to the organism) and add to bio_ms
+Select the T.Cu variable (total amount of Cu to cause the toxicity to the organism) and add to the Bioavailability Master Spreadsheet called bio_ms
 
 ```{r}
 library(dplyr)
@@ -991,61 +852,48 @@ head(Zn_Speciation_ha80)
 Data cleaning
 
 ```{r}
-library(stringr)
 library(dplyr)
+library(stringr)
 
-# ------------------------------------------------------------
-# 1. Delete rows 1–3, then make the top row the column names
-# ------------------------------------------------------------
-Zn_Speciation_ha80 <- Zn_Speciation_ha80[-c(1:3), ]
-colnames(Zn_Speciation_ha80) <- as.character(Zn_Speciation_ha80[1, ])
-Zn_Speciation_ha80 <- Zn_Speciation_ha80[-1, ]
-
-# ------------------------------------------------------------
-# 2. Convert to a tibble
-# ------------------------------------------------------------
-Zn_Speciation_ha80 <- tibble::as_tibble(Zn_Speciation_ha80, .name_repair = "unique")
-
-# ------------------------------------------------------------
-# 3. Remove the second row now
-# ------------------------------------------------------------
-Zn_Speciation_ha80 <- Zn_Speciation_ha80 %>% slice(-1)
-
-# ------------------------------------------------------------
-# 4. Fix Sample_ID format
-# ------------------------------------------------------------
 Zn_Speciation_ha80_clean <- Zn_Speciation_ha80 %>%
+  # 1) Drop rows 1–3
+  slice(-(1:3)) %>%
+  
+  # 2) Set first remaining row as column names (and make them unique)
+  {
+    nm <- as.character(.[1, ])
+    nm <- make.unique(nm)
+    out <- .[-1, ]
+    names(out) <- nm
+    out
+  } %>%
+  
+  # 3) Remove units row (now the first row)
+  slice(-1) %>%
+  
+  # 4) Rename ID columns
   rename(
     Sample_ID = `Site Label`,
     Site      = `Sample Label`
   ) %>%
+  
+  # 5) Clean Sample_ID + strip quotes + convert everything else to numeric
   mutate(
-    Sample_ID = str_extract(Sample_ID, "WaDE_\\d+")
+    Sample_ID = str_extract(Sample_ID, "WaDE_\\d+"),
+    across(-c(Sample_ID, Site), ~ as.numeric(str_replace_all(.x, '"', "")))
   )
 
-# ------------------------------------------------------------
-# 5. Check how many Sample_IDs match to bio_ms
-# ------------------------------------------------------------
+# Preview
+head(Zn_Speciation_ha80_clean)
+
+# Sanity check: match count vs Bioavailability Master Spreadsheet (bio_ms)
 bio_ms %>%
   inner_join(
-    Zn_Speciation_ha80_clean %>% select(Sample_ID),
+    Zn_Speciation_ha80_clean %>% dplyr::select(Sample_ID),
     by = "Sample_ID"
   ) %>%
-  summarise(n_matched = n())
+  summarise(n_matched = dplyr::n())
 
-# ------------------------------------------------------------
-# 6. Convert all variables except Sample_ID and Site to numeric
-# ------------------------------------------------------------
-Zn_Speciation_ha80_clean <- Zn_Speciation_ha80_clean %>%
-  mutate(
-    across(
-      -c(Sample_ID, Site),
-      ~ as.numeric(.)
-    )
-  )
-
-# View structure
-str(Zn_Speciation_ha80_clean)
 ```
 
 Create a variable for total bioavailable Zn under higher HA content then merge to Bioavailability Master Spreadsheet (bio_ms)
@@ -1127,61 +975,48 @@ head(Cu_Speciation_ha80)
 Data cleaning
 
 ```{r}
-library(stringr)
 library(dplyr)
+library(stringr)
 
-# ------------------------------------------------------------
-# 1. Delete rows 1–3, then make the top row the column names
-# ------------------------------------------------------------
-Cu_Speciation_ha80 <- Cu_Speciation_ha80[-c(1:3), ]
-colnames(Cu_Speciation_ha80) <- as.character(Cu_Speciation_ha80[1, ])
-Cu_Speciation_ha80 <- Cu_Speciation_ha80[-1, ]
-
-# ------------------------------------------------------------
-# 2. Convert to a tibble
-# ------------------------------------------------------------
-Cu_Speciation_ha80 <- tibble::as_tibble(Cu_Speciation_ha80, .name_repair = "unique")
-
-# ------------------------------------------------------------
-# 3. Remove the second row now
-# ------------------------------------------------------------
-Cu_Speciation_ha80 <- Cu_Speciation_ha80 %>% slice(-1)
-
-# ------------------------------------------------------------
-# 4. Fix Sample_ID format
-# ------------------------------------------------------------
 Cu_Speciation_ha80_clean <- Cu_Speciation_ha80 %>%
+  # 1) Drop rows 1–3
+  slice(-(1:3)) %>%
+  
+  # 2) Set first remaining row as column names (and make them unique)
+  {
+    nm <- as.character(.[1, ])
+    nm <- make.unique(nm)
+    out <- .[-1, ]
+    names(out) <- nm
+    out
+  } %>%
+  
+  # 3) Remove units row (now the first row)
+  slice(-1) %>%
+  
+  # 4) Rename ID columns
   rename(
     Sample_ID = `Site Label`,
     Site      = `Sample Label`
   ) %>%
+  
+  # 5) Clean Sample_ID + strip quotes + convert everything else to numeric
   mutate(
-    Sample_ID = str_extract(Sample_ID, "WaDE_\\d+")
+    Sample_ID = str_extract(Sample_ID, "WaDE_\\d+"),
+    across(-c(Sample_ID, Site), ~ as.numeric(str_replace_all(.x, '"', "")))
   )
 
-# ------------------------------------------------------------
-# 5. Check how many Sample_IDs match to bio_ms
-# ------------------------------------------------------------
+# Preview
+head(Cu_Speciation_ha80_clean)
+
+# Sanity check: match count vs Bioavailability Master Spreadsheet (bio_ms)
 bio_ms %>%
   inner_join(
-    Cu_Speciation_ha80_clean %>% select(Sample_ID),
+    Cu_Speciation_ha80_clean %>% dplyr::select(Sample_ID),
     by = "Sample_ID"
   ) %>%
-  summarise(n_matched = n())
+  summarise(n_matched = dplyr::n())
 
-# ------------------------------------------------------------
-# 6. Convert all variables except Sample_ID and Site to numeric
-# ------------------------------------------------------------
-Cu_Speciation_ha80_clean <- Cu_Speciation_ha80_clean %>%
-  mutate(
-    across(
-      -c(Sample_ID, Site),
-      ~ as.numeric(.)
-    )
-  )
-
-# View structure
-str(Cu_Speciation_ha80_clean)
 ```
 
 Create a variable for total bioavailable Cu under higher HA content then merge to Bioavailability Master Spreadsheet (bio_ms)
@@ -1305,61 +1140,47 @@ head(Zn_Speciation_os)
 Data cleaning
 
 ```{r}
-library(stringr)
 library(dplyr)
+library(stringr)
 
-# ------------------------------------------------------------
-# 1. Delete rows 1–3, then make the top row the column names
-# ------------------------------------------------------------
-Zn_Speciation_os <- Zn_Speciation_os[-c(1:3), ]
-colnames(Zn_Speciation_os) <- as.character(Zn_Speciation_os[1, ])
-Zn_Speciation_os <- Zn_Speciation_os[-1, ]
-
-# ------------------------------------------------------------
-# 2. Convert to a tibble
-# ------------------------------------------------------------
-Zn_Speciation_os <- tibble::as_tibble(Zn_Speciation_os, .name_repair = "unique")
-
-# ------------------------------------------------------------
-# 3. Remove the second row now
-# ------------------------------------------------------------
-Zn_Speciation_os <- Zn_Speciation_os %>% slice(-1)
-
-# ------------------------------------------------------------
-# 4. Fix Sample_ID format
-# ------------------------------------------------------------
 Zn_Speciation_os_clean <- Zn_Speciation_os %>%
+  # 1) Drop rows 1–3
+  slice(-(1:3)) %>%
+  
+  # 2) Set first remaining row as column names (and make them unique)
+  {
+    nm <- as.character(.[1, ])
+    nm <- make.unique(nm)
+    out <- .[-1, ]
+    names(out) <- nm
+    out
+  } %>%
+  
+  # 3) Remove units row (now the first row)
+  slice(-1) %>%
+  
+  # 4) Rename ID columns
   rename(
     Sample_ID = `Site Label`,
     Site      = `Sample Label`
   ) %>%
+  
+  # 5) Clean Sample_ID + strip quotes + convert everything else to numeric
   mutate(
-    Sample_ID = str_extract(Sample_ID, "WaDE_\\d+")
+    Sample_ID = str_extract(Sample_ID, "WaDE_\\d+"),
+    across(-c(Sample_ID, Site), ~ as.numeric(str_replace_all(.x, '"', "")))
   )
 
-# ------------------------------------------------------------
-# 5. Check how many Sample_IDs match to bio_ms
-# ------------------------------------------------------------
+# Preview
+head(Zn_Speciation_os_clean)
+
+# Sanity check: match count vs Bioavailability Master Spreadsheet (bio_ms)
 bio_ms %>%
   inner_join(
-    Zn_Speciation_os_clean %>% select(Sample_ID),
+    Zn_Speciation_os_clean %>% dplyr::select(Sample_ID),
     by = "Sample_ID"
   ) %>%
-  summarise(n_matched = n())
-
-# ------------------------------------------------------------
-# 6. Convert all variables except Sample_ID and Site to numeric
-# ------------------------------------------------------------
-Zn_Speciation_os_clean <- Zn_Speciation_os_clean %>%
-  mutate(
-    across(
-      -c(Sample_ID, Site),
-      ~ as.numeric(.)
-    )
-  )
-
-# View structure
-str(Zn_Speciation_os_clean)
+  summarise(n_matched = dplyr::n())
 ```
 
 Save variables
@@ -1441,61 +1262,47 @@ head(Cu_Speciation_os)
 Data cleaning
 
 ```{r}
-library(stringr)
 library(dplyr)
+library(stringr)
 
-# ------------------------------------------------------------
-# 1. Delete rows 1–3, then make the top row the column names
-# ------------------------------------------------------------
-Cu_Speciation_os <- Cu_Speciation_os[-c(1:3), ]
-colnames(Cu_Speciation_os) <- as.character(Cu_Speciation_os[1, ])
-Cu_Speciation_os <- Cu_Speciation_os[-1, ]
-
-# ------------------------------------------------------------
-# 2. Convert to a tibble
-# ------------------------------------------------------------
-Cu_Speciation_os <- tibble::as_tibble(Cu_Speciation_os, .name_repair = "unique")
-
-# ------------------------------------------------------------
-# 3. Remove the second row now
-# ------------------------------------------------------------
-Cu_Speciation_os <- Cu_Speciation_os %>% slice(-1)
-
-# ------------------------------------------------------------
-# 4. Fix Sample_ID format
-# ------------------------------------------------------------
 Cu_Speciation_os_clean <- Cu_Speciation_os %>%
+  # 1) Drop rows 1–3
+  slice(-(1:3)) %>%
+  
+  # 2) Set first remaining row as column names (and make them unique)
+  {
+    nm <- as.character(.[1, ])
+    nm <- make.unique(nm)
+    out <- .[-1, ]
+    names(out) <- nm
+    out
+  } %>%
+  
+  # 3) Remove units row (now the first row)
+  slice(-1) %>%
+  
+  # 4) Rename ID columns
   rename(
     Sample_ID = `Site Label`,
     Site      = `Sample Label`
   ) %>%
+  
+  # 5) Clean Sample_ID + strip quotes + convert everything else to numeric
   mutate(
-    Sample_ID = str_extract(Sample_ID, "WaDE_\\d+")
+    Sample_ID = str_extract(Sample_ID, "WaDE_\\d+"),
+    across(-c(Sample_ID, Site), ~ as.numeric(str_replace_all(.x, '"', "")))
   )
 
-# ------------------------------------------------------------
-# 5. Check how many Sample_IDs match to bio_ms
-# ------------------------------------------------------------
+# Preview
+head(Cu_Speciation_os_clean)
+
+# Sanity check: match count vs Bioavailability Master Spreadsheet (bio_ms)
 bio_ms %>%
   inner_join(
-    Cu_Speciation_os_clean %>% select(Sample_ID),
+    Cu_Speciation_os_clean %>% dplyr::select(Sample_ID),
     by = "Sample_ID"
   ) %>%
-  summarise(n_matched = n())
-
-# ------------------------------------------------------------
-# 6. Convert all variables except Sample_ID and Site to numeric
-# ------------------------------------------------------------
-Cu_Speciation_os_clean <- Cu_Speciation_os_clean %>%
-  mutate(
-    across(
-      -c(Sample_ID, Site),
-      ~ as.numeric(.)
-    )
-  )
-
-# View structure
-str(Cu_Speciation_os_clean)
+  summarise(n_matched = dplyr::n())
 ```
 
 Create a variable for total bioavailable Cu under an open system then merge to Bioavailability Master Spreadsheet (bio_ms)

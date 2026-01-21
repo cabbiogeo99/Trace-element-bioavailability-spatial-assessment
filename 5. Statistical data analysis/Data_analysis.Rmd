@@ -925,7 +925,23 @@ pca_all_dat
 Save plot
 
 ```{r}
-ggsave("Plots of All Sites/PCA_by_Typology.png", plot = pca_all_dat, width = 8, height = 6, units = "in", dpi = "print")
+# Define output directory
+out_dir <- "Plots by Typology"
+
+# Create folder if it doesn't exist
+if (!dir.exists(out_dir)) {
+  dir.create(out_dir, recursive = TRUE)
+}
+
+# Save plot
+ggsave(
+  filename = file.path(out_dir, "PCA_by_Typology.png"),
+  plot = pca_all_dat,
+  width = 8,
+  height = 6,
+  units = "in",
+  dpi = "print"
+)
 ```
 
 ## 5. Relative Frequency by Inherent Characteristics
@@ -1032,7 +1048,7 @@ rel_freq_typology
 Save plot
 
 ```{r}
-ggsave("Plots of All Sites/Relative_Freq_Plot_by_Typologyr.png", 
+ggsave("Plots by Typology/Relative_Freq_Plot_by_Typologyr.png", 
        plot = rel_freq_typology, 
        width = 8, 
        height = 5, 
@@ -2109,7 +2125,7 @@ typology_colors <- c(
 )
 
 # 4. Create output folder (if it doesn't exist)
-output_dir <- "Plots of All Sites"
+output_dir <- "Plots by Typology"
 if (!dir.exists(output_dir)) dir.create(output_dir)
 
 # 5. Loop through variables in title_lookup
@@ -2207,7 +2223,7 @@ typology_colors <- c(
 )
 
 # 1. Make sure output folder exists
-output_dir <- "Plots of All Sites"
+output_dir <- "Plots by Typology"
 if (!dir.exists(output_dir)) dir.create(output_dir)
 
 # 2. Put data into long format: one row = 1 observation of 1 variable
@@ -2443,7 +2459,8 @@ bioavail_panel <- ggplot(dat_long_trace, aes(
   
   labs(
     title = "Trace Elements by Stream Typology",
-    x     = "Stream Typology"
+    x     = "Stream Typology",
+    y = "Log Concentration"
   ) +
   
   theme_minimal(base_size = 12) +
@@ -2464,7 +2481,7 @@ Save plot as a square
 
 ```{r}
 ggsave(
-  filename = file.path("Plots of All Sites", "Trace_elements_panel_square.png"),
+  filename = file.path("Plots by Typology", "Trace_elements_panel_square.png"),
   plot     = bioavail_panel,
   width    = 8.5,
   height   = 6,
@@ -2476,7 +2493,7 @@ Save plot as a rectangle for presentations
 
 ```{r}
 ggsave(
-  filename = file.path("Plots of All Sites", "Trace_elements_panel_long.png"),
+  filename = file.path("Plots by Typology", "Trace_elements_panel_long.png"),
   plot     = bioavail_panel,
   width    = 12,
   height   = 6,
@@ -2675,7 +2692,7 @@ Save plots
 
 ```{r}
 ggsave(
-  filename = file.path("Plots of All Sites", "Zinc_panel_long.png"),
+  filename = file.path("Plots by Typology", "Zinc_panel_long.png"),
   plot     = bioavail_panel_zn,
   width    = 10,
   height   = 4,
@@ -2683,7 +2700,7 @@ ggsave(
 )
 
 ggsave(
-  filename = file.path("Plots of All Sites", "Copper_panel_long.png"),
+  filename = file.path("Plots by Typology", "Copper_panel_long.png"),
   plot     = bioavail_panel_cu,
   width    = 10,
   height   = 4,
@@ -2719,7 +2736,7 @@ vars_zn_spec <- names(title_lookup)
 # ------------------------------------------------
 # 1. Make sure output folders exist
 # ------------------------------------------------
-output_dir <- "Plots of All Sites"
+output_dir <- "Plots by Typology"
 if (!dir.exists(output_dir)) dir.create(output_dir)
 
 zn_dir <- file.path(output_dir, "Zn Speciation")
@@ -2808,7 +2825,7 @@ zn_speciation_panel <- ggplot(dat_long, aes(
 zn_speciation_panel
 ```
 
-Save plot into Zn Speciation subfolder of Plots of All Sites
+Save plot into Zn Speciation subfolder of Plots by Typology
 
 ```{r}
 ggsave(
@@ -2844,9 +2861,9 @@ zn_y_label_lookup <- c(
 vars_zn_spec <- names(zn_title_lookup)
 
 # ---------------------------------------------
-# 2. Output folder: Plots of All Sites/Zn Speciation
+# 2. Output folder: Plots by Typology/Zn Speciation
 # ---------------------------------------------
-output_dir <- "Plots of All Sites"
+output_dir <- "Plots by Typology"
 if (!dir.exists(output_dir)) dir.create(output_dir)
 
 zn_dir <- file.path(output_dir, "Zn Speciation")
@@ -2982,7 +2999,7 @@ vars_zn_spec <- names(na_title_lookup)
 # ---------------------------------------------
 # 2. Output directories
 # ---------------------------------------------
-output_dir <- "Plots of All Sites"
+output_dir <- "Plots by Typology"
 if (!dir.exists(output_dir)) dir.create(output_dir)
 
 zn_dir <- file.path(output_dir, "Zn Speciation")
@@ -3109,7 +3126,7 @@ vars_zn_spec <- names(na_title_lookup)
 # ---------------------------------------------
 # 2. Output directories
 # ---------------------------------------------
-output_dir <- "Plots of All Sites"
+output_dir <- "Plots by Typology"
 if (!dir.exists(output_dir)) dir.create(output_dir)
 
 zn_dir <- file.path(output_dir, "Zn Speciation")
@@ -3230,7 +3247,7 @@ zn_vars <- names(zn_title_lookup)
 # ------------------------------------------------
 # 1. Output folders
 # ------------------------------------------------
-output_dir <- "Plots of All Sites"
+output_dir <- "Plots by Typology"
 if (!dir.exists(output_dir)) dir.create(output_dir)
 
 zn_dir <- file.path(output_dir, "Zn Speciation")
@@ -3363,7 +3380,7 @@ y_label_var <- "log CuSO₄ (µM)"
 #-------------------------------------------------
 # 2. Save to an output folder
 #-------------------------------------------------
-output_dir <- "Plots of All Sites"
+output_dir <- "Plots by Typology"
 if (!dir.exists(output_dir)) dir.create(output_dir)
 
 cu_dir <- file.path(output_dir, "Cu Speciation")
@@ -3436,7 +3453,7 @@ p_cuso4_cu
 
 ```
 
-Save plot into Cu Speciation subfolder of Plots of All Sites
+Save plot into Cu Speciation subfolder of Plots by Typology
 
 ```{r}
 ggsave(
@@ -3470,7 +3487,7 @@ y_label_var <- "log TOrg Cu (nM)"
 # -----------------------------------------------
 # 3. Save to an output folder
 # -----------------------------------------------
-output_dir <- "Plots of All Sites"
+output_dir <- "Plots by Typology"
 if (!dir.exists(output_dir)) dir.create(output_dir)
 
 cu_dir <- file.path(output_dir, "Cu Speciation")
@@ -3579,7 +3596,7 @@ vars_zn_spec <- names(title_lookup)
 # ------------------------------------------------
 # 1. Make sure output folders exist
 # ------------------------------------------------
-output_dir <- "Plots of All Sites"
+output_dir <- "Plots by Typology"
 if (!dir.exists(output_dir)) dir.create(output_dir)
 
 zn_dir <- file.path(output_dir, "Zn Speciation")
@@ -3680,18 +3697,13 @@ ggsave(
 )
 ```
 
-### e. Toxicity - still under development
+### e. Toxicity
 
-Zinc toxicity to daphnia
+#### i. Zinc toxicity
 
 ```{r}
 library(dplyr)
 library(ggplot2)
-
-## -------------------------------
-## ZINC: Measured vs Toxic to Daphnia
-## (no pivot, no intermediate dataframe)
-## -------------------------------
 
 p_zn_daph_density <- ggplot(dat, aes(x = log_Zn_nM)) +
 
@@ -3703,7 +3715,7 @@ p_zn_daph_density <- ggplot(dat, aes(x = log_Zn_nM)) +
     na.rm = TRUE
   ) +
 
-  # Toxicity threshold density
+  # Zn toxicity density
   geom_density(
     aes(x = log_Zn_Toxicity_Daphnia_nM, fill = "Toxic to Daphnia"),
     alpha = 0.5,
@@ -3725,7 +3737,7 @@ p_zn_daph_density <- ggplot(dat, aes(x = log_Zn_nM)) +
 
   # Labels
   labs(
-    title = "Zinc Toxicity Threshold vs Measured Zn",
+    title = "Total Zinc Toxicity vs Measured",
     x     = "Log Zn (nM)",
     y     = "Density"
   ) +
@@ -3744,16 +3756,102 @@ p_zn_daph_density <- ggplot(dat, aes(x = log_Zn_nM)) +
 
 # Print plot
 p_zn_daph_density
-
 ```
 
-Copper toxicity to daphnia
+Save to folder called Plot of Zn Toxicity
+
+```{r}
+# Define output directory
+out_dir <- "Plot of Zn Toxicity"
+
+# Create folder if it doesn't exist
+if (!dir.exists(out_dir)) {
+  dir.create(out_dir, recursive = TRUE)
+}
+
+# Save plot
+ggsave(
+  filename = file.path(out_dir, "Zn_toxicity_daphnia.png"),
+  plot = p_zn_daph_density,
+  width = 8,
+  height = 6,
+  units = "in",
+  dpi = "print"
+)
+```
+
+Calculate the probability of Zn toxicity to daphnia by typology
+
+```{r}
+#Quantify overlapping area of measured zinc with toxic concentrations by typology
+
+# Extract the two vectors
+x1 <- dat$log_Zn_nM
+x2 <- dat$log_Zn_Toxicity_Daphnia_nM
+
+library(dplyr)
+
+# --- Define overlap function ---
+overlap_area <- function(x, y, n = 512) {
+  d1 <- density(x, na.rm = TRUE, n = n)
+  d2 <- density(y, na.rm = TRUE, n = n)
+  
+  x_start <- max(min(d1$x), min(d2$x))
+  x_end   <- min(max(d1$x), max(d2$x))
+  
+  if(x_start >= x_end) return(0)  # No overlap
+  
+  x_common <- seq(x_start, x_end, length.out = n)
+  y1 <- approx(d1$x, d1$y, x_common)$y
+  y2 <- approx(d2$x, d2$y, x_common)$y
+  
+  sum(pmin(y1, y2)) * diff(x_common[1:2])
+}
+
+
+# --- Compute overlaps by Typology ---
+overlap_Zn_by_typology <- dat %>%
+  group_by(Typology) %>%
+  summarise(
+    Overlap_Daphnia = overlap_area(log_Zn_nM, log_Zn_Toxicity_Daphnia_nM)
+  ) %>%
+  ungroup()
+
+# View results
+overlap_Zn_by_typology
+```
+
+Save to folder
+
+```{r}
+library(openxlsx)
+
+# 1. Define output folder (relative to working directory)
+out_dir <- "Plot of Zn Toxicity"
+
+# 2. Create folder if it doesn't exist
+if (!dir.exists(out_dir)) {
+  dir.create(out_dir, recursive = TRUE)
+}
+
+# 3. Define file path
+file_path <- file.path(out_dir, "overlap_Zn_by_typology.xlsx")
+
+# 4. Create workbook and write table
+wb <- createWorkbook()
+addWorksheet(wb, "Overlap_Zn_by_Typology")
+writeData(wb, "Overlap_Zn_by_Typology", overlap_Zn_by_typology)
+
+# 5. Save
+saveWorkbook(wb, file_path, overwrite = TRUE)
+```
+
+#### ii. Copper toxicity
+
+Toxicity to Daphnia
 
 ```{r}
 library(dplyr)
-## -------------------------------
-## COPPER: Measured vs Chronic / Acute Toxicity
-## -------------------------------
 
 # 1. Pivot to long format
 dat_cu_daph <- dat %>%
@@ -3823,12 +3921,33 @@ p_cu_daph_density
 
 ```
 
-Copper toxicity to minnow
+Save to folder called Plots of Cu Toxicity
 
 ```{r}
-## -------------------------------
-## COPPER: Measured vs Chronic / Acute Toxicity
-## -------------------------------
+# Define output directory
+out_dir <- "Plots of Cu Toxicity"
+
+# Create folder if it doesn't exist
+if (!dir.exists(out_dir)) {
+  dir.create(out_dir, recursive = TRUE)
+}
+
+# Save plot
+ggsave(
+  filename = file.path(out_dir, "Cu_toxicity_daphnia.png"),
+  plot = p_cu_daph_density,
+  width = 8,
+  height = 6,
+  units = "in",
+  dpi = "print"
+)
+```
+
+Toxicity to Minnow
+
+```{r}
+library(dplyr)
+library(ggplot2)
 
 # 1. Pivot to long format
 dat_cu_minn <- dat %>%
@@ -3897,46 +4016,26 @@ p_cu_daph_density_minn <- ggplot(
 p_cu_daph_density_minn
 ```
 
-Calculate probability of overlapping measured zinc with toxic levels of zinc by stream typology
+Save to folder called Plots of Cu Toxicity
 
 ```{r}
-#Quantify overlapping area of measured zinc with toxic concentrations by typology
+# Define output directory
+out_dir <- "Plots of Cu Toxicity"
 
-# Extract the two vectors
-x1 <- dat$log_Zn_nM
-x2 <- dat$log_Zn_Toxicity_Daphnia_nM
-
-library(dplyr)
-
-# --- Define overlap function ---
-overlap_area <- function(x, y, n = 512) {
-  d1 <- density(x, na.rm = TRUE, n = n)
-  d2 <- density(y, na.rm = TRUE, n = n)
-  
-  x_start <- max(min(d1$x), min(d2$x))
-  x_end   <- min(max(d1$x), max(d2$x))
-  
-  if(x_start >= x_end) return(0)  # No overlap
-  
-  x_common <- seq(x_start, x_end, length.out = n)
-  y1 <- approx(d1$x, d1$y, x_common)$y
-  y2 <- approx(d2$x, d2$y, x_common)$y
-  
-  sum(pmin(y1, y2)) * diff(x_common[1:2])
+# Create folder if it doesn't exist
+if (!dir.exists(out_dir)) {
+  dir.create(out_dir, recursive = TRUE)
 }
 
-
-# --- Compute overlaps by Typology ---
-overlap_Zn_by_typology <- dat %>%
-  group_by(Typology) %>%
-  summarise(
-    Overlap_Daphnia = overlap_area(log_Zn_nM, log_Zn_Toxicity_Daphnia_nM)
-  ) %>%
-  ungroup()
-
-# View results
-overlap_Zn_by_typology
-
+# Save plot
+ggsave(
+  filename = file.path(out_dir, "Cu_toxicity_minnow.png"),
+  plot = p_cu_daph_density_minn,
+  width = 8,
+  height = 6,
+  units = "in",
+  dpi = "print"
+)
 ```
 
 Calculate probability of overlapping measured copper with toxic levels of copper by stream typology
@@ -3991,6 +4090,32 @@ overlap_results_by_typology <- dat %>%
 
 # View
 overlap_results_by_typology
+```
+
+Save table to folder
+
+```{r}
+library(openxlsx)
+
+# 1. Define output folder (relative to working directory)
+out_dir <- "Plots of Cu Toxicity"
+
+# 2. Create folder if it doesn't exist
+if (!dir.exists(out_dir)) {
+  dir.create(out_dir, recursive = TRUE)
+}
+
+# 3. Define file path
+file_path <- file.path(out_dir, "overlap_Cu_by_typology.xlsx")
+
+# 4. Create workbook and write table
+wb <- createWorkbook()
+addWorksheet(wb, "Overlap_Cu_by_Typology")
+writeData(wb, "Overlap_Cu_by_Typology", overlap_results_by_typology)
+
+# 5. Save
+saveWorkbook(wb, file_path, overwrite = TRUE)
+
 ```
 
 # Variables by Site within Typology
@@ -4063,6 +4188,37 @@ main_stem_plot_zn
 main_stem_plot_cu
 ```
 
+Save to folder called Plots of Main Stem
+
+```{r}
+# Define output directory
+out_dir <- "Plots of Main Stem"
+
+# Create folder if it doesn't exist
+if (!dir.exists(out_dir)) {
+  dir.create(out_dir, recursive = TRUE)
+}
+
+# Save plots
+ggsave(
+  filename = file.path(out_dir, "Bioavailable_Zn_by_site.png"),
+  plot = main_stem_plot_zn,
+  width = 8,
+  height = 5,
+  units = "in",
+  dpi = "print"
+)
+
+ggsave(
+  filename = file.path(out_dir, "Bioavailable_Cu_by_site.png"),
+  plot = main_stem_plot_cu,
+  width = 8,
+  height = 5,
+  units = "in",
+  dpi = "print"
+)
+```
+
 ## 2. Developed Tributaries
 
 ```{r}
@@ -4079,7 +4235,7 @@ dt_typology <- dat %>%
 library(ggplot2)
 
 # Zinc
-f_tribs_plot_zn <- ggplot(dt_typology, aes(x = Site, y = log_TBL_Zn_nmol_g, fill = Network)) +
+dev_tribs_plot_zn <- ggplot(dt_typology, aes(x = Site, y = log_TBL_Zn_nmol_g, fill = Network)) +
   geom_boxplot(color = "black", position = position_dodge(width = 0.75)) +
   labs(
     title = "Bioavailable Zn in Developed Tributaries",
@@ -4097,7 +4253,7 @@ f_tribs_plot_zn <- ggplot(dt_typology, aes(x = Site, y = log_TBL_Zn_nmol_g, fill
   facet_grid(~Network, scales = "free_x", space = "free_x", switch = "x")
 
 # Copper
-f_tribs_plot_cu <- ggplot(dt_typology, aes(x = Site, y = log_TBL_Cu_nmol_g, fill = Network)) +
+dev_tribs_plot_cu <- ggplot(dt_typology, aes(x = Site, y = log_TBL_Cu_nmol_g, fill = Network)) +
   geom_boxplot(color = "black", position = position_dodge(width = 0.75)) +
   labs(
     title = "Bioavailable Cu in Developed Tributaries",
@@ -4115,8 +4271,39 @@ f_tribs_plot_cu <- ggplot(dt_typology, aes(x = Site, y = log_TBL_Cu_nmol_g, fill
   facet_grid(~Network, scales = "free_x", space = "free_x", switch = "x")
 
 # View 
-f_tribs_plot_zn
-f_tribs_plot_cu
+dev_tribs_plot_zn
+dev_tribs_plot_cu
+```
+
+Save to folder called Plots of Developed Tributaries
+
+```{r}
+# Define output directory
+out_dir <- "Plots of Developed Tributaries"
+
+# Create folder if it doesn't exist
+if (!dir.exists(out_dir)) {
+  dir.create(out_dir, recursive = TRUE)
+}
+
+# Save plots
+ggsave(
+  filename = file.path(out_dir, "Bioavailable_Zn_by_site.png"),
+  plot = dev_tribs_plot_zn,
+  width = 8,
+  height = 5,
+  units = "in",
+  dpi = "print"
+)
+
+ggsave(
+  filename = file.path(out_dir, "Bioavailable_Cu_by_site.png"),
+  plot = dev_tribs_plot_cu,
+  width = 8,
+  height = 5,
+  units = "in",
+  dpi = "print"
+)
 ```
 
 ## **3. Tributaries**
@@ -4175,6 +4362,37 @@ f_tribs_plot_zn
 f_tribs_plot_cu
 ```
 
+Save to folder called Plots of Flowing Tributaries
+
+```{r}
+# Define output directory
+out_dir <- "Plots of Flowing Tributaries"
+
+# Create folder if it doesn't exist
+if (!dir.exists(out_dir)) {
+  dir.create(out_dir, recursive = TRUE)
+}
+
+# Save plots
+ggsave(
+  filename = file.path(out_dir, "Bioavailable_Zn_by_site.png"),
+  plot = f_tribs_plot_zn,
+  width = 8,
+  height = 5,
+  units = "in",
+  dpi = "print"
+)
+
+ggsave(
+  filename = file.path(out_dir, "Bioavailable_Cu_by_site.png"),
+  plot = f_tribs_plot_cu,
+  width = 8,
+  height = 5,
+  units = "in",
+  dpi = "print"
+)
+```
+
 ## 4. Pooled Water
 
 ```{r}
@@ -4230,4 +4448,35 @@ pooled_water_plot_cu <- ggplot(pw_typology, aes(x = Site, y = log_TBL_Cu_nmol_g,
 # View 
 pooled_water_plot_zn
 pooled_water_plot_cu
+```
+
+Save to folder called Plots of Pooled Water
+
+```{r}
+# Define output directory
+out_dir <- "Plots of Pooled Water"
+
+# Create folder if it doesn't exist
+if (!dir.exists(out_dir)) {
+  dir.create(out_dir, recursive = TRUE)
+}
+
+# Save plots
+ggsave(
+  filename = file.path(out_dir, "Bioavailable_Zn_by_site.png"),
+  plot = pooled_water_plot_zn,
+  width = 8,
+  height = 5,
+  units = "in",
+  dpi = "print"
+)
+
+ggsave(
+  filename = file.path(out_dir, "Bioavailable_Cu_by_site.png"),
+  plot = pooled_water_plot_cu,
+  width = 8,
+  height = 5,
+  units = "in",
+  dpi = "print"
+)
 ```
