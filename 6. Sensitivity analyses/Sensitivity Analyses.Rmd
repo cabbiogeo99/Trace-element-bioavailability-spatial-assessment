@@ -4,3 +4,454 @@ author: "Cecilia Albert-Black"
 date: "2026-01-21"
 output: html_document
 ---
+
+# Objectives
+
+BLM assumptions evaluated (two paired scenarios)
+
+-   **Carbonate charge balance**
+
+    -   Baseline: Closed system, measured DIC as input
+
+    -   Perturbed: Open system, no DIC input, alkalinity estimated by charge balance (assuming in equilibrium with atmospheric partial pressure)
+
+-   **Humic acid fraction of DOC**
+
+    -   Baseline: HA = 10% (suggested by the BLM manual)
+
+    -   Perturbed: HA = 80%
+
+# 1. Data Organization
+
+We will merge BLM output variables from the baseline conditions (closed system + HA 10%) and the perturbed scenarios (open system + HA 10% and closed system + HA 80%) which are currently organized into separate tabs within the Bioavailability Master Spreadsheet.
+
+First, we'll set the working directory
+
+```{r}
+setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/6. Sensitivity analyses")
+```
+
+Next, we'll will import each dataset as it's own object
+
+```{r}
+library(readxl)
+
+ha_10_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/5. Statistical data analysis/Bioavailability_Master_Spreadsheet_Clean_3.xlsx", 
+    sheet = "HA 10% Closed System")
+
+ha_10_os <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/4. Exploratory data analysis/Bioavailability_Master_Spreadsheet_Clean_2.xlsx", 
+    sheet = "HA 10% Open System")
+
+ha_80_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/4. Exploratory data analysis/Bioavailability_Master_Spreadsheet_Clean_2.xlsx", 
+    sheet = "HA 80% Closed System")
+
+# Note: only our baseline condition (ha_10_cs) has the Typology variable
+```
+
+Now we'll create new columns in each of these datasets called Scenario and label them as either:
+
+-   ha_10_cs
+
+-   ha_10_os
+
+-   ha_80_cs
+
+```{r}
+ha_10_cs$Scenario <- "HA 10% Closed System"
+ha_10_os$Scenario <- "HA 10% Open System"
+ha_80_cs$Scenario <- "HA 80% Closed System"
+
+# Make it the first column
+library(dplyr)
+
+ha_10_cs <- ha_10_cs %>% relocate(Scenario, .before = 1)
+ha_10_os <- ha_10_os %>% relocate(Scenario, .before = 1)
+ha_80_cs <- ha_80_cs %>% relocate(Scenario, .before = 1)
+
+# Check
+unique(ha_10_cs$Scenario)
+unique(ha_10_os$Scenario)
+unique(ha_80_cs$Scenario)
+```
+
+Before we merge the datasets, we need to add the variable Typology to ha_10_os and ha_80_cs since currently only ha_10_cs contains the variable
+
+```{r}
+library(dplyr)
+
+typology_lookup <- ha_10_cs %>%
+  dplyr::select(Sample_ID, Typology) %>%
+  distinct()
+
+ha_10_os <- ha_10_os %>%
+  left_join(typology_lookup, by = "Sample_ID")
+
+ha_80_cs <- ha_80_cs %>%
+  left_join(typology_lookup, by = "Sample_ID")
+
+# Sanity check that Typology was correctly assigned to each Sample_ID (should be 0)
+missing_in_os <- setdiff(ha_10_os$Sample_ID, ha_10_cs$Sample_ID)
+missing_in_80 <- setdiff(ha_80_cs$Sample_ID, ha_10_cs$Sample_ID)
+
+missing_in_os
+missing_in_80
+```
+
+Now we'll merge these into one dataset called dat_long by stacking them vertically and ensuring variables (columns) line up. Since ha_10_os does not have the variable DIC, these values will be left blank
+
+```{r}
+library(dplyr)
+
+dat_long <- bind_rows(
+  ha_10_cs,
+  ha_10_os,
+  ha_80_cs
+)
+
+View(dat_long)
+```
+
+Define ID and grouping columns
+
+```{r}
+# String of names
+id_cols <- c("Sample_ID", "Typology", "Scenario")
+```
+
+Identify the numeric response variables only (in nM or nmol/g units)
+
+```{r}
+# String of names
+response_vars <- c(
+  # Zn aqueous species
+  "Free_Zn_nM",
+  "ZnOH_nM",
+  "Zn_OH_2_nM",
+  "ZnCO3_nM",
+  "ZnHCO3_nM",
+  "ZnSO4_nM",
+  "ZnCl_nM",
+  "ZnS_nM",
+  "TOrg_Zn_nM",
+
+  # Zn biotic ligand binding
+  "BL_Zn_nmol_g_Zn",
+  "BL_Ca_nmol_g_Zn",
+  "BL_H_nmol_g_Zn",
+  "BL_Mg_nmol_g_Zn",
+  "BL_Na_nmol_g_Zn",
+  "BL_ZnOH_nmol_g_Zn",
+
+  # Cu aqueous species
+  "CuOH_nM",
+  "CuSO4_nM",
+  "CuCO3_nM",
+  "CuCl_nM",
+  "CuHCO3_nM",
+  "Cu_CO3_2_nM",
+  "Free_Cu_nM",
+  "Cu_OH_2_nM",
+  "TOrg_Cu_nM",
+
+  # Cu biotic ligand binding
+  "BL_Cu_nmol_g_Cu",
+  "BL_Ca_nmol_g_Cu",
+  "BL_H_nmol_g_Cu",
+  "BL_Mg_nmol_g_Cu",
+  "BL_Na_nmol_g_Cu",
+  "BL_CuOH_nmol_g_Cu"
+)
+
+# Sanity check
+length(response_vars)
+response_vars
+```
+
+# 2. Sensitivity calculations
+
+Calculate a delta (difference in baseline from alternate scenario), percent change (or difference between the two), and log10 difference.
+
+First, we'll create 2 small tables with only the two scenarios to compare:
+
+-   Carbonate assumptions SA table will be called dic_sa
+
+-   HA assumptions SA table will be called ha_sa
+
+## A. Carbonate Assumptions
+
+```{r}
+library(dplyr)
+library(tidyr)
+
+dic_sa <- dat_long %>%
+  # Keep only HA 10% scenarios we need
+  filter(Scenario %in% c("HA 10% Closed System", "HA 10% Open System")) %>%
+  
+  # Make a short scenario label to avoid spaces/% in column names
+  mutate(Scenario_short = if_else(
+    Scenario == "HA 10% Open System", "Open", "Closed"
+  )) %>%
+  
+  # Keep only the columns we need
+  dplyr::select(Sample_ID, Typology, Scenario_short, all_of(response_vars)) %>%
+  
+  # Put Open and Closed side-by-side
+  pivot_wider(
+    names_from  = Scenario_short,
+    values_from = all_of(response_vars),
+    names_sep   = "_"
+  )
+
+# Preview
+head(dic_sa)
+```
+
+### i. Delta
+
+Calculate the change in Closed vs. Open carbonate system
+
+```{r}
+# Create an empty table where results will be stored
+dic_delta <- dic_sa %>%
+  dplyr::select(Sample_ID, Typology)
+
+# Loop a function across all rows and store results in the above table
+for(v in response_vars){
+  dic_delta[[paste0("delta_", v)]] <- 
+    dic_sa[[paste0(v, "_Open")]] - dic_sa[[paste0(v, "_Closed")]]
+}
+
+# Check table
+head(dic_delta)
+```
+
+### ii. Percent Change
+
+Percentage of delta
+
+```{r}
+# Create an empty table where results will be stored
+dic_pct <- dic_sa %>%
+  dplyr::select(Sample_ID, Typology)
+
+# Loop a function across all rows and store results in the above table
+for (v in response_vars) {
+
+  open_val   <- dic_sa[[paste0(v, "_Open")]]
+  closed_val <- dic_sa[[paste0(v, "_Closed")]]
+
+  dic_pct[[paste0("pct_", v)]] <- ifelse(
+    !is.na(closed_val) & closed_val != 0,
+    (open_val - closed_val) / closed_val * 100,
+    NA_real_
+  )
+}
+
+# Check table
+head(dic_pct)
+```
+
+### iii. Log Response Ratio
+
+Calculated as the difference in log base 10 in response variables from the baseline (closed system) to that of the perturbed scenario (open system)
+
+```{r}
+# Create an empty table where results will be stored
+dic_dlog10 <- dic_sa %>%
+  dplyr::select(Sample_ID, Typology)
+
+# Loop a function across all rows and store results in the above table
+for(v in response_vars){
+  open_val   <- dic_sa[[paste0(v, "_Open")]]
+  closed_val <- dic_sa[[paste0(v, "_Closed")]]
+
+  dic_dlog10[[paste0("dlog10_", v)]] <- ifelse(
+    !is.na(open_val) & !is.na(closed_val) & open_val > 0 & closed_val > 0,
+    log10(open_val) - log10(closed_val),
+    NA_real_
+  )
+}
+
+# Check table
+dic_dlog10
+```
+
+### iv. Summary Statistics
+
+Mean, median, and interquartile range of the log response ratio by variable
+
+```{r}
+# Create an empty summary table
+dic_pct_summary <- data.frame(
+  Variable = response_vars,
+  Mean     = NA_real_,
+  Median   = NA_real_,
+  IQR      = NA_real_
+)
+
+# Loop over each variable and store the results in the above table
+for (i in seq_along(response_vars)) {
+
+  v <- response_vars[i]
+  vals <- dic_pct[[paste0("pct_", v)]]
+
+  dic_pct_summary$Mean[i]   <- mean(vals, na.rm = TRUE)
+  dic_pct_summary$Median[i] <- median(vals, na.rm = TRUE)
+  dic_pct_summary$IQR[i]    <- IQR(vals, na.rm = TRUE)
+}
+
+# Check table
+head(dic_pct_summary)
+```
+
+### v. Plot Summary
+
+```{r}
+plot_pct <- dic_pct_summary %>%
+  arrange(Median) %>%                # order from most negative to most positive
+  mutate(Variable = factor(Variable, levels = Variable))
+
+library(ggplot2)
+
+ggplot(plot_pct, aes(y = Variable)) +
+  geom_col(aes(x = Median), fill = "steelblue") +
+  geom_errorbarh(
+    aes(
+      xmin = Median - IQR / 2,
+      xmax = Median + IQR / 2
+    ),
+    height = 0.25
+  ) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
+  labs(
+    x = "Median percent change (Open vs Closed)",
+    y = NULL,
+    title = "Sensitivity of model outputs to carbonate system assumption",
+    subtitle = "Bars = median; error bars ≈ IQR"
+  ) +
+  theme_bw()
+```
+
+### vii. Normality Checks \***re-visit\***
+
+By Shapiro-Wilk method to determine what type of paired test to conduct
+
+```{r}
+# Create an empty results table
+shapiro_results <- data.frame(
+  Variable = response_vars,
+  W = NA_real_,
+  p_value = NA_real_,
+  n = NA_integer_
+)
+
+# Run the stats for each variable and store the results in the table above
+for (i in seq_along(response_vars)) {
+
+  v <- response_vars[i]
+  vals <- dic_pct[[paste0("pct_", v)]]
+
+  # Remove NA values
+  vals_clean <- vals[!is.na(vals)]
+
+  shapiro_results$n[i] <- length(vals_clean)
+
+  # Shapiro–Wilk requires at least 3 observations
+  if (length(vals_clean) >= 3) {
+    test <- shapiro.test(vals_clean)
+    shapiro_results$W[i] <- test$statistic
+    shapiro_results$p_value[i] <- test$p.value
+  }
+}
+
+# Check results
+summary(shapiro_results)
+```
+
+Check them after log-transformations
+
+### viii. Plots by Scenario
+
+Using their log concentrations
+
+```{r}
+library(dplyr)
+library(tidyr)
+
+
+plot_dat <- dat_long %>%
+  filter(Scenario %in% c("HA 10% Closed System", "HA 10% Open System")) %>%
+  dplyr::select(Sample_ID, Scenario, all_of(response_vars)) %>%
+  pivot_longer(
+    cols = all_of(response_vars),
+    names_to = "Variable",
+    values_to = "Value"
+  ) %>%
+  mutate(
+    Metal = case_when(
+      grepl("Zn", Variable) ~ "Zn",
+      grepl("Cu", Variable) ~ "Cu",
+      TRUE ~ NA_character_
+    )
+  )
+
+# Check
+table(plot_dat$Scenario)
+table(plot_dat$Variable)[1:5]
+head(plot_dat)
+```
+
+Faceted violin plot of concentration by Scenario and Species
+
+```{r}
+library(ggplot2)
+
+# Zinc
+zn_dat <- plot_dat %>% filter(Metal == "Zn")
+
+ggplot(zn_dat, aes(x = Value, y = Variable, fill = Scenario)) +
+  geom_violin(trim = FALSE, scale = "width", position = position_dodge(width = 0.8)) +
+  labs(
+    title = "Zn response variables by scenario (HA 10%)",
+    x = "Value",
+    y = NULL
+  ) +
+  theme_bw()
+
+# Copper
+cu_dat <- plot_dat %>% filter(Metal == "Cu")
+
+ggplot(cu_dat, aes(x = Value, y = Variable, fill = Scenario)) +
+  geom_violin(trim = FALSE, scale = "width", position = position_dodge(width = 0.8)) +
+  labs(
+    title = "Cu response variables by scenario (HA 10%)",
+    x = "Value",
+    y = NULL
+  ) +
+  theme_bw()
+
+```
+
+Log-scales
+
+```{r}
+library(ggplot2)
+
+# Zinc
+ggplot(zn_dat, aes(x = Value, y = Variable, fill = Scenario)) +
+  geom_violin(trim = FALSE, scale = "width", position = position_dodge(width = 0.8)) +
+  scale_x_log10() +
+  labs(title = "Zn variables by scenario (log10 x-axis)", x = "Value (log10)", y = NULL) +
+  theme_bw()
+
+# Copper
+ggplot(cu_dat, aes(x = Value, y = Variable, fill = Scenario)) +
+  geom_violin(trim = FALSE, scale = "width", position = position_dodge(width = 0.8)) +
+  scale_x_log10() +
+  labs(title = "Cu variables by scenario (log10 x-axis)", x = "Value (log10)", y = NULL) +
+  theme_bw()
+```
+
+### ix. Pairwise Comparisons
+
+Since all variables don't pass the Normality test, we'll use the Wilcox signed-rank to compute pairwise comparisons

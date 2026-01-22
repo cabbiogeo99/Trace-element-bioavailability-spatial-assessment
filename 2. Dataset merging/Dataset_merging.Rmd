@@ -1370,6 +1370,15 @@ bio_ms_ha10_os <- bio_ms_ha10_os %>%
 head(bio_ms_ha10_os)
 ```
 
+*Important step:* remove the DOC column since this was not an input variable
+
+```{r}
+bio_ms_ha10_os$DIC_uM <- NULL
+
+# Check, should not exist anymore
+bio_ms_ha10_os$DIC_uM
+```
+
 ### c. Save to
 
 ```{r}

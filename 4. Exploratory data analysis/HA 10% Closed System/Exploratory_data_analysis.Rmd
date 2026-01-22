@@ -323,7 +323,7 @@ saveWorkbook(wb, file_path, overwrite = TRUE)
 
 ## 3. Save Transformed Variables
 
-Export to excel by overwriting the Bioavailability_Master_Spreadsheet_Clean_2.xlsx
+Export to excel by creating a second version of Bioavailability_Master_Spreadsheet_Clean.xlsx called Bioavailability_Master_Spreadsheet_Clean_2.xlsx
 
 ```{r}
 setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/4. Exploratory data analysis")

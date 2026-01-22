@@ -3110,6 +3110,14 @@ head(bio_ms_ha10_os)</code></pre>
 ## #   ZnOH_M &lt;dbl&gt;, Zn_OH_2_M &lt;dbl&gt;, ZnCO3_M &lt;dbl&gt;, ZnHCO3_M &lt;dbl&gt;,
 ## #   ZnSO4_M &lt;dbl&gt;, ZnCl_M &lt;dbl&gt;, ZnS_M &lt;dbl&gt;, TOrg_Zn_M &lt;dbl&gt;,
 ## #   BL_Zn_mol_kg_Zn &lt;dbl&gt;, BL_Ca_mol_kg_Zn &lt;dbl&gt;, BL_H_mol_kg_Zn &lt;dbl&gt;, …</code></pre>
+<p><em>Important step:</em> remove the DOC column since this was not an
+input variable</p>
+<pre class="r"><code>bio_ms_ha10_os$DIC_uM &lt;- NULL
+
+# Check, should not exist anymore
+bio_ms_ha10_os$DIC_uM</code></pre>
+<pre><code>## Warning: Unknown or uninitialised column: `DIC_uM`.</code></pre>
+<pre><code>## NULL</code></pre>
 </div>
 <div id="c.-save-to" class="section level3">
 <h3>c. Save to</h3>

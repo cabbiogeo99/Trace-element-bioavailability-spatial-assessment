@@ -17,7 +17,7 @@ setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailab
 
 ## 1. Isolating Flowing Tributaries
 
-To start from here, import the Bioavailability_Master_Spreadsheet_Clean_2.xlsx
+To start from here, import the Bioavailability_Master_Spreadsheet_Clean_2.xlsx in the Exploratory Data Analysis folder
 
 ```{r}
 library(readxl)
@@ -663,7 +663,7 @@ dat$Typology <- factor(dat$Typology, levels = c("Main Stem",
 levels(dat$Typology)
 ```
 
-Save to Bioavailability_Master_Spreadsheet_Clean_2.xlsx
+Save as Bioavailability_Master_Spreadsheet_Clean_3.xlsx in our current working directory
 
 ```{r}
 library(openxlsx)
@@ -678,19 +678,19 @@ addWorksheet(wb, "HA 10% Closed System")
 writeData(wb, sheet = "HA 10% Closed System", dat)
 
 # 4. Save — overwrite the entire file
-saveWorkbook(wb, "Bioavailability_Master_Spreadsheet_Clean_2.xlsx", overwrite = TRUE)
+saveWorkbook(wb, "Bioavailability_Master_Spreadsheet_Clean_3.xlsx", overwrite = TRUE)
 ```
 
 # Defining Stream Typologies
 
 ## 1. All Sites
 
-Import the Typology tab of the Bioavailability_Master_Spreadsheet_Clean_2.xlsx created in the previous section
+Import the Typology tab of the Bioavailability_Master_Spreadsheet_Clean_3.xlsx created in the previous section
 
 ```{r}
 library(readxl)
 
-dat <- read_excel("Bioavailability_Master_Spreadsheet_Clean_2.xlsx", 
+dat <- read_excel("Bioavailability_Master_Spreadsheet_Clean_3.xlsx", 
     sheet = "HA 10% Closed System")
 
 head(dat)
@@ -1060,12 +1060,12 @@ ggsave("Plots by Typology/Relative_Freq_Plot_by_Typologyr.png",
 
 To determine the relative importance of each BLM predictor on Zn and Cu bioavailability, we will conduct separate multiple linear regressions (MLR) and use step wise selection of the most important predictors.
 
-First, we'll import the Typology tab within the Bioavailability_Master_Spreadsheet_Clean_2.xlsx and name it dat:
+First, we'll import the Typology tab within the Bioavailability_Master_Spreadsheet_Clean_3.xlsx and name it dat:
 
 ```{r}
 library(readxl)
 
-dat <- read_excel("Bioavailability_Master_Spreadsheet_Clean_2.xlsx", 
+dat <- read_excel("Bioavailability_Master_Spreadsheet_Clean_3.xlsx", 
     sheet = "HA 10% Closed System")
 
 head(dat)
@@ -1699,12 +1699,12 @@ saveWorkbook(wb, "Statistical_analyses_all_sites.xlsx", overwrite = TRUE)
 
 # Assessing Variables by Typology
 
-First, we'll import the the Bioavailability_Master_Spreadsheet_Clean_2.xlsx and name it dat:
+First, we'll import the the Bioavailability_Master_Spreadsheet_Clean_3.xlsx and name it dat:
 
 ```{r}
 library(readxl)
 
-dat <- read_excel("Bioavailability_Master_Spreadsheet_Clean_2.xlsx", 
+dat <- read_excel("Bioavailability_Master_Spreadsheet_Clean_3.xlsx", 
     sheet = "HA 10% Closed System")
 
 head(dat)
