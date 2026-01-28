@@ -5,7 +5,7 @@ date: "2025-11-13"
 output: html_document
 ---
 
-# 0. Overview
+# Overview
 
 The following datasets will be used to create a Bioavailability Master Spreadsheet which will have tabs according to the BLM assumptions considered (HA 10% Closed System, HA 10% Open System, and HA 80% Closed System)
 
@@ -23,7 +23,7 @@ Variables selected: free ion, biotic ligand (BL) bound elements, inorganic compl
 
 4.  **BLM Toxicity Mode** (Zn Toxicity on C. dubia.det.xlsx)
 
-Variable selected: Zn Toxicity to Daphnia
+Variable selected: total Zn concentration to cause certain type of toxicity to the given organism
 
 ## Set the working directory
 
@@ -380,7 +380,7 @@ head(Zn_Toxicity_on_C_dubia_ha10_cs_clean)
 # Sanity check: match count vs Bioavailability Master Spreadsheet (bio_ms)
 bio_ms %>%
   inner_join(
-    Zn_Toxicity_on_C_dubia_ha10_cs %>% dplyr::select(Sample_ID),
+    Zn_Toxicity_on_C_dubia_ha10_cs_clean %>% dplyr::select(Sample_ID),
     by = "Sample_ID"
   ) %>%
   summarise(n_matched = dplyr::n())
@@ -393,7 +393,7 @@ library(dplyr)
 
 bio_ms_ha10_cs <- bio_ms_ha10_cs %>%
   left_join(
-    Zn_Toxicity_on_C_dubia_ha10_cs %>%
+    Zn_Toxicity_on_C_dubia_ha10_cs_clean %>%
       dplyr::rename(
         Zn_Toxicity_Daphnia_M = T.Zn
       ) %>%
@@ -645,7 +645,7 @@ Import the Zn Toxicity on C. dubia.det.xlsx
 ```{r}
 library(readxl)
 
-Zn_Toxicity_on_C_dubia_ha10_os <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/Zinc/1. Running BLM/Data outputs/Toxicity Mode/Zn Toxicity on C. dubia.det.xlsx")
+Zn_Toxicity_on_C_dubia_ha10_os <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/Zinc/1. Running BLM/Data outputs/Toxicity Mode/Zn Toxicity on C. dubia open system.det.xlsx")
 
 head(Zn_Toxicity_on_C_dubia_ha10_os)
 ```
@@ -703,7 +703,7 @@ library(dplyr)
 
 bio_ms_ha10_os <- bio_ms_ha10_os %>%
   left_join(
-    Zn_Toxicity_on_C_dubia_ha10_os %>%
+    Zn_Toxicity_on_C_dubia_ha10_os_clean %>%
       dplyr::rename(
         Zn_Toxicity_Daphnia_M = T.Zn
       ) %>%
@@ -955,7 +955,7 @@ Import the Zn Toxicity on C. dubia.det.xlsx
 ```{r}
 library(readxl)
 
-Zn_Toxicity_on_C_dubia_ha80_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/Zinc/1. Running BLM/Data outputs/Toxicity Mode/Zn Toxicity on C. dubia.det.xlsx")
+Zn_Toxicity_on_C_dubia_ha80_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/Zinc/1. Running BLM/Data outputs/Toxicity Mode/Zn Toxicity on C. dubia ha80.det.xlsx")
 
 head(Zn_Toxicity_on_C_dubia_ha80_cs)
 ```
