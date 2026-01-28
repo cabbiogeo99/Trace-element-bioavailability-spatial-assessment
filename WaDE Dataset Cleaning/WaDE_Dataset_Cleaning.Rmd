@@ -1,5 +1,5 @@
 ---
-title: "BLM Data Entry"
+title: "WaDE Dataset Cleaning"
 author: "Cecilia Albert-Black"
 date: "2025-11-13"
 output: html_document
@@ -7,19 +7,9 @@ output: html_document
 
 # Objective
 
-The objective of this file is to create a data entry files to run the Biotic Ligand Model (BLM) desktop version.
+The objective of this file is to clean the WaDE Synoptic Survey Dataset by removing missing values, flag (and sometimes filter out or replace) samples below detection limits.
 
-We'll be creating 2 BLM data entry files for each trace element:
-
--   BLM_Data_Entry_for_Zn.xlsx
-
--   BLM_Data_Entry_for_Cu.xlsx
-
-These files will be used for running BLM as a closed-system (input DIC) in Speciation and Toxicity prediction modes.
-
-See BLM_manual.pdf to learn how to use the BLM.
-
-The BLM requires the following variables to run:
+We will only be applying these steps to variables which will be using to run BLM, which are
 
 -   Site Name
 
@@ -51,24 +41,22 @@ The BLM requires the following variables to run:
 
 -   Sulfur concentration (S mg/L): under development, but must enter an arbitrary small quantity
 
-We will be obtaining these variables from the WaDE_Synoptic_Summary_Final.xlsx file.
+At the end, we will have created the WaDE_Synoptic_Summary_Clean.xlsx file.
 
-# Creating BLM-Input Datasets
-
-## 1. Import the WaDE Synoptic Survey Dataset
+# 1. Import the WaDE Synoptic Survey Dataset
 
 Set working directory
 
 ```{r}
-setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/1. Running BLM/Data inputs")
+setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/WaDE Dataset Cleaning")
 ```
 
-Import data from the tab called WaDE_SYNOPTIC_SUMMARY in the WaDE_Synoptic_Summary_Final.xlsx file
+Import data from the tab called WaDE_SYNOPTIC_SUMMARY in the WaDE_Synoptic_Summary.xlsx file
 
 ```{r}
 library(readxl)
 
-WaDE_Synoptic_Summary <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/1. Running BLM/Data inputs/WaDE_Synoptic_Summary.xlsx", 
+WaDE_Synoptic_Summary <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/WaDE Dataset Cleaning/WaDE_Synoptic_Summary.xlsx", 
     sheet = "WaDE_SYNOPTIC_SUMMARY")
 
 head(WaDE_Synoptic_Summary)
@@ -85,35 +73,57 @@ Add units to variables according to the README tab
 ```{r}
 library(dplyr)
 
-# For simplicity, only add units to variables of interest
-WaDE_Synoptic_Summary  <-
+WaDE_Synoptic_Summary_Clean <-
   WaDE_Synoptic_Summary %>%
-  dplyr::rename(
-      Temp_C = Temp,
-      Zn_uM = Zn,
-      Cu_uM = Cu,
-      DOC_uM = DOC,
-      Ca_uM = Ca,
-      Mg_uM = Mg,
-      Na_uM = Na,
-      K_uM = K,
-      SO4_uM = SO4,
-      Cl_uM = Cl,
-      DIC_uM = DIC
-    )
+  
+  # 1) Keep only variables of interest
+  select(
+    Sample_ID,
+    Site,
+    Date,
+    Regime,
+    Flow_state,
+    Temp,
+    pH,
+    Zn,
+    Cu,
+    DOC,
+    Ca,
+    Mg,
+    Na,
+    K,
+    SO4,
+    Cl,
+    DIC
+  ) %>%
+  
+  # 2) Rename variables to include units
+  rename(
+    Temp_C = Temp,
+    Zn_uM  = Zn,
+    Cu_uM  = Cu,
+    DOC_uM = DOC,
+    Ca_uM  = Ca,
+    Mg_uM  = Mg,
+    Na_uM  = Na,
+    K_uM   = K,
+    SO4_uM = SO4,
+    Cl_uM  = Cl,
+    DIC_uM = DIC
+  )
 
 # Check
-head(WaDE_Synoptic_Summary)
+head(WaDE_Synoptic_Summary_Clean)
 ```
 
 Count the number of total samples
 
 ```{r}
-n_total <- length(unique(WaDE_Synoptic_Summary$Sample_ID))
+n_total <- length(unique(WaDE_Synoptic_Summary_Clean$Sample_ID))
 n_total
 ```
 
-## 2. Omitting Samples
+# 2. Omitting Samples with Missing Values
 
 Samples will be omitted which do not have all BLM input variables.
 
@@ -127,7 +137,7 @@ vars <- c(
   "Na_uM","K_uM","SO4_uM","Cl_uM","DIC_uM"
 )
 
-missing_dat <- WaDE_Synoptic_Summary %>%
+missing_dat <- WaDE_Synoptic_Summary_Clean %>%
   filter(if_any(all_of(vars), ~ .x == -9999)) %>%
   dplyr::select(Sample_ID, Site, all_of(vars))
 
@@ -150,11 +160,11 @@ variable_counts # number of missing values by variable
 Remove these from the WaDE_Synoptic_Summary
 
 ```{r}
-WaDE_Synoptic_Summary <- WaDE_Synoptic_Summary %>%
+WaDE_Synoptic_Summary_Clean <- WaDE_Synoptic_Summary_Clean %>%
   filter(!if_any(all_of(vars), ~ .x == -9999))
 
 # Count number of samples leftover
-n_samples <- nrow(WaDE_Synoptic_Summary)
+n_samples <- nrow(WaDE_Synoptic_Summary_Clean)
 n_samples
 ```
 
@@ -218,7 +228,7 @@ writeData(
 saveWorkbook(wb, "Omitted_Samples.xlsx", overwrite = TRUE)
 ```
 
-## 3. Handling Values Below Detection Limit
+# 3. Handling Values Below Detection Limit
 
 Values below detection limits (DL) were handled based on two scenarios:
 
@@ -249,7 +259,7 @@ library(dplyr)
 Zn_DL_uM <- 6.69E-02  
 
 # 2. Find the lowest reported positive Zn_uM value
-lowest_Zn_uM <- WaDE_Synoptic_Summary %>%
+lowest_Zn_uM <- WaDE_Synoptic_Summary_Clean %>%
   filter(!is.na(Zn_uM), Zn_uM > 0) %>%
   summarise(min_Zn = min(Zn_uM)) %>%
   pull(min_Zn)
@@ -257,7 +267,7 @@ lowest_Zn_uM <- WaDE_Synoptic_Summary %>%
 lowest_Zn_uM
 
 # 3. Apply detection-limit rules for Zn
-WaDE_Synoptic_Summary <- WaDE_Synoptic_Summary %>%
+WaDE_Synoptic_Summary_Clean <- WaDE_Synoptic_Summary_Clean %>%
   mutate(
     # Flag column for Zn based on your rules
     Zn_flag = case_when(
@@ -276,7 +286,7 @@ WaDE_Synoptic_Summary <- WaDE_Synoptic_Summary %>%
   )
 
 # Inspect all assigned flags
-table(WaDE_Synoptic_Summary$Zn_flag, useNA = "ifany")
+table(WaDE_Synoptic_Summary_Clean$Zn_flag, useNA = "ifany")
 ```
 
 Histogram of measured Zn (uM) with the field DL
@@ -286,7 +296,7 @@ library(ggplot2)
 
 Zn_DL_uM <- 6.69E-02  # Detection limit
 
-hist_zn <- ggplot(WaDE_Synoptic_Summary, aes(x = Zn_uM)) +
+hist_zn <- ggplot(WaDE_Synoptic_Summary_Clean, aes(x = Zn_uM)) +
   geom_histogram(
     bins = 30,
     color = "black"
@@ -318,7 +328,7 @@ library(dplyr)
 Cu_DL_uM <- 2.22E-03 
 
 # 2. Find the lowest reported positive Zn_uM value
-lowest_Cu_uM <- WaDE_Synoptic_Summary %>%
+lowest_Cu_uM <- WaDE_Synoptic_Summary_Clean %>%
   filter(!is.na(Cu_uM), Cu_uM > 0) %>%
   summarise(min_Cu = min(Cu_uM)) %>%
   pull(min_Cu)
@@ -326,7 +336,7 @@ lowest_Cu_uM <- WaDE_Synoptic_Summary %>%
 lowest_Cu_uM
 
 # 3. Apply detection-limit rules for Zn
-WaDE_Synoptic_Summary <- WaDE_Synoptic_Summary %>%
+WaDE_Synoptic_Summary_Clean <- WaDE_Synoptic_Summary_Clean %>%
   mutate(
     # Flag column for Zn based on your rules
     Cu_flag = case_when(
@@ -345,13 +355,13 @@ WaDE_Synoptic_Summary <- WaDE_Synoptic_Summary %>%
   )
 
 # Inspect all assigned flags
-table(WaDE_Synoptic_Summary$Cu_flag, useNA = "ifany")
+table(WaDE_Synoptic_Summary_Clean$Cu_flag, useNA = "ifany")
 ```
 
 Check to see if there are missing values for Cu (if none, it should read that all 386 are FALSE)
 
 ```{r}
-hist_cu <- ggplot(WaDE_Synoptic_Summary, aes(x = Cu_uM)) +
+hist_cu <- ggplot(WaDE_Synoptic_Summary_Clean, aes(x = Cu_uM)) +
   geom_histogram(
     bins = 80,
     color = "black"
@@ -384,7 +394,7 @@ SO4_DL_uM <- 1.7
 SO4_half_DL_uM <- SO4_DL_uM / 2   # ½ the instrument DL
 
 # 2. Apply detection-limit rules for sulfate
-WaDE_Synoptic_Summary <- WaDE_Synoptic_Summary %>%
+WaDE_Synoptic_Summary_Clean <- WaDE_Synoptic_Summary_Clean %>%
   mutate(
     # Flag column for sulfate
     SO4_flag = case_when(
@@ -404,13 +414,13 @@ WaDE_Synoptic_Summary <- WaDE_Synoptic_Summary %>%
   )
 
 # Inspect 
-table(WaDE_Synoptic_Summary$SO4_flag, useNA = "ifany")
+table(WaDE_Synoptic_Summary_Clean$SO4_flag, useNA = "ifany")
 ```
 
 Histogram with instrument DL
 
 ```{r}
-hist_so4 <- ggplot(WaDE_Synoptic_Summary, aes(x = SO4_uM)) +
+hist_so4 <- ggplot(WaDE_Synoptic_Summary_Clean, aes(x = SO4_uM)) +
   geom_histogram(
     bins = 80,
     color = "black"
@@ -441,7 +451,7 @@ Cl_DL_uM <- 2.29e1              # instrument DL = 22.9 uM
 Cl_half_DL_uM <- Cl_DL_uM / 2   # ½ the instrument DL
 
 # 2. Apply detection-limit rules for chloride
-WaDE_Synoptic_Summary <- WaDE_Synoptic_Summary %>%
+WaDE_Synoptic_Summary_Clean <- WaDE_Synoptic_Summary_Clean %>%
   mutate(
     # Flag column for chloride
     Cl_flag = case_when(
@@ -460,13 +470,13 @@ WaDE_Synoptic_Summary <- WaDE_Synoptic_Summary %>%
   )
 
 # Inspect 
-table(WaDE_Synoptic_Summary$Cl_flag, useNA = "ifany")
+table(WaDE_Synoptic_Summary_Clean$Cl_flag, useNA = "ifany")
 ```
 
 Histogram with instrument DL
 
 ```{r}
-hist_cl <- ggplot(WaDE_Synoptic_Summary, aes(x = Cl_uM)) +
+hist_cl <- ggplot(WaDE_Synoptic_Summary_Clean, aes(x = Cl_uM)) +
   geom_histogram(
     bins = 80,
     color = "black"
@@ -487,7 +497,7 @@ hist_cl <- ggplot(WaDE_Synoptic_Summary, aes(x = Cl_uM)) +
 hist_cl
 ```
 
-## 4. Export Clean Dataset
+# 4. Export Clean Dataset
 
 Create a clean WaDE Synoptic Survey Dataset
 
@@ -495,216 +505,5 @@ Create a clean WaDE Synoptic Survey Dataset
 library(writexl)
 
 # Zinc
-write_xlsx(WaDE_Synoptic_Summary, "WaDE_Synoptic_Summary_Clean.xlsx")
+write_xlsx(WaDE_Synoptic_Summary_Clean, "WaDE_Synoptic_Summary_Clean.xlsx")
 ```
-
-## 5. Select BLM Input Variables
-
-Select variables to create separate BLM data inputs for Zn and Cu:
-
-```{r}
-library(dplyr)
-library(rlang)
-
-# 1. Create a loop function to create a data frame for any BLM element of choice
-
-create_blm_input <- function(df, metal){
-
-  metal_sym <- sym(metal)
-
-  df %>%
-    dplyr::select(
-      Sample_ID,
-      Site,
-      Temp_C,
-      pH,
-      !!metal_sym,
-      DOC_uM,
-      Ca_uM,
-      Mg_uM,
-      Na_uM,
-      K_uM,
-      SO4_uM,
-      Cl_uM,
-      DIC_uM
-    )
-}
-
-# 2. Run it for the following trace elements
-zn_blm_input_df <- create_blm_input(WaDE_Synoptic_Summary, "Zn_uM")
-cu_blm_input_df <- create_blm_input(WaDE_Synoptic_Summary, "Cu_uM")
-
-# 3. Check the results
-head(zn_blm_input_df)
-head(cu_blm_input_df)
-```
-
-Add a column for humic acid at 10 % after DOC
-
-```{r}
-library(dplyr)
-
-# Zinc
-zn_blm_input_df <- zn_blm_input_df %>%
-  mutate(
-    HA = 10 ) %>%
-  relocate(HA,  .after = DOC_uM)
-
-# Copper
-cu_blm_input_df <- cu_blm_input_df %>%
-  mutate(
-    HA = 10 ) %>%
-  relocate(HA, .after = DOC_uM)
-
-# Check
-head(zn_blm_input_df)
-head(cu_blm_input_df)
-```
-
-Add a column for S at the end
-
-```{r}
-library(dplyr)
-
-# Zinc
-zn_blm_input_df <- zn_blm_input_df %>%
-  mutate('S_uM' = 1e-10)
-
-# Copper
-cu_blm_input_df <- cu_blm_input_df %>%
-  mutate('S_uM' = 1e-10)
-
-# Check
-summary(zn_blm_input_df$S_uM)
-summary(cu_blm_input_df$S_uM)
-```
-
-## 4. Unit Conversions
-
-Convert and rewrite trace element units from uM to ug/L
-
-```{r}
-library(dplyr)
-
-# Zinc
-zn_blm_input_df <- zn_blm_input_df %>%
-  mutate(Zn_uM = Zn_uM * 65.38) %>% # Overwrite Zn (uM) with Zn (ug/L) value
-  rename(Zn_ug_L = Zn_uM) # rename AFTER overwriting
-
-# Copper
-cu_blm_input_df <- cu_blm_input_df %>%
-  mutate(Cu_uM = Cu_uM * 63.546) %>% # Overwrite Zn (uM) with Zn (ug/L) value
-  rename(Cu_ug_L = Cu_uM) # rename AFTER overwriting
-
-# Check
-str(zn_blm_input_df)
-str(cu_blm_input_df)
-```
-
-Convert DOC, Ca, Mg, Na, K, Cl, SO4, and S from uM to mg/L
-
-```{r}
-# Zinc
-zn_blm_input_df <- zn_blm_input_df %>%
-  mutate(
-    DOC_uM = DOC_uM * 12.01e-3,
-    Ca_uM  = Ca_uM  * 40.078e-3,
-    Mg_uM  = Mg_uM  * 24.305e-3,
-    Na_uM  = Na_uM  * 22.990e-3,
-    K_uM   = K_uM   * 39.098e-3,
-    Cl_uM  = Cl_uM  * 35.45e-3,
-    SO4_uM = SO4_uM * 96.06e-3,
-    S_uM   = S_uM   * 32.06e-3
-  ) %>%
-  rename(
-    DOC_mg_L = DOC_uM,
-    Ca_mg_L  = Ca_uM,
-    Mg_mg_L  = Mg_uM,
-    Na_mg_L  = Na_uM,
-    K_mg_L   = K_uM,
-    Cl_mg_L  = Cl_uM,
-    SO4_mg_L = SO4_uM,
-    S_mg_L   = S_uM
-  )
-
-# Copper
-cu_blm_input_df <- cu_blm_input_df %>%
-  mutate(
-    DOC_uM = DOC_uM * 12.01e-3,
-    Ca_uM  = Ca_uM  * 40.078e-3,
-    Mg_uM  = Mg_uM  * 24.305e-3,
-    Na_uM  = Na_uM  * 22.990e-3,
-    K_uM   = K_uM   * 39.098e-3,
-    Cl_uM  = Cl_uM  * 35.45e-3,
-    SO4_uM = SO4_uM * 96.06e-3,
-    S_uM   = S_uM   * 32.06e-3
-  ) %>%
-  rename(
-    DOC_mg_L = DOC_uM,
-    Ca_mg_L  = Ca_uM,
-    Mg_mg_L  = Mg_uM,
-    Na_mg_L  = Na_uM,
-    K_mg_L   = K_uM,
-    Cl_mg_L  = Cl_uM,
-    SO4_mg_L = SO4_uM,
-    S_mg_L   = S_uM
-  )
-
-# Check
-str(zn_blm_input_df)
-str(cu_blm_input_df)
-```
-
-## 5. Export to Excel
-
-```{r}
-library(writexl)
-
-# Zinc
-write_xlsx(zn_blm_input_df, "BLM_Data_Entry_for_Zn.xlsx")
-
-# Copper
-write_xlsx(cu_blm_input_df, "BLM_Data_Entry_for_Cu.xlsx")
-```
-
-## 6. Running the Biotic Ligand Model (BLM)
-
-These two datasets can be used to input into BLM.
-
-Run the following datasets in BLM as follows and name the outputs as follows:
-
--   Use the **BLM_Data_Entry_for_Zn.xlsx** file to run
-
-    -   BLM as a closed system (DIC input as uM)
-
-        -   BLM in Speciation mode with HA at 10% (output file = Zn Speciation.det)
-
-        -   BLM Speciation mode with HA at 80% (output file = Zn Speciation_ha80.det)
-
-        -   BLM in Toxicity mode for C. dubia (output file = Zn Toxicity on C. dubia.det)
-
-    -   BLM as an open system (no DIC input)
-
--   Use the **BLM_Data_Entry_for_Cu.xlsx** file to run
-
-    -   BLM as a closed system (DIC input as uM)
-
-        -   BLM in Speciation mode with HA at 10% (output file = Cu Speciation.det)
-
-        -   BLM Speciation mode with HA at 80% (output file = Cu Speciation_ha80.det)
-
-        -   Acute toxicity to C. dubia (output file = Cu Acute Toxicity on P. promelas.det)
-
-        -   Chronic toxicity to C. dubia (output file = Cu Chronic Toxicity on C. dubia.det)
-
-        -   Acute toxicity to P. promelas (output file = Cu Acute Toxicity on C. dubia.det)
-
-        -   Chronic toxicity to P. promelas (output file = Cu Chronic Toxicity on P. promelas.det)
-
-    -   BLM as an open system (no DIC input)
-
-\*Note: make sure that when running BLM with HA at 80% to change this variable and when running BLM as open system to set this mode in BLM (see manual for details).
-
-## 7. Post-Running the BLM
-
-Once the following datasets have been created, follow the steps in 2. Dataset merging.Rmd

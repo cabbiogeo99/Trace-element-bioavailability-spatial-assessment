@@ -5,62 +5,40 @@ date: "2025-11-13"
 output: html_document
 ---
 
-# Overview
+# 0. Overview
 
-The following variables will be merged from these datasets to create a Bioavailability Master Spreadsheet
+The following datasets will be used to create a Bioavailability Master Spreadsheet which will have tabs according to the BLM assumptions considered (HA 10% Closed System, HA 10% Open System, and HA 80% Closed System)
 
-**I. WaDE Synoptic Survey dataset - clean version**
-
-(WaDE_Synoptic_Summary.xlsx)
+1.  **Clean WaDE Synoptic Survey dataset** (WaDE_Synoptic_Summary_Clean.xlsx)
 
 Variables selected: sample ID, site, date, inherent characteristics, developed land cover, BLM predictors.
 
-**II. BLM Speciation Mode**
+2.  **WaDE Synoptic Survey dataset** (WaDE_Synoptic_Summary.xlsx, "SITE INFO" tab)
 
-Variables selected: free ion, biotic ligand (BL) bound elements, inorganic complexes, and organic element.
+Variables selected: network, regime, elevation, upstream distance from main stem, drainage area, developed land cover by site
 
--   Zn BLM Speciation Mode (Zn_Speciation.det.xlsx)
+3.  **BLM Speciation Mode** (Zn_Speciation.det.xlsx)
 
--   Cu BLM Speciation Mode (Cu Speciation.det.xlsx)
+Variables selected: free ion, biotic ligand (BL) bound elements, inorganic complexes, and organic complexes.
 
-**III. BLM Toxicity Mode**
+4.  **BLM Toxicity Mode** (Zn Toxicity on C. dubia.det.xlsx)
 
-Variable from each dataset: concentration of element that causes given toxicity response for the selected organism.
-
--   Zn BLM Toxicity Mode (Zn Toxicity on C. dubia.det.xlsx)
-
--   Cu BLM Acute Toxicity Mode on Daphnia (Cu Acute Toxicity on C. dubia.det.xlsx)
-
--   Cu BLM Chronic Toxicity Mode on Daphnia (Cu Chronic Toxicity on C. dubia.det.xlsx)
-
--   Cu BLM Acute Toxicity Mode on Minnow (Cu Acute Toxicity on P. promelas.det.xlsx)
-
--   Cu BLM Chronic Toxicity Mode on Minnow (Cu Chronic Toxicity on P. promelas.det.xlsx)
-
-**IV. BLM Sensitivity Analysis**
-
-Closed system (DIC input) and low humic acid content (10%) (baseline conditions)
-
-Closed system with high humic acid content scenario (80%)
-
-Open System (alkalinity based on charge balance) under low humic acid content (10%)
+Variable selected: Zn Toxicity to Daphnia
 
 ## Set the working directory
 
 ```{r}
-setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/2. Dataset merging")
+setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/Zinc/2. Dataset merging")
 ```
 
-# WaDE Synoptic Survey
+# HA 10% Closed System
 
-## 1. Variables by Observation
-
-Import WaDE Synoptic Survey dataset "WaDE_SYNOPTIC_SUMMARY" sheet for water sample measurements.
+## 1. Clean WaDE Synoptic Survey
 
 ```{r}
 library(readxl)
 
-WaDE_Synoptic_Summary_Clean <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/1. Running BLM/Data inputs/WaDE_Synoptic_Summary_Clean.xlsx")
+WaDE_Synoptic_Summary_Clean <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/WaDE Dataset Cleaning/WaDE_Synoptic_Summary_Clean.xlsx")
 
 head(WaDE_Synoptic_Summary_Clean)
 ```
@@ -71,7 +49,7 @@ Inspect the structure
 str(WaDE_Synoptic_Summary_Clean)
 ```
 
-From WaDE_Synoptic_Summary, select sample ID, site, date, and BLM predictors
+Select sample ID, site, date, flow regime, flow state, developed land cover, BLM predictors
 
 ```{r}
 library(dplyr)
@@ -101,14 +79,14 @@ bio_ms <- WaDE_Synoptic_Summary_Clean %>%
 head(bio_ms)
 ```
 
-## 2. Variables by Site
+## 2. WaDE Synoptic Survey
 
-Import WaDE Synoptic Survey dataset "SITE_INFO" sheet for inherent characteristics and developed land use by site.
+Import the original (pre-cleaning) WaDE Synoptic Survey dataset "SITE_INFO" tab for inherent characteristics and developed land use by site.
 
 ```{r}
 library(readxl)
 
-WaDE_Site_Info <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/1. Running BLM/Data inputs/WaDE_Synoptic_Summary.xlsx", 
+WaDE_Site_Info <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/WaDE Dataset Cleaning/WaDE_Synoptic_Summary.xlsx", 
     sheet = "SITE INFO")
 
 head(WaDE_Site_Info)
@@ -149,6 +127,14 @@ bio_ms <- bio_ms %>%
     Dist_from_EFPC_km    = as.numeric(Dist_from_EFPC_km),
     Drainage_area_km2    = as.numeric(Drainage_area_km2),
     Developed_lulc       = as.numeric(Developed_lulc)
+  ) %>%
+   relocate(
+    Network,
+    Relative_elevation_m,
+    Dist_from_EFPC_km,
+    Drainage_area_km2,
+    Developed_lulc,
+    .after = Flow_state
   )
 
 # check
@@ -161,21 +147,18 @@ Inspect the structure again
 str(bio_ms)
 ```
 
-# BLM Speciation Mode
+## 3. BLM Speciation Mode
 
-Using the output excel workbooks ending in .det (meaning detailed), we convert them to the newest Excel Workbook version before importing them.
-
-## 1. Merge **Zn Variables**
+If you haven't already, convert the Zn_Speciation.det.xlsx to the newest Excel Workbook version before importing them.
 
 Import dataset
 
 ```{r}
 library(readxl)
-Zn_Speciation_det <- read_excel(
-  "C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/1. Running BLM/Data outputs/Zinc/Speciation Mode/Zn Speciation.det.xlsx"
-)
 
-head(Zn_Speciation_det)
+Zn_Speciation_ha10_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/Zinc/1. Running BLM/Data outputs/Speciation Mode/Zn Speciation.det.xlsx")
+
+head(Zn_Speciation_ha10_cs)
 ```
 
 Clean dataset
@@ -184,7 +167,7 @@ Clean dataset
 library(dplyr)
 library(stringr)
 
-Zn_Speciation_det_clean <- Zn_Speciation_det %>%
+Zn_Speciation_ha10_cs_clean <- Zn_Speciation_ha10_cs %>%
   # 1) Drop rows 1–3
   slice(-(1:3)) %>%
   
@@ -214,29 +197,29 @@ Zn_Speciation_det_clean <- Zn_Speciation_det %>%
 
 
 # Preview
-head(Zn_Speciation_det_clean)
+head(Zn_Speciation_ha10_cs_clean)
 
 # Sanity check: make sure Sample_ID matches to that of the Bioavailability Master Spreadsheet called bio_ms (should be 386)
 
-bio_ms %>%
+Zn_Speciation_ha10_cs_clean %>%
   inner_join(
-    Zn_Speciation_det_clean %>% 
+    Zn_Speciation_ha10_cs_clean %>% 
       dplyr::select(Sample_ID),
     by = "Sample_ID"
   ) %>%
   summarise(n_matched = n())
 ```
 
-Select variables and add to bio_ms
+Select variables, add a suffix indicating their units, and add to bio_ms
 
 ```{r}
 library(dplyr)
 
-bio_ms_ha10_cs <- bio_ms %>%
+bio_ms_ha10_cs <- bio_ms %>% # Merge variables from Zn_Speciation_ha10_cs_clean to bio_ms
   left_join(
-    Zn_Speciation_det_clean %>%
-      dplyr::rename(
-        Free_Zn_M        = Zn,          # free Zn
+    Zn_Speciation_ha10_cs_clean %>%
+      rename(
+        Free_Zn_M        = Zn,          
         ZnOH_M           = ZnOH,
         Zn_OH_2_M        = `Zn(OH)2`,
         ZnCO3_M          = ZnCO3,
@@ -244,15 +227,30 @@ bio_ms_ha10_cs <- bio_ms %>%
         ZnSO4_M          = ZnSO4,
         ZnCl_M           = ZnCl,
         ZnS_M            = ZnS,
-        TOrg_Zn_M        = TOrg.Zn,
-        BL_Zn_mol_kg_Zn    = `BL-Zn`,  # suffix _Zn indicating Zn-BLM
-        BL_Ca_mol_kg_Zn    = `BL-Ca`,
-        BL_H_mol_kg_Zn     = `BL-H`,
-        BL_Mg_mol_kg_Zn    = `BL-Mg`,
-        BL_Na_mol_kg_Zn    = `BL-Na`,
-        BL_ZnOH_mol_kg_Zn  = `BL-ZnOH`
+        TOrg_Zn_M        = `TOrg.Zn`,
+        BL_Zn_mol_kg     = `BL-Zn`,  
+        BL_Ca_mol_kg     = `BL-Ca`,
+        BL_H_mol_kg      = `BL-H`,
+        BL_Mg_mol_kg     = `BL-Mg`,
+        BL_Na_mol_kg     = `BL-Na`,
+        BL_ZnOH_mol_kg   = `BL-ZnOH`,
+        HCO3_M           = HCO3,
+        H2_CO3_M         = H2CO3,
+        HS_M             = HS,
+        H2S_M            = H2S,
+        MgHCO3_M         = MgHCO3,
+        MgCO3_M          = MgCO3,
+        MgSO4_M          = MgSO4,
+        CaHCO3_M         = CaHCO3,
+        CaCO3_M          = CaCO3,
+        CaSO4_M          = CaSO4,
+        TOrg_H_M         = `TOrg.H`,
+        TOrg_Ca_M        = `TOrg.Ca`,
+        TOrg_Mg_M        = `TOrg.Mg`,
+        TOrg_Na_M        = `TOrg.Na`,
+        TOrg_K_M         = `TOrg.K`
       ) %>%
-      dplyr::select(
+      select(
         Sample_ID,
         Free_Zn_M,
         ZnOH_M,
@@ -263,25 +261,66 @@ bio_ms_ha10_cs <- bio_ms %>%
         ZnCl_M,
         ZnS_M,
         TOrg_Zn_M,
-        BL_Zn_mol_kg_Zn,
-        BL_Ca_mol_kg_Zn,
-        BL_H_mol_kg_Zn,
-        BL_Mg_mol_kg_Zn,
-        BL_Na_mol_kg_Zn,
-        BL_ZnOH_mol_kg_Zn
+        BL_Zn_mol_kg,
+        BL_Ca_mol_kg,
+        BL_H_mol_kg,
+        BL_Mg_mol_kg,
+        BL_Na_mol_kg,
+        BL_ZnOH_mol_kg,
+        HCO3_M,
+        H2_CO3_M,
+        HS_M,
+        H2S_M,
+        MgHCO3_M,
+        MgCO3_M,
+        MgSO4_M,
+        CaHCO3_M,
+        CaCO3_M,
+        CaSO4_M,
+        TOrg_H_M,
+        TOrg_Ca_M,
+        TOrg_Mg_M,
+        TOrg_Na_M,
+        TOrg_K_M
       ),
     by = "Sample_ID"
   )
 
+
 # Make sure they're numeric
 zn_new_vars <- c(
-  "ZnOH_M", "Zn_OH_2_M", "ZnSO4_M", "ZnCO3_M", "ZnHCO3_M", "ZnS_M", "ZnCl_M",
-  "Free_Zn_M", "Zn_OH_2_M", "TOrg_Zn_M",
-  "BL_Zn_mol_kg_Zn", "BL_Ca_mol_kg_Zn", "BL_H_mol_kg_Zn",
-  "BL_Mg_mol_kg_Zn", "BL_Na_mol_kg_Zn", "BL_ZnOH_mol_kg_Zn"
+  "Free_Zn_M",
+  "ZnOH_M",
+  "Zn_OH_2_M",
+  "ZnCO3_M",
+  "ZnHCO3_M",
+  "ZnSO4_M",
+  "ZnCl_M",
+  "ZnS_M",
+  "TOrg_Zn_M",
+  "BL_Zn_mol_kg",
+  "BL_Ca_mol_kg",
+  "BL_H_mol_kg",
+  "BL_Mg_mol_kg",
+  "BL_Na_mol_kg",
+  "BL_ZnOH_mol_kg",
+  "HCO3_M",
+  "H2_CO3_M",
+  "HS_M",
+  "H2S_M",
+  "MgHCO3_M",
+  "MgCO3_M",
+  "MgSO4_M",
+  "CaHCO3_M",
+  "CaCO3_M",
+  "CaSO4_M",
+  "TOrg_H_M",
+  "TOrg_Ca_M",
+  "TOrg_Mg_M",
+  "TOrg_Na_M",
+  "TOrg_K_M"
 )
 
-# Convert them to numeric
 bio_ms_ha10_cs <- bio_ms_ha10_cs %>%
   mutate(across(all_of(zn_new_vars), ~ as.numeric(.)))
 
@@ -289,140 +328,16 @@ bio_ms_ha10_cs <- bio_ms_ha10_cs %>%
 str(bio_ms_ha10_cs)
 ```
 
-## 2. Merge **Cu Variables**
+## 4. BLM Toxicity Mode
+
+Import the Zn Toxicity on C. dubia.det.xlsx
 
 ```{r}
 library(readxl)
 
-Cu_Speciation_det <- read_excel(
-  "C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/1. Running BLM/Data outputs/Copper/Speciation Mode/Cu Speciation.det.xlsx"
-)
+Zn_Toxicity_on_C_dubia_ha10_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/Zinc/1. Running BLM/Data outputs/Toxicity Mode/Zn Toxicity on C. dubia.det.xlsx")
 
-head(Cu_Speciation_det)
-```
-
-Clean dataset
-
-```{r}
-library(dplyr)
-library(stringr)
-
-Cu_Speciation_det_clean <- Cu_Speciation_det %>%
-  # 1) Drop rows 1–3
-  slice(-(1:3)) %>%
-  
-  # 2) Set first remaining row as column names (and make them unique)
-  {
-    nm <- as.character(.[1, ])
-    nm <- make.unique(nm)
-    out <- .[-1, ]
-    names(out) <- nm
-    out
-  } %>%
-  
-  # 3) Remove units row (now the first row)
-  slice(-1) %>%
-  
-  # 4) Rename ID columns
-  rename(
-    Sample_ID = `Site Label`,
-    Site      = `Sample Label`
-  ) %>%
-  
-  # 5) Clean Sample_ID + strip quotes + convert everything else to numeric
-  mutate(
-    Sample_ID = str_extract(Sample_ID, "WaDE_\\d+"),
-    across(-c(Sample_ID, Site), ~ as.numeric(str_replace_all(.x, '"', "")))
-  )
-
-# Preview
-head(Cu_Speciation_det_clean)
-
-# Sanity check: match count vs Bioavailability Master Spreadsheet (bio_ms)
-bio_ms %>%
-  inner_join(
-    Cu_Speciation_det_clean %>% dplyr::select(Sample_ID),
-    by = "Sample_ID"
-  ) %>%
-  summarise(n_matched = dplyr::n())
-```
-
-Select variables to add to bio_ms and add units
-
-```{r}
-library(dplyr)
-
-bio_ms_ha10_cs <- bio_ms_ha10_cs %>%
-  left_join(
-    Cu_Speciation_det_clean %>%
-      dplyr::rename(
-        Free_Cu_M          = Cu,          # free Cu
-        CuOH_M             = CuOH,
-        CuSO4_M            = CuSO4,
-        CuCO3_M            = CuCO3,
-        CuCl_M             = CuCl,
-        CuHCO3_M           = CuHCO3,
-        Cu_OH_2_M          = `Cu(OH)2`,   
-        BL_Cu_mol_kg_Cu    = `BL-Cu`,  
-        BL_Ca_mol_kg_Cu    = `BL-Ca`,
-        BL_H_mol_kg_Cu     = `BL-H`,
-        BL_Mg_mol_kg_Cu    = `BL-Mg`,
-        BL_Na_mol_kg_Cu    = `BL-Na`,
-        BL_CuOH_mol_kg_Cu  = `BL-CuOH`,
-        Cu_CO3_2_M         = `Cu(CO3)2`,
-        TOrg_Cu_M          = TOrg.Cu
-      ) %>%
-      dplyr::select(
-        Sample_ID,
-        CuOH_M,
-        CuSO4_M,
-        CuCO3_M,
-        CuCl_M,
-        CuHCO3_M,
-        Cu_CO3_2_M,
-        Free_Cu_M,
-        Cu_OH_2_M,
-        TOrg_Cu_M,
-        BL_Cu_mol_kg_Cu,
-        BL_Ca_mol_kg_Cu,
-        BL_H_mol_kg_Cu,
-        BL_Mg_mol_kg_Cu,
-        BL_Na_mol_kg_Cu,
-        BL_CuOH_mol_kg_Cu
-      ),
-    by = "Sample_ID"
-  )
-
-# Make sure they're numeric
-cu_new_vars <- c(
-  "CuOH_M", "CuSO4_M", "CuCO3_M", "CuCl_M", "CuHCO3_M", "Cu_CO3_2_M",
-  "Free_Cu_M", "Cu_OH_2_M", "TOrg_Cu_M",
-  "BL_Cu_mol_kg_Cu", "BL_Ca_mol_kg_Cu", "BL_H_mol_kg_Cu",
-  "BL_Mg_mol_kg_Cu", "BL_Na_mol_kg_Cu", "BL_CuOH_mol_kg_Cu"
-)
-
-# Convert to numeric
-bio_ms_ha10_cs <- bio_ms_ha10_cs %>%
-  mutate(across(all_of(cu_new_vars), ~ as.numeric(.)))
-
-# check
-head(bio_ms_ha10_cs)
-```
-
-# BLM Toxicity Mode
-
-## 1. Merge Zn Variables
-
-Import **Zn BLM Toxicity Mode**
-
-```{r}
-library(readxl)
-
-Zn_Toxicity_on_C_dubia_det <- read_excel(
-  "C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/1. Running BLM/Data outputs/Zinc/Toxicity Mode/Zn Toxicity on C. dubia.det.xlsx"
-)
-
-head(Zn_Toxicity_on_C_dubia_det)
+head(Zn_Toxicity_on_C_dubia_ha10_cs)
 ```
 
 Data cleaning
@@ -431,7 +346,7 @@ Data cleaning
 library(dplyr)
 library(stringr)
 
-Zn_Toxicity_on_C_dubia_det_clean <- Zn_Toxicity_on_C_dubia_det %>%
+Zn_Toxicity_on_C_dubia_ha10_cs_clean <- Zn_Toxicity_on_C_dubia_ha10_cs %>%
   # 1) Drop rows 1–3
   slice(-(1:3)) %>%
   
@@ -460,12 +375,12 @@ Zn_Toxicity_on_C_dubia_det_clean <- Zn_Toxicity_on_C_dubia_det %>%
   )
 
 # Preview
-head(Zn_Toxicity_on_C_dubia_det_clean)
+head(Zn_Toxicity_on_C_dubia_ha10_cs_clean)
 
 # Sanity check: match count vs Bioavailability Master Spreadsheet (bio_ms)
 bio_ms %>%
   inner_join(
-    Zn_Toxicity_on_C_dubia_det_clean %>% dplyr::select(Sample_ID),
+    Zn_Toxicity_on_C_dubia_ha10_cs %>% dplyr::select(Sample_ID),
     by = "Sample_ID"
   ) %>%
   summarise(n_matched = dplyr::n())
@@ -478,7 +393,7 @@ library(dplyr)
 
 bio_ms_ha10_cs <- bio_ms_ha10_cs %>%
   left_join(
-    Zn_Toxicity_on_C_dubia_det_clean %>%
+    Zn_Toxicity_on_C_dubia_ha10_cs %>%
       dplyr::rename(
         Zn_Toxicity_Daphnia_M = T.Zn
       ) %>%
@@ -501,301 +416,9 @@ bio_ms_ha10_cs <- bio_ms_ha10_cs %>%
 str(bio_ms_ha10_cs)
 ```
 
-## 2. Merge Cu Variables
+## 5. Export to Bioavailability Master Spreadsheet
 
-Import **Cu BLM Acute Toxicity Mode on Daphnia**
-
-```{r}
-library(readxl)
-
-Cu_Acute_Toxicity_on_C_dubia_det <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/1. Running BLM/Data outputs/Copper/Toxicity Mode/Cu Acute Toxicity on C. dubia.det.xlsx"
-)
-
-head(Cu_Acute_Toxicity_on_C_dubia_det)
-```
-
-Clean up
-
-```{r}
-library(dplyr)
-library(stringr)
-
-Cu_Acute_Toxicity_on_C_dubia_det_clean <- Cu_Acute_Toxicity_on_C_dubia_det %>%
-  # 1) Drop rows 1–3
-  slice(-(1:3)) %>%
-  
-  # 2) Set first remaining row as column names (and make them unique)
-  {
-    nm <- as.character(.[1, ])
-    nm <- make.unique(nm)
-    out <- .[-1, ]
-    names(out) <- nm
-    out
-  } %>%
-  
-  # 3) Remove units row (now the first row)
-  slice(-1) %>%
-  
-  # 4) Rename ID columns
-  rename(
-    Sample_ID = `Site Label`,
-    Site      = `Sample Label`
-  ) %>%
-  
-  # 5) Clean Sample_ID + strip quotes + convert everything else to numeric
-  mutate(
-    Sample_ID = str_extract(Sample_ID, "WaDE_\\d+"),
-    across(-c(Sample_ID, Site), ~ as.numeric(str_replace_all(.x, '"', "")))
-  )
-
-# Preview
-head(Cu_Acute_Toxicity_on_C_dubia_det_clean)
-
-# Sanity check: match count vs Bioavailability Master Spreadsheet (bio_ms)
-bio_ms %>%
-  inner_join(
-    Cu_Acute_Toxicity_on_C_dubia_det_clean %>% dplyr::select(Sample_ID),
-    by = "Sample_ID"
-  ) %>%
-  summarise(n_matched = dplyr::n())
-```
-
-Import **Cu BLM Chronic Toxicity Mode on Daphnia**
-
-```{r}
-library(readxl)
-
-Cu_Chronic_Toxicity_on_C_dubia_det <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/1. Running BLM/Data outputs/Copper/Toxicity Mode/Cu Chronic Toxicity on C. dubia.det.xlsx"
-)
-
-head(Cu_Chronic_Toxicity_on_C_dubia_det)
-```
-
-Clean up
-
-```{r}
-library(dplyr)
-library(stringr)
-
-Cu_Chronic_Toxicity_on_C_dubia_det_clean <- Cu_Chronic_Toxicity_on_C_dubia_det %>%
-  # 1) Drop rows 1–3
-  slice(-(1:3)) %>%
-  
-  # 2) Set first remaining row as column names (and make them unique)
-  {
-    nm <- as.character(.[1, ])
-    nm <- make.unique(nm)
-    out <- .[-1, ]
-    names(out) <- nm
-    out
-  } %>%
-  
-  # 3) Remove units row (now the first row)
-  slice(-1) %>%
-  
-  # 4) Rename ID columns
-  rename(
-    Sample_ID = `Site Label`,
-    Site      = `Sample Label`
-  ) %>%
-  
-  # 5) Clean Sample_ID + strip quotes + convert everything else to numeric
-  mutate(
-    Sample_ID = str_extract(Sample_ID, "WaDE_\\d+"),
-    across(-c(Sample_ID, Site), ~ as.numeric(str_replace_all(.x, '"', "")))
-  )
-
-# Preview
-head(Cu_Chronic_Toxicity_on_C_dubia_det_clean)
-
-# Sanity check: match count vs Bioavailability Master Spreadsheet (bio_ms)
-bio_ms %>%
-  inner_join(
-    Cu_Chronic_Toxicity_on_C_dubia_det_clean %>% dplyr::select(Sample_ID),
-    by = "Sample_ID"
-  ) %>%
-  summarise(n_matched = dplyr::n())
-```
-
-Import **Cu BLM Acute Toxicity Mode on Minnow**
-
-```{r}
-library(readxl)
-
-Cu_Acute_Toxicity_on_P_promelas_det <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/1. Running BLM/Data outputs/Copper/Toxicity Mode/Cu Acute Toxicity on P. promelas.det.xlsx"
-)
-
-head(Cu_Acute_Toxicity_on_P_promelas_det)
-```
-
-Clean up
-
-```{r}
-library(dplyr)
-library(stringr)
-
-Cu_Acute_Toxicity_on_P_promelas_det_clean <- Cu_Acute_Toxicity_on_P_promelas_det %>%
-  # 1) Drop rows 1–3
-  slice(-(1:3)) %>%
-  
-  # 2) Set first remaining row as column names (and make them unique)
-  {
-    nm <- as.character(.[1, ])
-    nm <- make.unique(nm)
-    out <- .[-1, ]
-    names(out) <- nm
-    out
-  } %>%
-  
-  # 3) Remove units row (now the first row)
-  slice(-1) %>%
-  
-  # 4) Rename ID columns
-  rename(
-    Sample_ID = `Site Label`,
-    Site      = `Sample Label`
-  ) %>%
-  
-  # 5) Clean Sample_ID + strip quotes + convert everything else to numeric
-  mutate(
-    Sample_ID = str_extract(Sample_ID, "WaDE_\\d+"),
-    across(-c(Sample_ID, Site), ~ as.numeric(str_replace_all(.x, '"', "")))
-  )
-
-# Preview
-head(Cu_Acute_Toxicity_on_P_promelas_det_clean)
-
-# Sanity check: match count vs Bioavailability Master Spreadsheet (bio_ms)
-bio_ms %>%
-  inner_join(
-    Cu_Acute_Toxicity_on_P_promelas_det_clean %>% dplyr::select(Sample_ID),
-    by = "Sample_ID"
-  ) %>%
-  summarise(n_matched = dplyr::n())
-
-```
-
-Import **Cu BLM Chronic Toxicity Mode on Minnow**
-
-```{r}
-library(readxl)
-
-Cu_Chronic_Toxicity_on_P_promelas_det <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/1. Running BLM/Data outputs/Copper/Toxicity Mode/Cu Chronic Toxicity on P. promelas.det.xlsx"
-)
-
-head(Cu_Chronic_Toxicity_on_P_promelas_det)
-```
-
-Clean up
-
-```{r}
-library(dplyr)
-library(stringr)
-
-Cu_Chronic_Toxicity_on_P_promelas_det_clean <- Cu_Chronic_Toxicity_on_P_promelas_det %>%
-  # 1) Drop rows 1–3
-  slice(-(1:3)) %>%
-  
-  # 2) Set first remaining row as column names (and make them unique)
-  {
-    nm <- as.character(.[1, ])
-    nm <- make.unique(nm)
-    out <- .[-1, ]
-    names(out) <- nm
-    out
-  } %>%
-  
-  # 3) Remove units row (now the first row)
-  slice(-1) %>%
-  
-  # 4) Rename ID columns
-  rename(
-    Sample_ID = `Site Label`,
-    Site      = `Sample Label`
-  ) %>%
-  
-  # 5) Clean Sample_ID + strip quotes + convert everything else to numeric
-  mutate(
-    Sample_ID = str_extract(Sample_ID, "WaDE_\\d+"),
-    across(-c(Sample_ID, Site), ~ as.numeric(str_replace_all(.x, '"', "")))
-  )
-
-# Preview
-head(Cu_Chronic_Toxicity_on_P_promelas_det_clean)
-
-# Sanity check: match count vs Bioavailability Master Spreadsheet (bio_ms)
-bio_ms %>%
-  inner_join(
-    Cu_Chronic_Toxicity_on_P_promelas_det_clean %>% dplyr::select(Sample_ID),
-    by = "Sample_ID"
-  ) %>%
-  summarise(n_matched = dplyr::n())
-```
-
-Select the T.Cu variable (total amount of Cu to cause the toxicity to the organism) and add to the Bioavailability Master Spreadsheet called bio_ms
-
-```{r}
-library(dplyr)
-
-bio_ms_ha10_cs <- bio_ms_ha10_cs %>%
-  left_join(
-    Cu_Acute_Toxicity_on_C_dubia_det_clean %>%
-      dplyr::rename(
-        Cu_Acute_Toxicity_Daphnia_M = T.Cu) %>%
-      dplyr::select(
-        Sample_ID,
-        Cu_Acute_Toxicity_Daphnia_M),
-    by = "Sample_ID"
-  )
-
-bio_ms_ha10_cs <- bio_ms_ha10_cs %>%
-  left_join(
-    Cu_Chronic_Toxicity_on_C_dubia_det_clean %>%
-      dplyr::rename(
-        Cu_Chronic_Toxicity_Daphnia_M = T.Cu) %>%
-      dplyr::select(
-        Sample_ID,
-        Cu_Chronic_Toxicity_Daphnia_M),
-    by = "Sample_ID"
-  )
-
-bio_ms_ha10_cs <- bio_ms_ha10_cs %>%
-  left_join(
-    Cu_Acute_Toxicity_on_P_promelas_det_clean %>%
-      dplyr::rename(
-        Cu_Acute_Toxicity_Minnow_M = T.Cu) %>%
-      dplyr::select(
-        Sample_ID,
-        Cu_Acute_Toxicity_Minnow_M),
-    by = "Sample_ID"
-  )
-
-bio_ms_ha10_cs <- bio_ms_ha10_cs %>%
-  left_join(
-    Cu_Chronic_Toxicity_on_P_promelas_det_clean %>%
-      dplyr::rename(
-        Cu_Chronic_Toxicity_Minnow_M = T.Cu) %>%
-      dplyr::select(
-        Sample_ID,
-        Cu_Chronic_Toxicity_Minnow_M),
-    by = "Sample_ID"
-  )
-
-# Make sure they're numeric
-new_vars <- c("Cu_Acute_Toxicity_Daphnia_M",
-                 "Cu_Chronic_Toxicity_Daphnia_M",
-                 "Cu_Acute_Toxicity_Minnow_M",
-                 "Cu_Chronic_Toxicity_Minnow_M")
-
-# Convert them to numeric
-bio_ms_ha10_cs <- bio_ms_ha10_cs %>%
-  mutate(across(all_of(new_vars), ~ as.numeric(.)))
-
-# Check
-str(bio_ms_ha10_cs)
-```
-
-# Export to Bioavailability Master Spreadsheet
+Since we're saving the data from BLM run as a **closed system assuming HA at 10%**, we'll save it to the Bioavailability Master Spreadsheet into a tab called HA 10% Closed System:
 
 ```{r}
 library(openxlsx)
@@ -832,35 +455,34 @@ if (!file.exists(file_path)) {
 }
 ```
 
-# Sensitivity Analyses
+# HA 10% Open System
 
-## 1. High Humic Acid Content
+## 3. BLM Speciation Mode
 
-### a. Merge Zinc Variables
+If you haven't already, convert the Zn_Speciation.det.xlsx to the newest Excel Workbook version before importing them.
 
 Import dataset
 
 ```{r}
 library(readxl)
-Zn_Speciation_ha80 <- read_excel(
-  "C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/1. Running BLM/Data outputs/Zinc/Speciation Mode/Zn Speciation_ha80.det.xlsx"
-)
 
-head(Zn_Speciation_ha80)
+Zn_Speciation_ha10_os <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/Zinc/1. Running BLM/Data outputs/Speciation Mode/Zn Speciation_open_system.det.xlsx")
+
+head(Zn_Speciation_ha10_os)
 ```
 
-Data cleaning
+Clean dataset
 
 ```{r}
 library(dplyr)
 library(stringr)
 
-Zn_Speciation_ha80_clean <- Zn_Speciation_ha80 %>%
+Zn_Speciation_ha10_os_clean <- Zn_Speciation_ha10_os %>%
   # 1) Drop rows 1–3
   slice(-(1:3)) %>%
   
-  # 2) Set first remaining row as column names (and make them unique)
-  {
+  # 2) Set first remaining row as column names
+  { 
     nm <- as.character(.[1, ])
     nm <- make.unique(nm)
     out <- .[-1, ]
@@ -877,35 +499,37 @@ Zn_Speciation_ha80_clean <- Zn_Speciation_ha80 %>%
     Site      = `Sample Label`
   ) %>%
   
-  # 5) Clean Sample_ID + strip quotes + convert everything else to numeric
+  # 5) Clean Sample_ID and convert others to numeric
   mutate(
     Sample_ID = str_extract(Sample_ID, "WaDE_\\d+"),
     across(-c(Sample_ID, Site), ~ as.numeric(str_replace_all(.x, '"', "")))
   )
 
-# Preview
-head(Zn_Speciation_ha80_clean)
 
-# Sanity check: match count vs Bioavailability Master Spreadsheet (bio_ms)
-bio_ms %>%
+# Preview
+head(Zn_Speciation_ha10_os_clean)
+
+# Sanity check: make sure Sample_ID matches to that of the Bioavailability Master Spreadsheet called bio_ms (should be 386)
+
+Zn_Speciation_ha10_os_clean %>%
   inner_join(
-    Zn_Speciation_ha80_clean %>% dplyr::select(Sample_ID),
+    Zn_Speciation_ha10_cs_clean %>% 
+      dplyr::select(Sample_ID),
     by = "Sample_ID"
   ) %>%
-  summarise(n_matched = dplyr::n())
-
+  summarise(n_matched = n())
 ```
 
-Create a variable for total bioavailable Zn under higher HA content then merge to Bioavailability Master Spreadsheet (bio_ms)
+Select variables, add a suffix indicating their units, and add to bio_ms
 
 ```{r}
 library(dplyr)
 
-bio_ms_ha80_cs <- bio_ms %>%
+bio_ms_ha10_os <- bio_ms %>% # Merge variables from Zn_Speciation_ha10_cs_clean to bio_ms
   left_join(
-    Zn_Speciation_ha80_clean %>%
-      dplyr::rename(
-        Free_Zn_M        = Zn,          # free Zn
+    Zn_Speciation_ha10_os_clean %>%
+      rename(
+        Free_Zn_M        = Zn,          
         ZnOH_M           = ZnOH,
         Zn_OH_2_M        = `Zn(OH)2`,
         ZnCO3_M          = ZnCO3,
@@ -913,15 +537,30 @@ bio_ms_ha80_cs <- bio_ms %>%
         ZnSO4_M          = ZnSO4,
         ZnCl_M           = ZnCl,
         ZnS_M            = ZnS,
-        TOrg_Zn_M        = TOrg.Zn,
-        BL_Zn_mol_kg_Zn    = `BL-Zn`,  # suffix _Zn indicating Zn-BLM
-        BL_Ca_mol_kg_Zn    = `BL-Ca`,
-        BL_H_mol_kg_Zn     = `BL-H`,
-        BL_Mg_mol_kg_Zn    = `BL-Mg`,
-        BL_Na_mol_kg_Zn    = `BL-Na`,
-        BL_ZnOH_mol_kg_Zn  = `BL-ZnOH`
+        TOrg_Zn_M        = `TOrg.Zn`,
+        BL_Zn_mol_kg     = `BL-Zn`,  
+        BL_Ca_mol_kg     = `BL-Ca`,
+        BL_H_mol_kg      = `BL-H`,
+        BL_Mg_mol_kg     = `BL-Mg`,
+        BL_Na_mol_kg     = `BL-Na`,
+        BL_ZnOH_mol_kg   = `BL-ZnOH`,
+        HCO3_M           = HCO3,
+        H2_CO3_M         = H2CO3,
+        HS_M             = HS,
+        H2S_M            = H2S,
+        MgHCO3_M         = MgHCO3,
+        MgCO3_M          = MgCO3,
+        MgSO4_M          = MgSO4,
+        CaHCO3_M         = CaHCO3,
+        CaCO3_M          = CaCO3,
+        CaSO4_M          = CaSO4,
+        TOrg_H_M         = `TOrg.H`,
+        TOrg_Ca_M        = `TOrg.Ca`,
+        TOrg_Mg_M        = `TOrg.Mg`,
+        TOrg_Na_M        = `TOrg.Na`,
+        TOrg_K_M         = `TOrg.K`
       ) %>%
-      dplyr::select(
+      select(
         Sample_ID,
         Free_Zn_M,
         ZnOH_M,
@@ -932,44 +571,83 @@ bio_ms_ha80_cs <- bio_ms %>%
         ZnCl_M,
         ZnS_M,
         TOrg_Zn_M,
-        BL_Zn_mol_kg_Zn,
-        BL_Ca_mol_kg_Zn,
-        BL_H_mol_kg_Zn,
-        BL_Mg_mol_kg_Zn,
-        BL_Na_mol_kg_Zn,
-        BL_ZnOH_mol_kg_Zn
+        BL_Zn_mol_kg,
+        BL_Ca_mol_kg,
+        BL_H_mol_kg,
+        BL_Mg_mol_kg,
+        BL_Na_mol_kg,
+        BL_ZnOH_mol_kg,
+        HCO3_M,
+        H2_CO3_M,
+        HS_M,
+        H2S_M,
+        MgHCO3_M,
+        MgCO3_M,
+        MgSO4_M,
+        CaHCO3_M,
+        CaCO3_M,
+        CaSO4_M,
+        TOrg_H_M,
+        TOrg_Ca_M,
+        TOrg_Mg_M,
+        TOrg_Na_M,
+        TOrg_K_M
       ),
     by = "Sample_ID"
   )
 
+
 # Make sure they're numeric
 zn_new_vars <- c(
-  "ZnOH_M", "Zn_OH_2_M", "ZnSO4_M", "ZnCO3_M", "ZnHCO3_M", "ZnS_M", "ZnCl_M",
-  "Free_Zn_M", "Zn_OH_2_M", "TOrg_Zn_M",
-  "BL_Zn_mol_kg_Zn", "BL_Ca_mol_kg_Zn", "BL_H_mol_kg_Zn",
-  "BL_Mg_mol_kg_Zn", "BL_Na_mol_kg_Zn", "BL_ZnOH_mol_kg_Zn"
+  "Free_Zn_M",
+  "ZnOH_M",
+  "Zn_OH_2_M",
+  "ZnCO3_M",
+  "ZnHCO3_M",
+  "ZnSO4_M",
+  "ZnCl_M",
+  "ZnS_M",
+  "TOrg_Zn_M",
+  "BL_Zn_mol_kg",
+  "BL_Ca_mol_kg",
+  "BL_H_mol_kg",
+  "BL_Mg_mol_kg",
+  "BL_Na_mol_kg",
+  "BL_ZnOH_mol_kg",
+  "HCO3_M",
+  "H2_CO3_M",
+  "HS_M",
+  "H2S_M",
+  "MgHCO3_M",
+  "MgCO3_M",
+  "MgSO4_M",
+  "CaHCO3_M",
+  "CaCO3_M",
+  "CaSO4_M",
+  "TOrg_H_M",
+  "TOrg_Ca_M",
+  "TOrg_Mg_M",
+  "TOrg_Na_M",
+  "TOrg_K_M"
 )
 
-# Convert them to numeric
-bio_ms_ha80_cs <- bio_ms_ha80_cs %>%
+bio_ms_ha10_os <- bio_ms_ha10_os %>%
   mutate(across(all_of(zn_new_vars), ~ as.numeric(.)))
 
 # Check
-str(bio_ms_ha80_cs)
+str(bio_ms_ha10_os)
 ```
 
-### b. Merge Copper Variables
+## 4. BLM Toxicity Mode
 
-Import dataset
+Import the Zn Toxicity on C. dubia.det.xlsx
 
 ```{r}
 library(readxl)
 
-Cu_Speciation_ha80 <- read_excel(
-  "C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/1. Running BLM/Data outputs/Copper/Speciation Mode/Cu Speciation_ha80.det.xlsx"
-)
+Zn_Toxicity_on_C_dubia_ha10_os <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/Zinc/1. Running BLM/Data outputs/Toxicity Mode/Zn Toxicity on C. dubia.det.xlsx")
 
-head(Cu_Speciation_ha80)
+head(Zn_Toxicity_on_C_dubia_ha10_os)
 ```
 
 Data cleaning
@@ -978,7 +656,7 @@ Data cleaning
 library(dplyr)
 library(stringr)
 
-Cu_Speciation_ha80_clean <- Cu_Speciation_ha80 %>%
+Zn_Toxicity_on_C_dubia_ha10_os_clean <- Zn_Toxicity_on_C_dubia_ha10_os %>%
   # 1) Drop rows 1–3
   slice(-(1:3)) %>%
   
@@ -1007,235 +685,38 @@ Cu_Speciation_ha80_clean <- Cu_Speciation_ha80 %>%
   )
 
 # Preview
-head(Cu_Speciation_ha80_clean)
+head(Zn_Toxicity_on_C_dubia_ha10_os_clean)
 
 # Sanity check: match count vs Bioavailability Master Spreadsheet (bio_ms)
 bio_ms %>%
   inner_join(
-    Cu_Speciation_ha80_clean %>% dplyr::select(Sample_ID),
-    by = "Sample_ID"
-  ) %>%
-  summarise(n_matched = dplyr::n())
-
-```
-
-Create a variable for total bioavailable Cu under higher HA content then merge to Bioavailability Master Spreadsheet (bio_ms)
-
-```{r}
-library(dplyr)
-
-bio_ms_ha80_cs <- bio_ms_ha80_cs %>%
-  left_join(
-    Cu_Speciation_ha80_clean %>%
-      dplyr::rename(
-        Free_Cu_M          = Cu,          # free Cu
-        CuOH_M             = CuOH,
-        CuSO4_M            = CuSO4,
-        CuCO3_M            = CuCO3,
-        CuCl_M             = CuCl,
-        CuHCO3_M           = CuHCO3,
-        Cu_OH_2_M          = `Cu(OH)2`,   
-        BL_Cu_mol_kg_Cu    = `BL-Cu`,  
-        BL_Ca_mol_kg_Cu    = `BL-Ca`,
-        BL_H_mol_kg_Cu     = `BL-H`,
-        BL_Mg_mol_kg_Cu    = `BL-Mg`,
-        BL_Na_mol_kg_Cu    = `BL-Na`,
-        BL_CuOH_mol_kg_Cu  = `BL-CuOH`,
-        Cu_CO3_2_M         = `Cu(CO3)2`,
-        TOrg_Cu_M          = TOrg.Cu
-      ) %>%
-      dplyr::select(
-        Sample_ID,
-        CuOH_M,
-        CuSO4_M,
-        CuCO3_M,
-        CuCl_M,
-        CuHCO3_M,
-        Cu_CO3_2_M,
-        Free_Cu_M,
-        Cu_OH_2_M,
-        TOrg_Cu_M,
-        BL_Cu_mol_kg_Cu,
-        BL_Ca_mol_kg_Cu,
-        BL_H_mol_kg_Cu,
-        BL_Mg_mol_kg_Cu,
-        BL_Na_mol_kg_Cu,
-        BL_CuOH_mol_kg_Cu
-      ),
-    by = "Sample_ID"
-  )
-
-# Make sure they're numeric
-cu_new_vars <- c(
-  "CuOH_M", "CuSO4_M", "CuCO3_M", "CuCl_M", "CuHCO3_M", "Cu_CO3_2_M",
-  "Free_Cu_M", "Cu_OH_2_M", "TOrg_Cu_M",
-  "BL_Cu_mol_kg_Cu", "BL_Ca_mol_kg_Cu", "BL_H_mol_kg_Cu",
-  "BL_Mg_mol_kg_Cu", "BL_Na_mol_kg_Cu", "BL_CuOH_mol_kg_Cu"
-)
-
-bio_ms_ha80_cs <- bio_ms_ha80_cs %>%
-  mutate(across(any_of(cu_new_vars), ~ as.numeric(.)))
-
-# Convert to numeric
-bio_ms_ha80_cs <- bio_ms_ha80_cs %>%
-  mutate(across(all_of(cu_new_vars), ~ as.numeric(.)))
-
-# check
-head(bio_ms_ha80_cs)
-```
-
-### c. Save to Bioavailability Master Spreadsheet
-
-```{r}
-library(openxlsx)
-
-file_path <- "Bioavailability_Master_Spreadsheet.xlsx"
-
-# ---------------------------------------------------------
-# 1. Create workbook if file does NOT exist
-# ---------------------------------------------------------
-if (!file.exists(file_path)) {
-  
-  wb <- createWorkbook()
-  addWorksheet(wb, "HA 80% Closed System")
-  writeData(wb, "HA 80% Closed System", bio_ms_ha80_cs)
-  saveWorkbook(wb, file_path, overwrite = TRUE)
-
-} else {
-
-  # ---------------------------------------------------------
-  # 2. If the file EXISTS, load it and add/overwrite the sheet
-  # ---------------------------------------------------------
-  wb <- loadWorkbook(file_path)
-
-  # Add sheet if missing
-  if (!"HA 80% Closed System" %in% names(wb)) {
-    addWorksheet(wb, "HA 80% Closed System")
-  }
-
-  # Write/overwrite data in that sheet
-  writeData(wb, "HA 80% Closed System", bio_ms_ha80_cs)
-
-  # Save
-  saveWorkbook(wb, file_path, overwrite = TRUE)
-}
-
-```
-
-## 2. Open System
-
-### a. Merge Zinc Variables
-
-Import dataset
-
-```{r}
-library(readxl)
-Zn_Speciation_os <- read_excel(
-  "C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/1. Running BLM/Data outputs/Zinc/Speciation Mode/Zn Speciation_open_system.det.xlsx"
-)
-
-head(Zn_Speciation_os)
-```
-
-Data cleaning
-
-```{r}
-library(dplyr)
-library(stringr)
-
-Zn_Speciation_os_clean <- Zn_Speciation_os %>%
-  # 1) Drop rows 1–3
-  slice(-(1:3)) %>%
-  
-  # 2) Set first remaining row as column names (and make them unique)
-  {
-    nm <- as.character(.[1, ])
-    nm <- make.unique(nm)
-    out <- .[-1, ]
-    names(out) <- nm
-    out
-  } %>%
-  
-  # 3) Remove units row (now the first row)
-  slice(-1) %>%
-  
-  # 4) Rename ID columns
-  rename(
-    Sample_ID = `Site Label`,
-    Site      = `Sample Label`
-  ) %>%
-  
-  # 5) Clean Sample_ID + strip quotes + convert everything else to numeric
-  mutate(
-    Sample_ID = str_extract(Sample_ID, "WaDE_\\d+"),
-    across(-c(Sample_ID, Site), ~ as.numeric(str_replace_all(.x, '"', "")))
-  )
-
-# Preview
-head(Zn_Speciation_os_clean)
-
-# Sanity check: match count vs Bioavailability Master Spreadsheet (bio_ms)
-bio_ms %>%
-  inner_join(
-    Zn_Speciation_os_clean %>% dplyr::select(Sample_ID),
+    Zn_Toxicity_on_C_dubia_ha10_os_clean %>% dplyr::select(Sample_ID),
     by = "Sample_ID"
   ) %>%
   summarise(n_matched = dplyr::n())
 ```
 
-Save variables
+Select the T.Zn variable (total amount of Zn to cause the toxicity to the organism) and add to bio_ms
 
 ```{r}
 library(dplyr)
 
-bio_ms_ha10_os <- bio_ms %>%
+bio_ms_ha10_os <- bio_ms_ha10_os %>%
   left_join(
-    Zn_Speciation_os_clean %>%
+    Zn_Toxicity_on_C_dubia_ha10_os %>%
       dplyr::rename(
-        Free_Zn_M        = Zn,          # free Zn
-        ZnOH_M           = ZnOH,
-        Zn_OH_2_M        = `Zn(OH)2`,
-        ZnCO3_M          = ZnCO3,
-        ZnHCO3_M         = ZnHCO3,
-        ZnSO4_M          = ZnSO4,
-        ZnCl_M           = ZnCl,
-        ZnS_M            = ZnS,
-        TOrg_Zn_M        = TOrg.Zn,
-        BL_Zn_mol_kg_Zn    = `BL-Zn`,  # suffix _Zn indicating Zn-BLM
-        BL_Ca_mol_kg_Zn    = `BL-Ca`,
-        BL_H_mol_kg_Zn     = `BL-H`,
-        BL_Mg_mol_kg_Zn    = `BL-Mg`,
-        BL_Na_mol_kg_Zn    = `BL-Na`,
-        BL_ZnOH_mol_kg_Zn  = `BL-ZnOH`
+        Zn_Toxicity_Daphnia_M = T.Zn
       ) %>%
       dplyr::select(
         Sample_ID,
-        Free_Zn_M,
-        ZnOH_M,
-        Zn_OH_2_M,
-        ZnCO3_M,
-        ZnHCO3_M,
-        ZnSO4_M,
-        ZnCl_M,
-        ZnS_M,
-        TOrg_Zn_M,
-        BL_Zn_mol_kg_Zn,
-        BL_Ca_mol_kg_Zn,
-        BL_H_mol_kg_Zn,
-        BL_Mg_mol_kg_Zn,
-        BL_Na_mol_kg_Zn,
-        BL_ZnOH_mol_kg_Zn
+        Zn_Toxicity_Daphnia_M
       ),
     by = "Sample_ID"
   )
 
+
 # Make sure they're numeric
-zn_new_vars <- c(
-  "ZnOH_M", "Zn_OH_2_M", "ZnSO4_M", "ZnCO3_M", "ZnHCO3_M", "ZnS_M", "ZnCl_M",
-  "Free_Zn_M", "Zn_OH_2_M", "TOrg_Zn_M",
-  "BL_Zn_mol_kg_Zn", "BL_Ca_mol_kg_Zn", "BL_H_mol_kg_Zn",
-  "BL_Mg_mol_kg_Zn", "BL_Na_mol_kg_Zn", "BL_ZnOH_mol_kg_Zn"
-)
+zn_new_vars <- c("Zn_Toxicity_Daphnia_M")
 
 # Convert them to numeric
 bio_ms_ha10_os <- bio_ms_ha10_os %>%
@@ -1245,141 +726,9 @@ bio_ms_ha10_os <- bio_ms_ha10_os %>%
 str(bio_ms_ha10_os)
 ```
 
-### b. Merge Copper Variables
+## 5. Export to Bioavailability Master Spreadsheet
 
-Import dataset
-
-```{r}
-library(readxl)
-
-Cu_Speciation_os <- read_excel(
-  "C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/1. Running BLM/Data outputs/Copper/Speciation Mode/Cu Speciation_open_system.det.xlsx"
-)
-
-head(Cu_Speciation_os)
-```
-
-Data cleaning
-
-```{r}
-library(dplyr)
-library(stringr)
-
-Cu_Speciation_os_clean <- Cu_Speciation_os %>%
-  # 1) Drop rows 1–3
-  slice(-(1:3)) %>%
-  
-  # 2) Set first remaining row as column names (and make them unique)
-  {
-    nm <- as.character(.[1, ])
-    nm <- make.unique(nm)
-    out <- .[-1, ]
-    names(out) <- nm
-    out
-  } %>%
-  
-  # 3) Remove units row (now the first row)
-  slice(-1) %>%
-  
-  # 4) Rename ID columns
-  rename(
-    Sample_ID = `Site Label`,
-    Site      = `Sample Label`
-  ) %>%
-  
-  # 5) Clean Sample_ID + strip quotes + convert everything else to numeric
-  mutate(
-    Sample_ID = str_extract(Sample_ID, "WaDE_\\d+"),
-    across(-c(Sample_ID, Site), ~ as.numeric(str_replace_all(.x, '"', "")))
-  )
-
-# Preview
-head(Cu_Speciation_os_clean)
-
-# Sanity check: match count vs Bioavailability Master Spreadsheet (bio_ms)
-bio_ms %>%
-  inner_join(
-    Cu_Speciation_os_clean %>% dplyr::select(Sample_ID),
-    by = "Sample_ID"
-  ) %>%
-  summarise(n_matched = dplyr::n())
-```
-
-Create a variable for total bioavailable Cu under an open system then merge to Bioavailability Master Spreadsheet (bio_ms)
-
-```{r}
-library(dplyr)
-
-bio_ms_ha10_os <- bio_ms_ha10_os %>%
-  left_join(
-    Cu_Speciation_os_clean %>%
-      dplyr::rename(
-        Free_Cu_M          = Cu,          # free Cu
-        CuOH_M             = CuOH,
-        CuSO4_M            = CuSO4,
-        CuCO3_M            = CuCO3,
-        CuCl_M             = CuCl,
-        CuHCO3_M           = CuHCO3,
-        Cu_OH_2_M          = `Cu(OH)2`,   
-        BL_Cu_mol_kg_Cu    = `BL-Cu`,  
-        BL_Ca_mol_kg_Cu    = `BL-Ca`,
-        BL_H_mol_kg_Cu     = `BL-H`,
-        BL_Mg_mol_kg_Cu    = `BL-Mg`,
-        BL_Na_mol_kg_Cu    = `BL-Na`,
-        BL_CuOH_mol_kg_Cu  = `BL-CuOH`,
-        Cu_CO3_2_M         = `Cu(CO3)2`,
-        TOrg_Cu_M          = TOrg.Cu
-      ) %>%
-      dplyr::select(
-        Sample_ID,
-        CuOH_M,
-        CuSO4_M,
-        CuCO3_M,
-        CuCl_M,
-        CuHCO3_M,
-        Cu_CO3_2_M,
-        Free_Cu_M,
-        Cu_OH_2_M,
-        TOrg_Cu_M,
-        BL_Cu_mol_kg_Cu,
-        BL_Ca_mol_kg_Cu,
-        BL_H_mol_kg_Cu,
-        BL_Mg_mol_kg_Cu,
-        BL_Na_mol_kg_Cu,
-        BL_CuOH_mol_kg_Cu
-      ),
-    by = "Sample_ID"
-  )
-
-# Make sure they're numeric
-cu_new_vars <- c(
-  "CuOH_M", "CuSO4_M", "CuCO3_M", "CuCl_M", "CuHCO3_M", "Cu_CO3_2_M",
-  "Free_Cu_M", "Cu_OH_2_M", "TOrg_Cu_M",
-  "BL_Cu_mol_kg_Cu", "BL_Ca_mol_kg_Cu", "BL_H_mol_kg_Cu",
-  "BL_Mg_mol_kg_Cu", "BL_Na_mol_kg_Cu", "BL_CuOH_mol_kg_Cu"
-)
-
-bio_ms_ha10_os <- bio_ms_ha10_os %>%
-  mutate(across(any_of(cu_new_vars), ~ as.numeric(.)))
-
-# Convert to numeric
-bio_ms_ha10_os <- bio_ms_ha10_os %>%
-  mutate(across(all_of(cu_new_vars), ~ as.numeric(.)))
-
-# check
-head(bio_ms_ha10_os)
-```
-
-*Important step:* remove the DOC column since this was not an input variable
-
-```{r}
-bio_ms_ha10_os$DIC_uM <- NULL
-
-# Check, should not exist anymore
-bio_ms_ha10_os$DIC_uM
-```
-
-### c. Save to
+Since we're saving the data from BLM run as a **open system assuming HA at 10%**, we'll save it to the Bioavailability Master Spreadsheet into a tab called HA 10% Closed System:
 
 ```{r}
 library(openxlsx)
@@ -1414,5 +763,314 @@ if (!file.exists(file_path)) {
   # Save
   saveWorkbook(wb, file_path, overwrite = TRUE)
 }
+```
 
+# HA 80% Closed System
+
+## 3. BLM Speciation Mode
+
+If you haven't already, convert the Zn_Speciation.det.xlsx to the newest Excel Workbook version before importing them.
+
+Import dataset
+
+```{r}
+library(readxl)
+
+Zn_Speciation_ha80_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/Zinc/1. Running BLM/Data outputs/Speciation Mode/Zn Speciation_ha80.det.xlsx")
+
+head(Zn_Speciation_ha80_cs)
+```
+
+Clean dataset
+
+```{r}
+library(dplyr)
+library(stringr)
+
+Zn_Speciation_ha80_cs_clean <- Zn_Speciation_ha80_cs %>%
+  # 1) Drop rows 1–3
+  slice(-(1:3)) %>%
+  
+  # 2) Set first remaining row as column names
+  { 
+    nm <- as.character(.[1, ])
+    nm <- make.unique(nm)
+    out <- .[-1, ]
+    names(out) <- nm
+    out
+  } %>%
+  
+  # 3) Remove units row (now the first row)
+  slice(-1) %>%
+  
+  # 4) Rename ID columns
+  rename(
+    Sample_ID = `Site Label`,
+    Site      = `Sample Label`
+  ) %>%
+  
+  # 5) Clean Sample_ID and convert others to numeric
+  mutate(
+    Sample_ID = str_extract(Sample_ID, "WaDE_\\d+"),
+    across(-c(Sample_ID, Site), ~ as.numeric(str_replace_all(.x, '"', "")))
+  )
+
+
+# Preview
+head(Zn_Speciation_ha80_cs_clean)
+
+# Sanity check: make sure Sample_ID matches to that of the Bioavailability Master Spreadsheet called bio_ms (should be 386)
+
+Zn_Speciation_ha80_cs_clean %>%
+  inner_join(
+    Zn_Speciation_ha10_cs_clean %>% 
+      dplyr::select(Sample_ID),
+    by = "Sample_ID"
+  ) %>%
+  summarise(n_matched = n())
+```
+
+Select variables, add a suffix indicating their units, and add to bio_ms
+
+```{r}
+library(dplyr)
+
+bio_ms_ha80_cs <- bio_ms %>% # Merge variables from Zn_Speciation_ha10_cs_clean to bio_ms
+  left_join(
+    Zn_Speciation_ha80_cs_clean %>%
+      rename(
+        Free_Zn_M        = Zn,          
+        ZnOH_M           = ZnOH,
+        Zn_OH_2_M        = `Zn(OH)2`,
+        ZnCO3_M          = ZnCO3,
+        ZnHCO3_M         = ZnHCO3,
+        ZnSO4_M          = ZnSO4,
+        ZnCl_M           = ZnCl,
+        ZnS_M            = ZnS,
+        TOrg_Zn_M        = `TOrg.Zn`,
+        BL_Zn_mol_kg     = `BL-Zn`,  
+        BL_Ca_mol_kg     = `BL-Ca`,
+        BL_H_mol_kg      = `BL-H`,
+        BL_Mg_mol_kg     = `BL-Mg`,
+        BL_Na_mol_kg     = `BL-Na`,
+        BL_ZnOH_mol_kg   = `BL-ZnOH`,
+        HCO3_M           = HCO3,
+        H2_CO3_M         = H2CO3,
+        HS_M             = HS,
+        H2S_M            = H2S,
+        MgHCO3_M         = MgHCO3,
+        MgCO3_M          = MgCO3,
+        MgSO4_M          = MgSO4,
+        CaHCO3_M         = CaHCO3,
+        CaCO3_M          = CaCO3,
+        CaSO4_M          = CaSO4,
+        TOrg_H_M         = `TOrg.H`,
+        TOrg_Ca_M        = `TOrg.Ca`,
+        TOrg_Mg_M        = `TOrg.Mg`,
+        TOrg_Na_M        = `TOrg.Na`,
+        TOrg_K_M         = `TOrg.K`
+      ) %>%
+      select(
+        Sample_ID,
+        Free_Zn_M,
+        ZnOH_M,
+        Zn_OH_2_M,
+        ZnCO3_M,
+        ZnHCO3_M,
+        ZnSO4_M,
+        ZnCl_M,
+        ZnS_M,
+        TOrg_Zn_M,
+        BL_Zn_mol_kg,
+        BL_Ca_mol_kg,
+        BL_H_mol_kg,
+        BL_Mg_mol_kg,
+        BL_Na_mol_kg,
+        BL_ZnOH_mol_kg,
+        HCO3_M,
+        H2_CO3_M,
+        HS_M,
+        H2S_M,
+        MgHCO3_M,
+        MgCO3_M,
+        MgSO4_M,
+        CaHCO3_M,
+        CaCO3_M,
+        CaSO4_M,
+        TOrg_H_M,
+        TOrg_Ca_M,
+        TOrg_Mg_M,
+        TOrg_Na_M,
+        TOrg_K_M
+      ),
+    by = "Sample_ID"
+  )
+
+
+# Make sure they're numeric
+zn_new_vars <- c(
+  "Free_Zn_M",
+  "ZnOH_M",
+  "Zn_OH_2_M",
+  "ZnCO3_M",
+  "ZnHCO3_M",
+  "ZnSO4_M",
+  "ZnCl_M",
+  "ZnS_M",
+  "TOrg_Zn_M",
+  "BL_Zn_mol_kg",
+  "BL_Ca_mol_kg",
+  "BL_H_mol_kg",
+  "BL_Mg_mol_kg",
+  "BL_Na_mol_kg",
+  "BL_ZnOH_mol_kg",
+  "HCO3_M",
+  "H2_CO3_M",
+  "HS_M",
+  "H2S_M",
+  "MgHCO3_M",
+  "MgCO3_M",
+  "MgSO4_M",
+  "CaHCO3_M",
+  "CaCO3_M",
+  "CaSO4_M",
+  "TOrg_H_M",
+  "TOrg_Ca_M",
+  "TOrg_Mg_M",
+  "TOrg_Na_M",
+  "TOrg_K_M"
+)
+
+bio_ms_ha80_cs <- bio_ms_ha80_cs %>%
+  mutate(across(all_of(zn_new_vars), ~ as.numeric(.)))
+
+# Check
+str(bio_ms_ha80_cs)
+```
+
+## 4. BLM Toxicity Mode
+
+Import the Zn Toxicity on C. dubia.det.xlsx
+
+```{r}
+library(readxl)
+
+Zn_Toxicity_on_C_dubia_ha80_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/Zinc/1. Running BLM/Data outputs/Toxicity Mode/Zn Toxicity on C. dubia.det.xlsx")
+
+head(Zn_Toxicity_on_C_dubia_ha80_cs)
+```
+
+Data cleaning
+
+```{r}
+library(dplyr)
+library(stringr)
+
+Zn_Toxicity_on_C_dubia_ha80_cs_clean <- Zn_Toxicity_on_C_dubia_ha80_cs %>%
+  # 1) Drop rows 1–3
+  slice(-(1:3)) %>%
+  
+  # 2) Set first remaining row as column names (and make them unique)
+  {
+    nm <- as.character(.[1, ])
+    nm <- make.unique(nm)
+    out <- .[-1, ]
+    names(out) <- nm
+    out
+  } %>%
+  
+  # 3) Remove units row (now the first row)
+  slice(-1) %>%
+  
+  # 4) Rename ID columns
+  rename(
+    Sample_ID = `Site Label`,
+    Site      = `Sample Label`
+  ) %>%
+  
+  # 5) Clean Sample_ID + strip quotes + convert everything else to numeric
+  mutate(
+    Sample_ID = str_extract(Sample_ID, "WaDE_\\d+"),
+    across(-c(Sample_ID, Site), ~ as.numeric(str_replace_all(.x, '"', "")))
+  )
+
+# Preview
+head(Zn_Toxicity_on_C_dubia_ha80_cs_clean)
+
+# Sanity check: match count vs Bioavailability Master Spreadsheet (bio_ms)
+bio_ms %>%
+  inner_join(
+    Zn_Toxicity_on_C_dubia_ha80_cs_clean %>% dplyr::select(Sample_ID),
+    by = "Sample_ID"
+  ) %>%
+  summarise(n_matched = dplyr::n())
+```
+
+Select the T.Zn variable (total amount of Zn to cause the toxicity to the organism) and add to bio_ms
+
+```{r}
+library(dplyr)
+
+bio_ms_ha80_cs <- bio_ms_ha80_cs %>%
+  left_join(
+    Zn_Toxicity_on_C_dubia_ha80_cs_clean %>%
+      dplyr::rename(
+        Zn_Toxicity_Daphnia_M = T.Zn
+      ) %>%
+      dplyr::select(
+        Sample_ID,
+        Zn_Toxicity_Daphnia_M
+      ),
+    by = "Sample_ID"
+  )
+
+
+# Make sure they're numeric
+zn_new_vars <- c("Zn_Toxicity_Daphnia_M")
+
+# Convert them to numeric
+bio_ms_ha80_cs <- bio_ms_ha80_cs %>%
+  mutate(across(all_of(zn_new_vars), ~ as.numeric(.)))
+
+# Check
+str(bio_ms_ha80_cs)
+```
+
+## 5. Export to Bioavailability Master Spreadsheet
+
+Since we're saving the data from BLM run as a **open system assuming HA at 10%**, we'll save it to the Bioavailability Master Spreadsheet into a tab called HA 10% Closed System:
+
+```{r}
+library(openxlsx)
+
+file_path <- "Bioavailability_Master_Spreadsheet.xlsx"
+
+# ---------------------------------------------------------
+# 1. Create workbook if file does NOT exist
+# ---------------------------------------------------------
+if (!file.exists(file_path)) {
+  
+  wb <- createWorkbook()
+  addWorksheet(wb, "HA 80% Closed System")
+  writeData(wb, "HA 80% Closed System", bio_ms_ha80_cs)
+  saveWorkbook(wb, file_path, overwrite = TRUE)
+
+} else {
+
+  # ---------------------------------------------------------
+  # 2. If the file EXISTS, load it and add/overwrite the sheet
+  # ---------------------------------------------------------
+  wb <- loadWorkbook(file_path)
+
+  # Add sheet if missing
+  if (!"HA 80% Closed System" %in% names(wb)) {
+    addWorksheet(wb, "HA 80% Closed System")
+  }
+
+  # Write/overwrite data in that sheet
+  writeData(wb, "HA 80% Closed System", bio_ms_ha80_cs)
+
+  # Save
+  saveWorkbook(wb, file_path, overwrite = TRUE)
+}
 ```

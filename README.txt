@@ -2,10 +2,10 @@ This repository was developed by Cecilia Albert-Black and is still "under constr
 
 This repo contains all steps followed by Cecilia used to run BLM from data contained in the WaDE Synoptic Survey Campaign conduced from Jun. 2023 – Feb. 2025 by obtaining bi-monthly samples from the East Fork Poplar Creek Watershed in Oak Ridge, TN.
 
-This repo is meant to be followed using the folders in numeric order to conduct each step:
+This repo is meant to be followed by trace element separately, as you will see these steps separate by "Zinc" and "Copper" folders. Within each folder, the following workflow is carried out:
 
 1. Running BLM folder
-	- Data inputs sub-folder: develop input files from the WaDE_Synoptic_Summary.xlsx dataset to run Zn-BLM and Cu-BLM (both in speciation and toxicity mode) under the following conditions: 
+	- Data inputs sub-folder: develop input files from the WaDE_Synoptic_Summary.xlsx dataset to run Zn-BLM or Cu-BLM (both in speciation and toxicity mode) under the following conditions: 
 		i. HA 10% Closed System (default)
 		ii. HA 10% Open System (no DIC input variable)
 		iii. HA 80% Closed System (higher humic acid content)
@@ -17,7 +17,12 @@ This repo is meant to be followed using the folders in numeric order to conduct 
 
 4. Exploratory data analysis folder: contains sub-folders for each condition which contains code to explore the distribution of variables under each condition.
 
-5. Statistical data analysis: contains all data analysis including typological classification (clustering), multiple linear regression, Kruskal-Walis tests, and graphing for data under the default condition (HA 10% Closed System). Sub-folders contain all plots and visual outputs from the Rmd file.
+5. Statistical data analysis: contains all data analysis including:
+	I. Typological classification (clustering of sites using BLM input variables)
+	II. Multiple linear regression (of BLM input variables to predict Zn or Cu bioavailability)
+	III. Kruskal-Walis tests (of BLM input and output variables by Typology)
+	IV. Plots of data under the default condition (HA 10% Closed System)
+Sub-folders contain all plots and visual outputs from the Rmd file.
 
-6. Sensitivity analyses (***to be developed***): contains sensitivity analyses comparing the results from the default condition with that of the other two conditions to determine whether our DIC measurements contained a significant amount of error as to influence the results and to assess whether a higher percentage of DOC humic acid content significantly changes the results from the baseline condition.
+6. Sensitivity analyses (***under construction***): contains sensitivity analyses comparing the results from the default condition with that of the other two conditions to determine whether our DIC measurements contained a significant amount of error as to influence the results and to assess whether a higher percentage of DOC humic acid content significantly changes the results from the baseline condition.
 
