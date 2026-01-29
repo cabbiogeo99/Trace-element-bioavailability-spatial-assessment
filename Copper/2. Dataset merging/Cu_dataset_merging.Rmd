@@ -111,7 +111,7 @@ bio_ms <- bio_ms %>%
   left_join(
     WaDE_Site_Info %>%
       rename(
-        Relative_elevation_m = `elevation (m) (USGS 3DEP)`,
+        Relative_elevation_m = `Relative elevation from main stem (m)`,
         Dist_from_EFPC_km    = `Upstream of EFK_KM`,
         Drainage_area_km2    = `DrainageArea_SqKm`,
         Developed_lulc       = `lulc_developed_%`

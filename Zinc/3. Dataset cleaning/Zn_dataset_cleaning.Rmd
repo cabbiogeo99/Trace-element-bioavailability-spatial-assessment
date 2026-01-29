@@ -1,11 +1,11 @@
 ---
-title: "Data_cleaning"
+title: "Zn_dataset_cleaning"
 author: "Cecilia Albert-Black"
 date: "2025-11-13"
 output: html_document
 ---
 
-Here I will walk through cleaning and feature engineering the Bioavailability Master Spreadsheet. We will run this for each tab separately to create a Bioavailability Master Spreadsheet Clean version with 3 tabs.
+Here I will walk through cleaning and feature engineering the Bioavailability Master Spreadsheet for each of the 3 tabs (BLM assumptions). To run this for each of the tabs, simply replace the file upload which becomes the object called "dat" and replace the tab name of the exported file to the Bioavailability Master Spreadsheet will be, then run the entire Rmd.
 
 Workflow overview
 
@@ -26,7 +26,7 @@ Workflow overview
 Set the working directory to the repo
 
 ```{r}
-setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/3. Dataset cleaning")
+setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Zinc/3. Dataset cleaning")
 ```
 
 Upload Bioavailability_Master_Spreadsheet.xlsx
@@ -35,37 +35,23 @@ Upload Bioavailability_Master_Spreadsheet.xlsx
 #load package (must be installed first)
 library(readxl) 
 
-dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/2. Dataset merging/Bioavailability_Master_Spreadsheet.xlsx",
-                  sheet = "HA 10% Closed System")
-```
+dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Zinc/2. Dataset merging/Bioavailability_Master_Spreadsheet.xlsx", 
+    sheet = "HA 10% Closed System")
 
-Preview first 10 rows
-
-```{r}
-head(dat)
-```
-
-Inspect the structure
-
-```{r}
 str(dat)
-```
-
-Move stream inherent characteristics to the first few columns
-
-```{r}
-library(dplyr)
-
-dat <- dat %>%
-  relocate(Network, Relative_elevation_m, Dist_from_EFPC_km, Drainage_area_km2, Developed_lulc, .before = pH)
-
-# Check
-head(dat)
 ```
 
 ## II. Unit Conversions
 
-Convert molar concentrations to uM and nM
+Perform the following unit conversions
+
+-   M -\> uM and nM
+
+-   uM -\> M and nM
+
+-   mol/kg -\> nmol/g
+
+That way, we have all variables in units of M, uM, and nM (for dissolved species) or mol/kg and nmol/kg (for biotic ligand-bound elements)
 
 ```{r}
 library(dplyr)
@@ -74,37 +60,44 @@ library(stringr)
 dat <- dat %>%
   mutate(
     # ---------------------------------------------------------
-    # 1) If you have *_uM but not *_M, create *_M
+    # 1) From *_uM  -> create NEW *_M columns
     # ---------------------------------------------------------
     across(
-      matches("_uM$", ignore.case = FALSE),
+      ends_with("_uM"),
       ~ .x * 1e-6,
-      .names = "{str_remove(.col, '_uM$')}_M"
+      .names = "{.col}_M"
     ),
 
     # ---------------------------------------------------------
-    # 2) From *_M create *_uM and *_nM (case-sensitive, so _m won't match)
+    # 2) From *_M  -> create NEW *_uM and *_nM columns
     # ---------------------------------------------------------
     across(
-      matches("_M$", ignore.case = FALSE),
+      ends_with("_M", ignore.case = FALSE), # Ignores when _m so that Relative_elevation_m does not get converted
       list(uM = ~ .x * 1e6, nM = ~ .x * 1e9),
-      .names = "{str_remove(.col, '_M$')}_{.fn}"
+      .names = "{.col}_{.fn}"
     ),
 
     # ---------------------------------------------------------
-    # 3) Keep BL-bound conversions as-is
+    # 3) From *_mol_kg -> create NEW *_umol_g and *_nmol_g columns
     # ---------------------------------------------------------
     across(
-      ends_with("_mol_kg_Zn"),
-      list(umol_g_Zn = ~ .x * 1e3, nmol_g_Zn = ~ .x * 1e6),
-      .names = "{str_remove(.col, '_mol_kg_Zn$')}_{.fn}"
-    ),
-    across(
-      ends_with("_mol_kg_Cu"),
-      list(umol_g_Cu = ~ .x * 1e3, nmol_g_Cu = ~ .x * 1e6),
-      .names = "{str_remove(.col, '_mol_kg_Cu$')}_{.fn}"
+      ends_with("_mol_kg"),
+      list(umol_g = ~ .x * 1e3, nmol_g = ~ .x * 1e6),
+      .names = "{.col}_{.fn}"
     )
-  )
+  ) %>%
+  # ---------------------------------------------------------
+  # Fix the new names so they look right:
+  # "DOC_uM_M"  -> "DOC_M"
+  # "Free_Zn_M_uM" -> "Free_Zn_uM"  (etc.)
+  # "BL_Zn_mol_kg_umol_g" -> "BL_Zn_umol_g"
+  # ---------------------------------------------------------
+  rename_with(~ str_replace(.x, "_uM_M$", "_M")) %>%
+  rename_with(~ str_replace(.x, "_M_uM$", "_uM")) %>%
+  rename_with(~ str_replace(.x, "_M_nM$", "_nM")) %>%
+  rename_with(~ str_replace(.x, "_mol_kg_umol_g$", "_umol_g")) %>%
+  rename_with(~ str_replace(.x, "_mol_kg_nmol_g$", "_nmol_g"))
+
 ```
 
 Checks
@@ -124,15 +117,15 @@ names(dat)[grepl("Relative_elevation_m_", names(dat))]
 Total biotic ligand (TBL)-bound trace elements = TBL-element+ TBL-element hydroxide
 
 ```{r}
-# TBL-Zn
-dat$TBL_Zn_nmol_g <- dat$BL_Zn_nmol_g_Zn + dat$BL_ZnOH_nmol_g_Zn
+# TBL-Zn in nmol/g
+dat$TBL_Zn_nmol_g <- dat$BL_Zn_nmol_g + dat$BL_ZnOH_nmol_g
 
-# TBL-Cu
-dat$TBL_Cu_nmol_g <- dat$BL_Cu_nmol_g_Cu + dat$BL_CuOH_nmol_g_Cu
+# TBL-Zn in mol/kg
+dat$TBL_Zn_mol_kg <- dat$BL_Zn_mol_kg + dat$BL_ZnOH_mol_kg
 
 # Check
 hist(dat$TBL_Zn_nmol_g)
-hist(dat$TBL_Cu_nmol_g)
+hist(dat$TBL_Zn_mol_kg)
 ```
 
 ### i. Relative Proportion of Bioavailable Element
@@ -143,12 +136,8 @@ Relative proportion of element (rel_prop_Zn_nM) = TBL-element / measured element
 # Zinc
 dat$rel_prop_Zn <- dat$Free_Zn_uM / dat$Zn_uM
 
-# Copper
-dat$rel_prop_Cu <- dat$Free_Cu_uM / dat$Cu_uM
-
 # Check
 hist(dat$rel_prop_Zn)
-hist(dat$rel_prop_Cu)
 ```
 
 ## IV. Create New Categorical Variables
