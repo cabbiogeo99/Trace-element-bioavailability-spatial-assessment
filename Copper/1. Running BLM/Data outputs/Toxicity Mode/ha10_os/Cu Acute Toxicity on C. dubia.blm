@@ -408,4 +408,4 @@ TF  Site Name              Sample Name                 Temp.         HA         
 "T","WaDE_738            ","EFK20               ",     14.5          10            8.3           6.32000E-008  1.52          1.47400E-003  5.80000E-004  7.59007E-004  5.80996E-005  3.29995E-004  7.98932E-004  3.06808E-150  9.99875E-017  
 "T","WaDE_739            ","Downtown            ",     15.8          10            8.33          7.53000E-009  0.976         1.21700E-003  4.59000E-004  3.24003E-004  2.66998E-005  7.73987E-005  4.15965E-004  3.28724E-150  9.99875E-017  
 /*
-"Freshwater","Cu","1","Ceriodaphnia dubia Acute Neonate (<24 hr)  EC50; LC50","C:\Program Files (x86)\Biotic Ligand Model - Research Mode\Model\Cu_freshwater_acute_and_chronic_2017-01-17.dat"," /CA1","False"
+"Freshwater","Cu","1","Ceriodaphnia dubia Acute Neonate (<24 hr)  EC50; LC50","C:\Program Files (x86)\Biotic Ligand Model - Research Mode\Model\Cu_freshwater_acute_and_chronic_2017-01-17.dat"," /CA1","True"
