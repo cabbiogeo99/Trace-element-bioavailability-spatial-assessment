@@ -13,7 +13,7 @@
 
 <meta name="date" content="2025-11-13" />
 
-<title>BLM Data Entry</title>
+<title>WaDE Dataset Cleaning</title>
 
 <script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
 // be compatible with the behavior of Pandoc < 2.8).
@@ -350,7 +350,7 @@ display: none;
 
 
 
-<h1 class="title toc-ignore">BLM Data Entry</h1>
+<h1 class="title toc-ignore">WaDE Dataset Cleaning</h1>
 <h4 class="author">Cecilia Albert-Black</h4>
 <h4 class="date">2025-11-13</h4>
 
@@ -359,17 +359,11 @@ display: none;
 
 <div id="objective" class="section level1">
 <h1>Objective</h1>
-<p>The objective of this file is to create a data entry files to run the
-Biotic Ligand Model (BLM) desktop version.</p>
-<p>We’ll be creating 2 BLM data entry files for each trace element:</p>
-<ul>
-<li><p>BLM_Data_Entry_for_Zn.xlsx</p></li>
-<li><p>BLM_Data_Entry_for_Cu.xlsx</p></li>
-</ul>
-<p>These files will be used for running BLM as a closed-system (input
-DIC) in Speciation and Toxicity prediction modes.</p>
-<p>See BLM_manual.pdf to learn how to use the BLM.</p>
-<p>The BLM requires the following variables to run:</p>
+<p>The objective of this file is to clean the WaDE Synoptic Survey
+Dataset by removing missing values, flag (and sometimes filter out or
+replace) samples below detection limits.</p>
+<p>We will only be applying these steps to variables which will be using
+to run BLM, which are</p>
 <ul>
 <li><p>Site Name</p></li>
 <li><p>Sample Name</p></li>
@@ -389,20 +383,18 @@ mg/L)</p></li>
 <li><p>Sulfur concentration (S mg/L): under development, but must enter
 an arbitrary small quantity</p></li>
 </ul>
-<p>We will be obtaining these variables from the
-WaDE_Synoptic_Summary_Final.xlsx file.</p>
+<p>At the end, we will have created the WaDE_Synoptic_Summary_Clean.xlsx
+file.</p>
 </div>
-<div id="creating-blm-input-datasets" class="section level1">
-<h1>Creating BLM-Input Datasets</h1>
-<div id="import-the-wade-synoptic-survey-dataset" class="section level2">
-<h2>1. Import the WaDE Synoptic Survey Dataset</h2>
+<div id="import-the-wade-synoptic-survey-dataset" class="section level1">
+<h1>1. Import the WaDE Synoptic Survey Dataset</h1>
 <p>Set working directory</p>
-<pre class="r"><code>setwd(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/1. Running BLM/Data inputs&quot;)</code></pre>
+<pre class="r"><code>setwd(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/WaDE Dataset Cleaning&quot;)</code></pre>
 <p>Import data from the tab called WaDE_SYNOPTIC_SUMMARY in the
-WaDE_Synoptic_Summary_Final.xlsx file</p>
+WaDE_Synoptic_Summary.xlsx file</p>
 <pre class="r"><code>library(readxl)
 
-WaDE_Synoptic_Summary &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/1. Spatial Assessment/Data/Spatial Assessment of Bioavailability Project/1. Running BLM/Data inputs/WaDE_Synoptic_Summary.xlsx&quot;, 
+WaDE_Synoptic_Summary &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/WaDE Dataset Cleaning/WaDE_Synoptic_Summary.xlsx&quot;, 
     sheet = &quot;WaDE_SYNOPTIC_SUMMARY&quot;)</code></pre>
 <pre><code>## New names:
 ## • `NO3_FLAG` -&gt; `NO3_FLAG...30`
@@ -448,11 +440,11 @@ WaDE_Synoptic_Summary &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge N
 ##  $ Temp          : num [1:629] 13.3 13.9 14.5 15.2 15.2 15.5 12.7 13.7 15 18.1 ...
 ##  $ Temp_FLAG     : num [1:629] 1 1 1 1 1 1 1 1 1 1 ...
 ##  $ DOC           : num [1:629] 71.7 65 134.2 41.7 34.2 ...
-##  $ DOC_FLAG      : num [1:629] 1 1 1 0 0 0 1 1 1 1 ...
+##  $ DOC_FLAG      : num [1:629] NA NA NA NA NA NA NA NA NA NA ...
 ##  $ DIC           : num [1:629] -9999 -9999 -9999 -9999 -9999 ...
 ##  $ DIC_FLAG      : num [1:629] -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 ...
 ##  $ Br            : num [1:629] 0 0 0 0 0 0 0 0 0 0 ...
-##  $ Br_FLAG       : num [1:629] 0 0 0 0 0 0 0 0 0 0 ...
+##  $ Br_FLAG       : num [1:629] NA NA NA NA NA NA NA NA NA NA ...
 ##  $ Cl            : num [1:629] 206 161 261 151 142 174 520 137 148 113 ...
 ##  $ Cl_FLAG       : num [1:629] 1 1 1 1 1 1 1 1 1 1 ...
 ##  $ NO3IC         : num [1:629] 85.5 100 51.3 109 109 107 0 48.4 39.2 33.5 ...
@@ -470,65 +462,66 @@ WaDE_Synoptic_Summary &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge N
 ##  $ TP            : chr [1:629] &quot;1.35&quot; &quot;2.6&quot; &quot;1.84&quot; &quot;1.66&quot; ...
 ##  $ TP_FLAG       : num [1:629] NA NA NA NA NA NA NA NA NA NA ...
 ##  $ Ag            : num [1:629] 3.60e-06 0.00 0.00 0.00 0.00 0.00 0.00 0.00 1.94e-04 1.16e-04 ...
-##  $ Ag_FLAG       : num [1:629] 0 0 0 0 0 0 0 0 1 1 ...
+##  $ Ag_FLAG       : num [1:629] NA NA NA NA NA NA NA NA NA NA ...
 ##  $ Al            : num [1:629] 0.00684 0.00826 0.0245 0.0193 0.0172 0.00733 0.01 0.147 0.00645 0.0153 ...
-##  $ Al_FLAG       : num [1:629] 0 0 1 1 1 0 0 1 0 1 ...
+##  $ Al_FLAG       : num [1:629] NA NA NA NA NA NA NA NA NA NA ...
 ##  $ As            : num [1:629] 0.00187 0.0016 0.00286 0.00138 0.00115 0.00154 0.00424 0.000709 0.000843 0.00207 ...
-##  $ As_FLAG       : num [1:629] 1 1 1 1 1 1 1 1 1 1 ...
+##  $ As_FLAG       : num [1:629] NA NA NA NA NA NA NA NA NA NA ...
 ##  $ Ba            : num [1:629] 0.298 0.325 0.217 0.301 0.338 0.21 0.337 0.205 0.139 0.128 ...
-##  $ Ba_FLAG       : num [1:629] 1 1 1 1 1 1 1 1 1 1 ...
+##  $ Ba_FLAG       : num [1:629] NA NA NA NA NA NA NA NA NA NA ...
 ##  $ Be            : num [1:629] 0.00115 0.00123 0.000221 0.00157 0.00208 0.000382 0.000524 0.00134 0.00061 0.0018 ...
-##  $ Be_FLAG       : num [1:629] 1 1 0 1 1 1 1 1 1 1 ...
+##  $ Be_FLAG       : num [1:629] NA NA NA NA NA NA NA NA NA NA ...
 ##  $ Ca            : num [1:629] 1438 1290 2029 1202 1079 ...
-##  $ Ca_FLAG       : num [1:629] 1 1 1 1 1 1 1 1 1 1 ...
+##  $ Ca_FLAG       : num [1:629] NA NA NA NA NA NA NA NA NA NA ...
 ##  $ Cd            : num [1:629] 6.92e-05 7.65e-05 4.49e-05 1.18e-04 1.59e-04 4.49e-05 7.18e-05 5.32e-05 3.34e-05 1.25e-04 ...
-##  $ Cd_FLAG       : num [1:629] 1 1 1 1 1 1 1 1 1 1 ...
+##  $ Cd_FLAG       : num [1:629] NA NA NA NA NA NA NA NA NA NA ...
 ##  $ Ce            : num [1:629] 1.12e-04 5.15e-05 1.39e-04 4.06e-05 4.19e-05 8.93e-05 3.87e-04 3.37e-04 1.71e-04 1.69e-04 ...
-##  $ Ce_FLAG       : num [1:629] 1 1 1 1 1 1 1 1 1 1 ...
+##  $ Ce_FLAG       : num [1:629] NA NA NA NA NA NA NA NA NA NA ...
 ##  $ Co            : num [1:629] 0.000508 0.000538 0.000857 0.000421 0.000401 0.000439 0.00797 0.000749 0.000791 0.000526 ...
-##  $ Co_FLAG       : num [1:629] 1 1 1 1 1 1 1 1 1 1 ...
+##  $ Co_FLAG       : num [1:629] NA NA NA NA NA NA NA NA NA NA ...
 ##  $ Cr            : num [1:629] 0.00561 0.00478 0.00385 0.00552 0.00606 0.00426 0.00159 0.00157 0.00128 0.0013 ...
-##  $ Cr_FLAG       : num [1:629] 1 1 1 1 1 1 1 1 1 1 ...
+##  $ Cr_FLAG       : num [1:629] NA NA NA NA NA NA NA NA NA NA ...
 ##  $ Cu            : num [1:629] 0.0049 0.00322 0.00741 0.00235 0.00275 0.00291 0.00844 0.184 0.00184 0.00254 ...
-##  $ Cu_FLAG       : num [1:629] 1 1 1 1 1 1 1 1 0 1 ...
+##  $ Cu_FLAG       : num [1:629] NA NA NA NA NA NA NA NA NA NA ...
 ##  $ Dy            : num [1:629] 2.80e-05 2.77e-05 2.16e-05 5.54e-05 6.48e-05 2.26e-05 3.34e-05 5.79e-05 2.75e-05 7.94e-05 ...
-##  $ Dy_FLAG       : num [1:629] 1 1 1 1 1 1 1 1 1 1 ...
+##  $ Dy_FLAG       : num [1:629] NA NA NA NA NA NA NA NA NA NA ...
 ##  $ Er            : num [1:629] 2.26e-05 2.09e-05 1.90e-05 3.70e-05 4.44e-05 1.68e-05 2.46e-05 3.06e-05 1.91e-05 7.13e-05 ...
-##  $ Er_FLAG       : num [1:629] 1 1 1 1 1 1 1 1 1 1 ...
+##  $ Er_FLAG       : num [1:629] NA NA NA NA NA NA NA NA NA NA ...
 ##  $ Eu            : num [1:629] 6.13e-05 6.19e-05 4.13e-05 6.61e-05 7.36e-05 4.15e-05 6.48e-05 5.12e-05 3.09e-05 9.22e-05 ...
-##  $ Eu_FLAG       : num [1:629] 1 1 1 1 1 1 1 1 1 1 ...
+##  $ Eu_FLAG       : num [1:629] NA NA NA NA NA NA NA NA NA NA ...
 ##  $ Fe            : num [1:629] 0.125 0.126 0.178 0.399 0.082 0.132 0.787 0.0663 0.0904 0.0807 ...
-##  $ Fe_FLAG       : num [1:629] 1 1 1 1 1 1 1 1 1 1 ...
+##  $ Fe_FLAG       : num [1:629] NA NA NA NA NA NA NA NA NA NA ...
 ##  $ Gd            : num [1:629] 2.70e-05 2.85e-05 3.12e-05 5.74e-05 6.91e-05 1.81e-05 4.37e-05 9.24e-05 4.03e-05 8.30e-05 ...
-##  $ Gd_FLAG       : num [1:629] 1 1 1 1 1 1 1 1 1 1 ...
+##  $ Gd_FLAG       : num [1:629] NA NA NA NA NA NA NA NA NA NA ...
 ##  $ Ho            : num [1:629] 7.40e-06 5.11e-06 1.71e-06 9.52e-06 1.09e-05 2.40e-06 3.17e-06 8.30e-06 6.21e-06 6.37e-05 ...
-##  $ Ho_FLAG       : num [1:629] 1 1 1 1 1 1 1 1 1 1 ...
+##  $ Ho_FLAG       : num [1:629] NA NA NA NA NA NA NA NA NA NA ...
 ##  $ K             : num [1:629] 27 26.6 31.9 26.2 29 21.3 45.7 28 21.1 21 ...
-##  $ K_FLAG        : num [1:629] 1 1 1 1 1 1 1 1 1 1 ...
+##  $ K_FLAG        : num [1:629] NA NA NA NA NA NA NA NA NA NA ...
 ##  $ La            : num [1:629] 8.95e-05 1.21e-04 1.09e-04 2.61e-04 3.00e-04 8.77e-05 2.22e-04 3.31e-04 1.57e-04 1.53e-04 ...
-##  $ La_FLAG       : num [1:629] 1 1 1 1 1 1 1 1 1 1 ...
+##  $ La_FLAG       : num [1:629] NA NA NA NA NA NA NA NA NA NA ...
 ##  $ Lu            : num [1:629] 8.47e-06 3.02e-06 1.73e-06 5.00e-06 4.79e-06 2.47e-06 8.56e-07 1.72e-06 3.66e-06 5.56e-05 ...
-##  $ Lu_FLAG       : num [1:629] 1 1 1 1 1 1 1 1 1 1 ...
+##  $ Lu_FLAG       : num [1:629] NA NA NA NA NA NA NA NA NA NA ...
 ##  $ Mg            : num [1:629] 576 613 389 640 646 610 734 124 360 337 ...
-##  $ Mg_FLAG       : num [1:629] 1 1 1 1 1 1 1 1 1 1 ...
+##  $ Mg_FLAG       : num [1:629] NA NA NA NA NA NA NA NA NA NA ...
 ##  $ Mn            : num [1:629] 0.117 0.176 0.434 0.17 0.0279 0.081 4.68 0.139 0.0982 0.0101 ...
-##  $ Mn_FLAG       : num [1:629] 1 1 1 1 1 1 1 1 1 1 ...
+##  $ Mn_FLAG       : num [1:629] NA NA NA NA NA NA NA NA NA NA ...
 ##  $ Mo            : num [1:629] 0.00313 0.0014 0.00603 0.00117 0.000978 0.00105 0.00132 0.000172 0.000323 0.00146 ...
-##  $ Mo_FLAG       : num [1:629] 1 1 1 1 1 1 1 0 0 1 ...
+##  $ Mo_FLAG       : num [1:629] NA NA NA NA NA NA NA NA NA NA ...
 ##  $ Na            : num [1:629] 193 195 288 144 135 166 541 144 128 75 ...
-##  $ Na_FLAG       : num [1:629] 1 1 1 1 1 1 1 1 1 1 ...
+##  $ Na_FLAG       : num [1:629] NA NA NA NA NA NA NA NA NA NA ...
 ##  $ Nd            : num [1:629] 0.000097 0.000144 0.000114 0.000314 0.000364 0.000097 0.00023 0.000474 0.000217 0.000168 ...
-##  $ Nd_FLAG       : num [1:629] 1 1 1 1 1 1 1 1 1 1 ...
+##  $ Nd_FLAG       : num [1:629] NA NA NA NA NA NA NA NA NA NA ...
 ##  $ Ni            : num [1:629] 0.00571 0.00627 0.00536 0.00658 0.00722 0.00522 0.0105 0.00757 0.00635 0.00129 ...
-##  $ Ni_FLAG       : num [1:629] 1 1 1 1 1 1 1 1 1 1 ...
+##  $ Ni_FLAG       : num [1:629] NA NA NA NA NA NA NA NA NA NA ...
 ##  $ Pb            : num [1:629] 1.73e-04 1.48e-04 1.36e-04 1.20e-04 8.68e-05 1.61e-04 1.12e-04 9.51e-05 2.75e-05 1.31e-04 ...
-##  $ Pb_FLAG       : num [1:629] 0 0 0 0 0 0 0 0 0 0 ...
+##  $ Pb_FLAG       : num [1:629] NA NA NA NA NA NA NA NA NA NA ...
 ##  $ Pr            : num [1:629] 2.33e-05 3.03e-05 2.41e-05 6.71e-05 8.34e-05 1.77e-05 4.49e-05 1.08e-04 4.69e-05 9.86e-05 ...
-##  $ Pr_FLAG       : num [1:629] 1 1 1 1 1 1 1 1 1 1 ...
+##  $ Pr_FLAG       : num [1:629] NA NA NA NA NA NA NA NA NA NA ...
 ##  $ Sb            : num [1:629] 0.000158 0 0.000657 0 0 0 0.000206 0 0 0.000235 ...
 ##   [list output truncated]</code></pre>
 <p>Add units to variables according to the README tab</p>
 <pre class="r"><code>library(dplyr)</code></pre>
+<pre><code>## Warning: package &#39;dplyr&#39; was built under R version 4.5.2</code></pre>
 <pre><code>## 
 ## Attaching package: &#39;dplyr&#39;</code></pre>
 <pre><code>## The following objects are masked from &#39;package:stats&#39;:
@@ -537,48 +530,65 @@ WaDE_Synoptic_Summary &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge N
 <pre><code>## The following objects are masked from &#39;package:base&#39;:
 ## 
 ##     intersect, setdiff, setequal, union</code></pre>
-<pre class="r"><code># For simplicity, only add units to variables of interest
-WaDE_Synoptic_Summary  &lt;-
+<pre class="r"><code>WaDE_Synoptic_Summary_Clean &lt;-
   WaDE_Synoptic_Summary %&gt;%
-  dplyr::rename(
-      Temp_C = Temp,
-      Zn_uM = Zn,
-      Cu_uM = Cu,
-      DOC_uM = DOC,
-      Ca_uM = Ca,
-      Mg_uM = Mg,
-      Na_uM = Na,
-      K_uM = K,
-      SO4_uM = SO4,
-      Cl_uM = Cl,
-      DIC_uM = DIC
-    )
+  
+  # 1) Keep only variables of interest
+  select(
+    Sample_ID,
+    Site,
+    Date,
+    Regime,
+    Flow_state,
+    Temp,
+    pH,
+    Zn,
+    Cu,
+    DOC,
+    Ca,
+    Mg,
+    Na,
+    K,
+    SO4,
+    Cl,
+    DIC
+  ) %&gt;%
+  
+  # 2) Rename variables to include units
+  rename(
+    Temp_C = Temp,
+    Zn_uM  = Zn,
+    Cu_uM  = Cu,
+    DOC_uM = DOC,
+    Ca_uM  = Ca,
+    Mg_uM  = Mg,
+    Na_uM  = Na,
+    K_uM   = K,
+    SO4_uM = SO4,
+    Cl_uM  = Cl,
+    DIC_uM = DIC
+  )
 
 # Check
-head(WaDE_Synoptic_Summary)</code></pre>
-<pre><code>## # A tibble: 6 × 133
-##   Sample_ID Site   Theme Regime  Date                DateTime            Sampler
-##   &lt;chr&gt;     &lt;chr&gt;  &lt;dbl&gt; &lt;chr&gt;   &lt;dttm&gt;              &lt;dttm&gt;              &lt;chr&gt;  
-## 1 WaDE_1    BSL1.1     1 Perenn… 2023-04-12 00:00:00 2023-04-12 09:30:00 Herndon
-## 2 WaDE_2    BSL2.1     1 Perenn… 2023-04-12 00:00:00 2023-04-12 09:50:00 Herndon
-## 3 WaDE_3    BSL2.2     1 Perenn… 2023-04-12 00:00:00 2023-04-12 10:10:00 Herndon
-## 4 WaDE_5    BSL3.1     1 Perenn… 2023-04-12 00:00:00 2023-04-12 10:45:00 Herndon
-## 5 WaDE_6    BSL3.3     1 Perenn… 2023-04-12 00:00:00 2023-04-12 10:55:00 Herndon
-## 6 WaDE_7    BSL3.2     1 Perenn… 2023-04-12 00:00:00 2023-04-12 11:00:00 Herndon
-## # ℹ 126 more variables: Water_presence &lt;chr&gt;, Flow_state &lt;chr&gt;, Depth &lt;dbl&gt;,
-## #   DO &lt;dbl&gt;, DO_FLAG &lt;dbl&gt;, DOsat &lt;dbl&gt;, DOsat_FLAG &lt;dbl&gt;, pH &lt;dbl&gt;,
-## #   pH_FLAG &lt;dbl&gt;, SpecCond &lt;dbl&gt;, SpecCond_FLAG &lt;dbl&gt;, Temp_C &lt;dbl&gt;,
-## #   Temp_FLAG &lt;dbl&gt;, DOC_uM &lt;dbl&gt;, DOC_FLAG &lt;dbl&gt;, DIC_uM &lt;dbl&gt;,
-## #   DIC_FLAG &lt;dbl&gt;, Br &lt;dbl&gt;, Br_FLAG &lt;dbl&gt;, Cl_uM &lt;dbl&gt;, Cl_FLAG &lt;dbl&gt;,
-## #   NO3IC &lt;dbl&gt;, NO3_FLAG...30 &lt;dbl&gt;, PO4 &lt;dbl&gt;, PO4_FLAG &lt;dbl&gt;, SO4_uM &lt;dbl&gt;,
-## #   SO4_FLAG &lt;dbl&gt;, NH4 &lt;chr&gt;, NH4_FLAG &lt;dbl&gt;, NO3SEAL &lt;chr&gt;, …</code></pre>
+head(WaDE_Synoptic_Summary_Clean)</code></pre>
+<pre><code>## # A tibble: 6 × 17
+##   Sample_ID Site   Date                Regime    Flow_state Temp_C    pH  Zn_uM
+##   &lt;chr&gt;     &lt;chr&gt;  &lt;dttm&gt;              &lt;chr&gt;     &lt;chr&gt;       &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;
+## 1 WaDE_1    BSL1.1 2023-04-12 00:00:00 Perennial Flowing      13.3  8.12 0.0561
+## 2 WaDE_2    BSL2.1 2023-04-12 00:00:00 Perennial Flowing      13.9  7.82 0.064 
+## 3 WaDE_3    BSL2.2 2023-04-12 00:00:00 Perennial Flowing      14.5  7.78 0.0641
+## 4 WaDE_5    BSL3.1 2023-04-12 00:00:00 Perennial Flowing      15.2  7.45 0.0537
+## 5 WaDE_6    BSL3.3 2023-04-12 00:00:00 Perennial Flowing      15.2  7.35 0.0571
+## 6 WaDE_7    BSL3.2 2023-04-12 00:00:00 Perennial Flowing      15.5  7.65 0.0322
+## # ℹ 9 more variables: Cu_uM &lt;dbl&gt;, DOC_uM &lt;dbl&gt;, Ca_uM &lt;dbl&gt;, Mg_uM &lt;dbl&gt;,
+## #   Na_uM &lt;dbl&gt;, K_uM &lt;dbl&gt;, SO4_uM &lt;dbl&gt;, Cl_uM &lt;dbl&gt;, DIC_uM &lt;dbl&gt;</code></pre>
 <p>Count the number of total samples</p>
-<pre class="r"><code>n_total &lt;- length(unique(WaDE_Synoptic_Summary$Sample_ID))
+<pre class="r"><code>n_total &lt;- length(unique(WaDE_Synoptic_Summary_Clean$Sample_ID))
 n_total</code></pre>
 <pre><code>## [1] 629</code></pre>
 </div>
-<div id="omitting-samples" class="section level2">
-<h2>2. Omitting Samples</h2>
+<div id="omitting-samples-with-missing-values" class="section level1">
+<h1>2. Omitting Samples with Missing Values</h1>
 <p>Samples will be omitted which do not have all BLM input
 variables.</p>
 <p>Missing sample measurements are denoted with -9999 values.</p>
@@ -589,7 +599,7 @@ vars &lt;- c(
   &quot;Na_uM&quot;,&quot;K_uM&quot;,&quot;SO4_uM&quot;,&quot;Cl_uM&quot;,&quot;DIC_uM&quot;
 )
 
-missing_dat &lt;- WaDE_Synoptic_Summary %&gt;%
+missing_dat &lt;- WaDE_Synoptic_Summary_Clean %&gt;%
   filter(if_any(all_of(vars), ~ .x == -9999)) %&gt;%
   dplyr::select(Sample_ID, Site, all_of(vars))
 
@@ -622,11 +632,11 @@ n_missing # total numer of samples with at least 1 missing variable measurement<
 <pre><code>## Temp_C  Zn_uM  Cu_uM DOC_uM  Ca_uM  Mg_uM  Na_uM   K_uM SO4_uM  Cl_uM DIC_uM 
 ##    201    201    201    202    201    201    201    201    201    201    243</code></pre>
 <p>Remove these from the WaDE_Synoptic_Summary</p>
-<pre class="r"><code>WaDE_Synoptic_Summary &lt;- WaDE_Synoptic_Summary %&gt;%
+<pre class="r"><code>WaDE_Synoptic_Summary_Clean &lt;- WaDE_Synoptic_Summary_Clean %&gt;%
   filter(!if_any(all_of(vars), ~ .x == -9999))
 
 # Count number of samples leftover
-n_samples &lt;- nrow(WaDE_Synoptic_Summary)
+n_samples &lt;- nrow(WaDE_Synoptic_Summary_Clean)
 n_samples</code></pre>
 <pre><code>## [1] 386</code></pre>
 <p>Build a summary table and export to Excel</p>
@@ -686,8 +696,8 @@ writeData(
 # 8. Save the workbook as an .xlsx file
 saveWorkbook(wb, &quot;Omitted_Samples.xlsx&quot;, overwrite = TRUE)</code></pre>
 </div>
-<div id="handling-values-below-detection-limit" class="section level2">
-<h2>3. Handling Values Below Detection Limit</h2>
+<div id="handling-values-below-detection-limit" class="section level1">
+<h1>3. Handling Values Below Detection Limit</h1>
 <p>Values below detection limits (DL) were handled based on two
 scenarios:</p>
 <ol style="list-style-type: decimal">
@@ -732,7 +742,7 @@ DL value</p>
 Zn_DL_uM &lt;- 6.69E-02  
 
 # 2. Find the lowest reported positive Zn_uM value
-lowest_Zn_uM &lt;- WaDE_Synoptic_Summary %&gt;%
+lowest_Zn_uM &lt;- WaDE_Synoptic_Summary_Clean %&gt;%
   filter(!is.na(Zn_uM), Zn_uM &gt; 0) %&gt;%
   summarise(min_Zn = min(Zn_uM)) %&gt;%
   pull(min_Zn)
@@ -740,7 +750,7 @@ lowest_Zn_uM &lt;- WaDE_Synoptic_Summary %&gt;%
 lowest_Zn_uM</code></pre>
 <pre><code>## [1] 0.000627</code></pre>
 <pre class="r"><code># 3. Apply detection-limit rules for Zn
-WaDE_Synoptic_Summary &lt;- WaDE_Synoptic_Summary %&gt;%
+WaDE_Synoptic_Summary_Clean &lt;- WaDE_Synoptic_Summary_Clean %&gt;%
   mutate(
     # Flag column for Zn based on your rules
     Zn_flag = case_when(
@@ -759,7 +769,7 @@ WaDE_Synoptic_Summary &lt;- WaDE_Synoptic_Summary %&gt;%
   )
 
 # Inspect all assigned flags
-table(WaDE_Synoptic_Summary$Zn_flag, useNA = &quot;ifany&quot;)</code></pre>
+table(WaDE_Synoptic_Summary_Clean$Zn_flag, useNA = &quot;ifany&quot;)</code></pre>
 <pre><code>## 
 ## ADL BDL 
 ## 265 121</code></pre>
@@ -768,7 +778,7 @@ table(WaDE_Synoptic_Summary$Zn_flag, useNA = &quot;ifany&quot;)</code></pre>
 
 Zn_DL_uM &lt;- 6.69E-02  # Detection limit
 
-hist_zn &lt;- ggplot(WaDE_Synoptic_Summary, aes(x = Zn_uM)) +
+hist_zn &lt;- ggplot(WaDE_Synoptic_Summary_Clean, aes(x = Zn_uM)) +
   geom_histogram(
     bins = 30,
     color = &quot;black&quot;
@@ -800,7 +810,7 @@ DL value</p>
 Cu_DL_uM &lt;- 2.22E-03 
 
 # 2. Find the lowest reported positive Zn_uM value
-lowest_Cu_uM &lt;- WaDE_Synoptic_Summary %&gt;%
+lowest_Cu_uM &lt;- WaDE_Synoptic_Summary_Clean %&gt;%
   filter(!is.na(Cu_uM), Cu_uM &gt; 0) %&gt;%
   summarise(min_Cu = min(Cu_uM)) %&gt;%
   pull(min_Cu)
@@ -808,7 +818,7 @@ lowest_Cu_uM &lt;- WaDE_Synoptic_Summary %&gt;%
 lowest_Cu_uM</code></pre>
 <pre><code>## [1] 0.000149</code></pre>
 <pre class="r"><code># 3. Apply detection-limit rules for Zn
-WaDE_Synoptic_Summary &lt;- WaDE_Synoptic_Summary %&gt;%
+WaDE_Synoptic_Summary_Clean &lt;- WaDE_Synoptic_Summary_Clean %&gt;%
   mutate(
     # Flag column for Zn based on your rules
     Cu_flag = case_when(
@@ -827,13 +837,13 @@ WaDE_Synoptic_Summary &lt;- WaDE_Synoptic_Summary %&gt;%
   )
 
 # Inspect all assigned flags
-table(WaDE_Synoptic_Summary$Cu_flag, useNA = &quot;ifany&quot;)</code></pre>
+table(WaDE_Synoptic_Summary_Clean$Cu_flag, useNA = &quot;ifany&quot;)</code></pre>
 <pre><code>## 
 ## ADL BDL  ZV 
 ## 332  48   6</code></pre>
 <p>Check to see if there are missing values for Cu (if none, it should
 read that all 386 are FALSE)</p>
-<pre class="r"><code>hist_cu &lt;- ggplot(WaDE_Synoptic_Summary, aes(x = Cu_uM)) +
+<pre class="r"><code>hist_cu &lt;- ggplot(WaDE_Synoptic_Summary_Clean, aes(x = Cu_uM)) +
   geom_histogram(
     bins = 80,
     color = &quot;black&quot;
@@ -866,7 +876,7 @@ SO4_DL_uM &lt;- 1.7
 SO4_half_DL_uM &lt;- SO4_DL_uM / 2   # ½ the instrument DL
 
 # 2. Apply detection-limit rules for sulfate
-WaDE_Synoptic_Summary &lt;- WaDE_Synoptic_Summary %&gt;%
+WaDE_Synoptic_Summary_Clean &lt;- WaDE_Synoptic_Summary_Clean %&gt;%
   mutate(
     # Flag column for sulfate
     SO4_flag = case_when(
@@ -886,12 +896,12 @@ WaDE_Synoptic_Summary &lt;- WaDE_Synoptic_Summary %&gt;%
   )
 
 # Inspect 
-table(WaDE_Synoptic_Summary$SO4_flag, useNA = &quot;ifany&quot;)</code></pre>
+table(WaDE_Synoptic_Summary_Clean$SO4_flag, useNA = &quot;ifany&quot;)</code></pre>
 <pre><code>## 
 ## ADL  ZV 
 ## 384   2</code></pre>
 <p>Histogram with instrument DL</p>
-<pre class="r"><code>hist_so4 &lt;- ggplot(WaDE_Synoptic_Summary, aes(x = SO4_uM)) +
+<pre class="r"><code>hist_so4 &lt;- ggplot(WaDE_Synoptic_Summary_Clean, aes(x = SO4_uM)) +
   geom_histogram(
     bins = 80,
     color = &quot;black&quot;
@@ -920,7 +930,7 @@ Cl_DL_uM &lt;- 2.29e1              # instrument DL = 22.9 uM
 Cl_half_DL_uM &lt;- Cl_DL_uM / 2   # ½ the instrument DL
 
 # 2. Apply detection-limit rules for chloride
-WaDE_Synoptic_Summary &lt;- WaDE_Synoptic_Summary %&gt;%
+WaDE_Synoptic_Summary_Clean &lt;- WaDE_Synoptic_Summary_Clean %&gt;%
   mutate(
     # Flag column for chloride
     Cl_flag = case_when(
@@ -939,12 +949,12 @@ WaDE_Synoptic_Summary &lt;- WaDE_Synoptic_Summary %&gt;%
   )
 
 # Inspect 
-table(WaDE_Synoptic_Summary$Cl_flag, useNA = &quot;ifany&quot;)</code></pre>
+table(WaDE_Synoptic_Summary_Clean$Cl_flag, useNA = &quot;ifany&quot;)</code></pre>
 <pre><code>## 
 ## ADL BDL  ZV 
 ## 377   4   5</code></pre>
 <p>Histogram with instrument DL</p>
-<pre class="r"><code>hist_cl &lt;- ggplot(WaDE_Synoptic_Summary, aes(x = Cl_uM)) +
+<pre class="r"><code>hist_cl &lt;- ggplot(WaDE_Synoptic_Summary_Clean, aes(x = Cl_uM)) +
   geom_histogram(
     bins = 80,
     color = &quot;black&quot;
@@ -966,322 +976,13 @@ hist_cl</code></pre>
 <p><img role="img" src="data:image/png;base64,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" width="672" /></p>
 </div>
 </div>
-<div id="export-clean-dataset" class="section level2">
-<h2>4. Export Clean Dataset</h2>
+<div id="export-clean-dataset" class="section level1">
+<h1>4. Export Clean Dataset</h1>
 <p>Create a clean WaDE Synoptic Survey Dataset</p>
 <pre class="r"><code>library(writexl)
 
 # Zinc
-write_xlsx(WaDE_Synoptic_Summary, &quot;WaDE_Synoptic_Summary_Clean.xlsx&quot;)</code></pre>
-</div>
-<div id="select-blm-input-variables" class="section level2">
-<h2>5. Select BLM Input Variables</h2>
-<p>Select variables to create separate BLM data inputs for Zn and
-Cu:</p>
-<pre class="r"><code>library(dplyr)
-library(rlang)
-
-# 1. Create a loop function to create a data frame for any BLM element of choice
-
-create_blm_input &lt;- function(df, metal){
-
-  metal_sym &lt;- sym(metal)
-
-  df %&gt;%
-    dplyr::select(
-      Sample_ID,
-      Site,
-      Temp_C,
-      pH,
-      !!metal_sym,
-      DOC_uM,
-      Ca_uM,
-      Mg_uM,
-      Na_uM,
-      K_uM,
-      SO4_uM,
-      Cl_uM,
-      DIC_uM
-    )
-}
-
-# 2. Run it for the following trace elements
-zn_blm_input_df &lt;- create_blm_input(WaDE_Synoptic_Summary, &quot;Zn_uM&quot;)
-cu_blm_input_df &lt;- create_blm_input(WaDE_Synoptic_Summary, &quot;Cu_uM&quot;)
-
-# 3. Check the results
-head(zn_blm_input_df)</code></pre>
-<pre><code>## # A tibble: 6 × 13
-##   Sample_ID Site    Temp_C    pH  Zn_uM DOC_uM Ca_uM Mg_uM Na_uM  K_uM SO4_uM
-##   &lt;chr&gt;     &lt;chr&gt;    &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;
-## 1 WaDE_62   MTN1.1    16.5  7.21 0.036    75.8  1498 458     212  37     38.2
-## 2 WaDE_63   EFK13.8   18.6  8.28 0.0282  160    1338 333     295  54    139  
-## 3 WaDE_64   MTN4      15.8  8.29 0.115    35.8   271 182      90  24.8   29.7
-## 4 WaDE_65   MTN2      18.7  8.32 0.0707  528.    306  75.6     7  46.4    7.5
-## 5 WaDE_66   MCA3.3    16.2  7.67 0.0316  119.    164  79.9    88  21.2   54.3
-## 6 WaDE_67   MCA3.2    16.5  7.49 0.0819   81.7    46  24.7    66  12.2   37.1
-## # ℹ 2 more variables: Cl_uM &lt;dbl&gt;, DIC_uM &lt;dbl&gt;</code></pre>
-<pre class="r"><code>head(cu_blm_input_df)</code></pre>
-<pre><code>## # A tibble: 6 × 13
-##   Sample_ID Site    Temp_C    pH    Cu_uM DOC_uM Ca_uM Mg_uM Na_uM  K_uM SO4_uM
-##   &lt;chr&gt;     &lt;chr&gt;    &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;
-## 1 WaDE_62   MTN1.1    16.5  7.21 0.0026     75.8  1498 458     212  37     38.2
-## 2 WaDE_63   EFK13.8   18.6  8.28 0.0174    160    1338 333     295  54    139  
-## 3 WaDE_64   MTN4      15.8  8.29 0.000488   35.8   271 182      90  24.8   29.7
-## 4 WaDE_65   MTN2      18.7  8.32 0.0352    528.    306  75.6     7  46.4    7.5
-## 5 WaDE_66   MCA3.3    16.2  7.67 0.000834  119.    164  79.9    88  21.2   54.3
-## 6 WaDE_67   MCA3.2    16.5  7.49 0.00335    81.7    46  24.7    66  12.2   37.1
-## # ℹ 2 more variables: Cl_uM &lt;dbl&gt;, DIC_uM &lt;dbl&gt;</code></pre>
-<p>Add a column for humic acid at 10 % after DOC</p>
-<pre class="r"><code>library(dplyr)
-
-# Zinc
-zn_blm_input_df &lt;- zn_blm_input_df %&gt;%
-  mutate(
-    HA = 10 ) %&gt;%
-  relocate(HA,  .after = DOC_uM)
-
-# Copper
-cu_blm_input_df &lt;- cu_blm_input_df %&gt;%
-  mutate(
-    HA = 10 ) %&gt;%
-  relocate(HA, .after = DOC_uM)
-
-# Check
-head(zn_blm_input_df)</code></pre>
-<pre><code>## # A tibble: 6 × 14
-##   Sample_ID Site    Temp_C    pH  Zn_uM DOC_uM    HA Ca_uM Mg_uM Na_uM  K_uM
-##   &lt;chr&gt;     &lt;chr&gt;    &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
-## 1 WaDE_62   MTN1.1    16.5  7.21 0.036    75.8    10  1498 458     212  37  
-## 2 WaDE_63   EFK13.8   18.6  8.28 0.0282  160      10  1338 333     295  54  
-## 3 WaDE_64   MTN4      15.8  8.29 0.115    35.8    10   271 182      90  24.8
-## 4 WaDE_65   MTN2      18.7  8.32 0.0707  528.     10   306  75.6     7  46.4
-## 5 WaDE_66   MCA3.3    16.2  7.67 0.0316  119.     10   164  79.9    88  21.2
-## 6 WaDE_67   MCA3.2    16.5  7.49 0.0819   81.7    10    46  24.7    66  12.2
-## # ℹ 3 more variables: SO4_uM &lt;dbl&gt;, Cl_uM &lt;dbl&gt;, DIC_uM &lt;dbl&gt;</code></pre>
-<pre class="r"><code>head(cu_blm_input_df)</code></pre>
-<pre><code>## # A tibble: 6 × 14
-##   Sample_ID Site    Temp_C    pH    Cu_uM DOC_uM    HA Ca_uM Mg_uM Na_uM  K_uM
-##   &lt;chr&gt;     &lt;chr&gt;    &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
-## 1 WaDE_62   MTN1.1    16.5  7.21 0.0026     75.8    10  1498 458     212  37  
-## 2 WaDE_63   EFK13.8   18.6  8.28 0.0174    160      10  1338 333     295  54  
-## 3 WaDE_64   MTN4      15.8  8.29 0.000488   35.8    10   271 182      90  24.8
-## 4 WaDE_65   MTN2      18.7  8.32 0.0352    528.     10   306  75.6     7  46.4
-## 5 WaDE_66   MCA3.3    16.2  7.67 0.000834  119.     10   164  79.9    88  21.2
-## 6 WaDE_67   MCA3.2    16.5  7.49 0.00335    81.7    10    46  24.7    66  12.2
-## # ℹ 3 more variables: SO4_uM &lt;dbl&gt;, Cl_uM &lt;dbl&gt;, DIC_uM &lt;dbl&gt;</code></pre>
-<p>Add a column for S at the end</p>
-<pre class="r"><code>library(dplyr)
-
-# Zinc
-zn_blm_input_df &lt;- zn_blm_input_df %&gt;%
-  mutate(&#39;S_uM&#39; = 1e-10)
-
-# Copper
-cu_blm_input_df &lt;- cu_blm_input_df %&gt;%
-  mutate(&#39;S_uM&#39; = 1e-10)
-
-# Check
-summary(zn_blm_input_df$S_uM)</code></pre>
-<pre><code>##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-##   1e-10   1e-10   1e-10   1e-10   1e-10   1e-10</code></pre>
-<pre class="r"><code>summary(cu_blm_input_df$S_uM)</code></pre>
-<pre><code>##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-##   1e-10   1e-10   1e-10   1e-10   1e-10   1e-10</code></pre>
-</div>
-<div id="unit-conversions" class="section level2">
-<h2>4. Unit Conversions</h2>
-<p>Convert and rewrite trace element units from uM to ug/L</p>
-<pre class="r"><code>library(dplyr)
-
-# Zinc
-zn_blm_input_df &lt;- zn_blm_input_df %&gt;%
-  mutate(Zn_uM = Zn_uM * 65.38) %&gt;% # Overwrite Zn (uM) with Zn (ug/L) value
-  rename(Zn_ug_L = Zn_uM) # rename AFTER overwriting
-
-# Copper
-cu_blm_input_df &lt;- cu_blm_input_df %&gt;%
-  mutate(Cu_uM = Cu_uM * 63.546) %&gt;% # Overwrite Zn (uM) with Zn (ug/L) value
-  rename(Cu_ug_L = Cu_uM) # rename AFTER overwriting
-
-# Check
-str(zn_blm_input_df)</code></pre>
-<pre><code>## tibble [386 × 15] (S3: tbl_df/tbl/data.frame)
-##  $ Sample_ID: chr [1:386] &quot;WaDE_62&quot; &quot;WaDE_63&quot; &quot;WaDE_64&quot; &quot;WaDE_65&quot; ...
-##  $ Site     : chr [1:386] &quot;MTN1.1&quot; &quot;EFK13.8&quot; &quot;MTN4&quot; &quot;MTN2&quot; ...
-##  $ Temp_C   : num [1:386] 16.5 18.6 15.8 18.7 16.2 16.5 17.3 16.8 17.3 19 ...
-##  $ pH       : num [1:386] 7.21 8.28 8.29 8.32 7.67 7.49 7.62 7.55 8.13 8.17 ...
-##  $ Zn_ug_L  : num [1:386] 2.35 1.84 7.52 4.62 2.07 ...
-##  $ DOC_uM   : num [1:386] 75.8 160 35.8 527.5 119.2 ...
-##  $ HA       : num [1:386] 10 10 10 10 10 10 10 10 10 10 ...
-##  $ Ca_uM    : num [1:386] 1498 1338 271 306 164 ...
-##  $ Mg_uM    : num [1:386] 458 333 182 75.6 79.9 24.7 172 237 210 439 ...
-##  $ Na_uM    : num [1:386] 212 295 90 7 88 66 95 134 115 398 ...
-##  $ K_uM     : num [1:386] 37 54 24.8 46.4 21.2 12.2 22.5 28.1 24.5 60.2 ...
-##  $ SO4_uM   : num [1:386] 38.2 139 29.7 7.5 54.3 37.1 21.8 38.8 31.2 203 ...
-##  $ Cl_uM    : num [1:386] 174 172 80 16 87 77 80 93 90 246 ...
-##  $ DIC_uM   : num [1:386] 4352 955 3223 878 568 ...
-##  $ S_uM     : num [1:386] 1e-10 1e-10 1e-10 1e-10 1e-10 ...</code></pre>
-<pre class="r"><code>str(cu_blm_input_df)</code></pre>
-<pre><code>## tibble [386 × 15] (S3: tbl_df/tbl/data.frame)
-##  $ Sample_ID: chr [1:386] &quot;WaDE_62&quot; &quot;WaDE_63&quot; &quot;WaDE_64&quot; &quot;WaDE_65&quot; ...
-##  $ Site     : chr [1:386] &quot;MTN1.1&quot; &quot;EFK13.8&quot; &quot;MTN4&quot; &quot;MTN2&quot; ...
-##  $ Temp_C   : num [1:386] 16.5 18.6 15.8 18.7 16.2 16.5 17.3 16.8 17.3 19 ...
-##  $ pH       : num [1:386] 7.21 8.28 8.29 8.32 7.67 7.49 7.62 7.55 8.13 8.17 ...
-##  $ Cu_ug_L  : num [1:386] 0.165 1.106 0.031 2.237 0.053 ...
-##  $ DOC_uM   : num [1:386] 75.8 160 35.8 527.5 119.2 ...
-##  $ HA       : num [1:386] 10 10 10 10 10 10 10 10 10 10 ...
-##  $ Ca_uM    : num [1:386] 1498 1338 271 306 164 ...
-##  $ Mg_uM    : num [1:386] 458 333 182 75.6 79.9 24.7 172 237 210 439 ...
-##  $ Na_uM    : num [1:386] 212 295 90 7 88 66 95 134 115 398 ...
-##  $ K_uM     : num [1:386] 37 54 24.8 46.4 21.2 12.2 22.5 28.1 24.5 60.2 ...
-##  $ SO4_uM   : num [1:386] 38.2 139 29.7 7.5 54.3 37.1 21.8 38.8 31.2 203 ...
-##  $ Cl_uM    : num [1:386] 174 172 80 16 87 77 80 93 90 246 ...
-##  $ DIC_uM   : num [1:386] 4352 955 3223 878 568 ...
-##  $ S_uM     : num [1:386] 1e-10 1e-10 1e-10 1e-10 1e-10 ...</code></pre>
-<p>Convert DOC, Ca, Mg, Na, K, Cl, SO4, and S from uM to mg/L</p>
-<pre class="r"><code># Zinc
-zn_blm_input_df &lt;- zn_blm_input_df %&gt;%
-  mutate(
-    DOC_uM = DOC_uM * 12.01e-3,
-    Ca_uM  = Ca_uM  * 40.078e-3,
-    Mg_uM  = Mg_uM  * 24.305e-3,
-    Na_uM  = Na_uM  * 22.990e-3,
-    K_uM   = K_uM   * 39.098e-3,
-    Cl_uM  = Cl_uM  * 35.45e-3,
-    SO4_uM = SO4_uM * 96.06e-3,
-    S_uM   = S_uM   * 32.06e-3
-  ) %&gt;%
-  rename(
-    DOC_mg_L = DOC_uM,
-    Ca_mg_L  = Ca_uM,
-    Mg_mg_L  = Mg_uM,
-    Na_mg_L  = Na_uM,
-    K_mg_L   = K_uM,
-    Cl_mg_L  = Cl_uM,
-    SO4_mg_L = SO4_uM,
-    S_mg_L   = S_uM
-  )
-
-# Copper
-cu_blm_input_df &lt;- cu_blm_input_df %&gt;%
-  mutate(
-    DOC_uM = DOC_uM * 12.01e-3,
-    Ca_uM  = Ca_uM  * 40.078e-3,
-    Mg_uM  = Mg_uM  * 24.305e-3,
-    Na_uM  = Na_uM  * 22.990e-3,
-    K_uM   = K_uM   * 39.098e-3,
-    Cl_uM  = Cl_uM  * 35.45e-3,
-    SO4_uM = SO4_uM * 96.06e-3,
-    S_uM   = S_uM   * 32.06e-3
-  ) %&gt;%
-  rename(
-    DOC_mg_L = DOC_uM,
-    Ca_mg_L  = Ca_uM,
-    Mg_mg_L  = Mg_uM,
-    Na_mg_L  = Na_uM,
-    K_mg_L   = K_uM,
-    Cl_mg_L  = Cl_uM,
-    SO4_mg_L = SO4_uM,
-    S_mg_L   = S_uM
-  )
-
-# Check
-str(zn_blm_input_df)</code></pre>
-<pre><code>## tibble [386 × 15] (S3: tbl_df/tbl/data.frame)
-##  $ Sample_ID: chr [1:386] &quot;WaDE_62&quot; &quot;WaDE_63&quot; &quot;WaDE_64&quot; &quot;WaDE_65&quot; ...
-##  $ Site     : chr [1:386] &quot;MTN1.1&quot; &quot;EFK13.8&quot; &quot;MTN4&quot; &quot;MTN2&quot; ...
-##  $ Temp_C   : num [1:386] 16.5 18.6 15.8 18.7 16.2 16.5 17.3 16.8 17.3 19 ...
-##  $ pH       : num [1:386] 7.21 8.28 8.29 8.32 7.67 7.49 7.62 7.55 8.13 8.17 ...
-##  $ Zn_ug_L  : num [1:386] 2.35 1.84 7.52 4.62 2.07 ...
-##  $ DOC_mg_L : num [1:386] 0.911 1.922 0.43 6.335 1.431 ...
-##  $ HA       : num [1:386] 10 10 10 10 10 10 10 10 10 10 ...
-##  $ Ca_mg_L  : num [1:386] 60.04 53.62 10.86 12.26 6.57 ...
-##  $ Mg_mg_L  : num [1:386] 11.13 8.09 4.42 1.84 1.94 ...
-##  $ Na_mg_L  : num [1:386] 4.874 6.782 2.069 0.161 2.023 ...
-##  $ K_mg_L   : num [1:386] 1.447 2.111 0.97 1.814 0.829 ...
-##  $ SO4_mg_L : num [1:386] 3.67 13.35 2.85 0.72 5.22 ...
-##  $ Cl_mg_L  : num [1:386] 6.168 6.097 2.836 0.567 3.084 ...
-##  $ DIC_uM   : num [1:386] 4352 955 3223 878 568 ...
-##  $ S_mg_L   : num [1:386] 3.21e-12 3.21e-12 3.21e-12 3.21e-12 3.21e-12 ...</code></pre>
-<pre class="r"><code>str(cu_blm_input_df)</code></pre>
-<pre><code>## tibble [386 × 15] (S3: tbl_df/tbl/data.frame)
-##  $ Sample_ID: chr [1:386] &quot;WaDE_62&quot; &quot;WaDE_63&quot; &quot;WaDE_64&quot; &quot;WaDE_65&quot; ...
-##  $ Site     : chr [1:386] &quot;MTN1.1&quot; &quot;EFK13.8&quot; &quot;MTN4&quot; &quot;MTN2&quot; ...
-##  $ Temp_C   : num [1:386] 16.5 18.6 15.8 18.7 16.2 16.5 17.3 16.8 17.3 19 ...
-##  $ pH       : num [1:386] 7.21 8.28 8.29 8.32 7.67 7.49 7.62 7.55 8.13 8.17 ...
-##  $ Cu_ug_L  : num [1:386] 0.165 1.106 0.031 2.237 0.053 ...
-##  $ DOC_mg_L : num [1:386] 0.911 1.922 0.43 6.335 1.431 ...
-##  $ HA       : num [1:386] 10 10 10 10 10 10 10 10 10 10 ...
-##  $ Ca_mg_L  : num [1:386] 60.04 53.62 10.86 12.26 6.57 ...
-##  $ Mg_mg_L  : num [1:386] 11.13 8.09 4.42 1.84 1.94 ...
-##  $ Na_mg_L  : num [1:386] 4.874 6.782 2.069 0.161 2.023 ...
-##  $ K_mg_L   : num [1:386] 1.447 2.111 0.97 1.814 0.829 ...
-##  $ SO4_mg_L : num [1:386] 3.67 13.35 2.85 0.72 5.22 ...
-##  $ Cl_mg_L  : num [1:386] 6.168 6.097 2.836 0.567 3.084 ...
-##  $ DIC_uM   : num [1:386] 4352 955 3223 878 568 ...
-##  $ S_mg_L   : num [1:386] 3.21e-12 3.21e-12 3.21e-12 3.21e-12 3.21e-12 ...</code></pre>
-</div>
-<div id="export-to-excel" class="section level2">
-<h2>5. Export to Excel</h2>
-<pre class="r"><code>library(writexl)
-
-# Zinc
-write_xlsx(zn_blm_input_df, &quot;BLM_Data_Entry_for_Zn.xlsx&quot;)
-
-# Copper
-write_xlsx(cu_blm_input_df, &quot;BLM_Data_Entry_for_Cu.xlsx&quot;)</code></pre>
-</div>
-<div id="running-the-biotic-ligand-model-blm" class="section level2">
-<h2>6. Running the Biotic Ligand Model (BLM)</h2>
-<p>These two datasets can be used to input into BLM.</p>
-<p>Run the following datasets in BLM as follows and name the outputs as
-follows:</p>
-<ul>
-<li><p>Use the <strong>BLM_Data_Entry_for_Zn.xlsx</strong> file to
-run</p>
-<ul>
-<li><p>BLM as a closed system (DIC input as uM)</p>
-<ul>
-<li><p>BLM in Speciation mode with HA at 10% (output file = Zn
-Speciation.det)</p></li>
-<li><p>BLM Speciation mode with HA at 80% (output file = Zn
-Speciation_ha80.det)</p></li>
-<li><p>BLM in Toxicity mode for C. dubia (output file = Zn Toxicity on
-C. dubia.det)</p></li>
-</ul></li>
-<li><p>BLM as an open system (no DIC input)</p></li>
-</ul></li>
-<li><p>Use the <strong>BLM_Data_Entry_for_Cu.xlsx</strong> file to
-run</p>
-<ul>
-<li><p>BLM as a closed system (DIC input as uM)</p>
-<ul>
-<li><p>BLM in Speciation mode with HA at 10% (output file = Cu
-Speciation.det)</p></li>
-<li><p>BLM Speciation mode with HA at 80% (output file = Cu
-Speciation_ha80.det)</p></li>
-<li><p>Acute toxicity to C. dubia (output file = Cu Acute Toxicity on P.
-promelas.det)</p></li>
-<li><p>Chronic toxicity to C. dubia (output file = Cu Chronic Toxicity
-on C. dubia.det)</p></li>
-<li><p>Acute toxicity to P. promelas (output file = Cu Acute Toxicity on
-C. dubia.det)</p></li>
-<li><p>Chronic toxicity to P. promelas (output file = Cu Chronic
-Toxicity on P. promelas.det)</p></li>
-</ul></li>
-<li><p>BLM as an open system (no DIC input)</p></li>
-</ul></li>
-</ul>
-<p>*Note: make sure that when running BLM with HA at 80% to change this
-variable and when running BLM as open system to set this mode in BLM
-(see manual for details).</p>
-</div>
-<div id="post-running-the-blm" class="section level2">
-<h2>7. Post-Running the BLM</h2>
-<p>Once the following datasets have been created, follow the steps in 2.
-Dataset merging.Rmd</p>
-</div>
+write_xlsx(WaDE_Synoptic_Summary_Clean, &quot;WaDE_Synoptic_Summary_Clean.xlsx&quot;)</code></pre>
 </div>
 
 
