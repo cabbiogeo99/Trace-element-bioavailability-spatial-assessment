@@ -1,13 +1,25 @@
-Directory: Spatial Assessment of Bioavailability Project > 
-						2. Dataset merging
+Use the Cu-dataset_merging.Rmd to create the Bioavailability Master Spreadsheet.xlsx with separate tabs according to the BLM assumptions considered (HA 10% Closed System, HA 10% Open System, and HA 80% Closed System)
 
-In this folder you will find two folders with the following content:
+1. Clean WaDE Synoptic Survey dataset (WaDE_Synoptic_Summary_Clean.xlsx)
 
-	1. Datase_merging.Rmd: code developed to merge the WaDE_Synoptic_Summary_Clean.xlsx with BLM output datasets in 1. Running BLM > Data outputs to create the Bioavailability_Master_Spreadsheet.xlsx
+Variables selected: sample ID, site, date, inherent characteristics, developed land cover, BLM predictors.
 
-	2. Dataset_merging.html: knitted web-version of Datase_merging.Rmd
+2. WaDE Synoptic Survey dataset (WaDE_Synoptic_Summary.xlsx, "SITE INFO" tab)
 
-	3. Bioavailability_Master_Spreadsheet.xlsx: contains all of the necessary data to conduct statistical analyses under the following BLM conditions: 
-		- HA 10% Closed System (default/baseline)
-		- HA 80% Closed System (high humic acid content)
-		- HA 10% Open System (no DIC input variable)
+Variables selected: network, regime, elevation, upstream distance from main stem, drainage area, developed land cover by site
+
+3. BLM Speciation Mode (Cu_Speciation.det.xlsx)
+
+Variables selected: free ion, biotic ligand (BL) bound elements, inorganic complexes, and organic complexes.
+
+4. BLM Toxicity Mode
+
+Acute Cu Toxicity Mode on Daphnia (Cu Acute Toxicity on C. dubia.det.xlsx)
+
+Chronic Cu Toxicity Mode on Daphnia (Cu Chronic Toxicity on C. dubia.det.xlsx)
+
+Acute Cu Toxicity Mode on Minnow (Cu Acute Toxicity on P. promelas.det.xlsx)
+
+Chronic Cu Toxicity Mode on Minnow (Cu Chronic Toxicity on P. promelas.det.xlsx)
+
+Variable selected: total Cu concentration to cause certain type of toxicity to the given organism
