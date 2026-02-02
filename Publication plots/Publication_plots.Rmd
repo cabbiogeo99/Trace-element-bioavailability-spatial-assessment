@@ -1,0 +1,168 @@
+---
+title: "Publication_plots"
+author: "Cecilia Albert-Black"
+date: "2026-02-02"
+output: html_document
+---
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+#-------------------------------------------------
+# 1. Colors by response variable (your mapping)
+#-------------------------------------------------
+response_colors <- c(
+  "Total Zn (nM)"                              = "slategray",
+  "Bioavailable Zn (nmol/g wet weight)"        = "darkslategray3",
+  "Proportion of Bioavailable Zn (Free/Total)" = "turquoise",
+  "Total Cu (nM)"                              = "chocolate4",
+  "Bioavailable Cu (nmol/g wet weight)"        = "peru",
+  "Proportion of Bioavailable Cu (Free/Total)" = "chocolate1"
+)
+
+#-------------------------------------------------
+# 2. Map variable names -> response labels
+#-------------------------------------------------
+response_lookup <- c(
+  "log_Zn_nM"         = "Total Zn (nM)",
+  "log_TBL_Zn_nmol_g" = "Bioavailable Zn (nmol/g wet weight)",
+  "log_rel_prop_Zn"   = "Proportion of Bioavailable Zn (Free/Total)",
+  "log_Cu_nM"         = "Total Cu (nM)",
+  "log_TBL_Cu_nmol_g" = "Bioavailable Cu (nmol/g wet weight)",
+  "log_rel_prop_Cu"   = "Proportion of Bioavailable Cu (Free/Total)"
+)
+
+vars_trace <- names(response_lookup)
+
+#-------------------------------------------------
+# 3. Custom multipliers for letter heights per plot
+#    (names must match Response labels)
+#-------------------------------------------------
+letter_nudge <- c(
+  "Total Zn (nM)"                              = 1,
+  "Bioavailable Zn (nmol/g wet weight)"        = 2,
+  "Proportion of Bioavailable Zn (Free/Total)" = 1,
+  "Total Cu (nM)"                              = 1,
+  "Bioavailable Cu (nmol/g wet weight)"        = 2,
+  "Proportion of Bioavailable Cu (Free/Total)" = 1
+)
+
+#-------------------------------------------------
+# 4. Long data for plotting (use Typology)
+#-------------------------------------------------
+dat_long_trace <- dat %>%
+  dplyr::select(Typology, all_of(vars_trace)) %>%
+  pivot_longer(
+    cols      = -Typology,
+    names_to  = "Variable",
+    values_to = "Value"
+  ) %>%
+  filter(!is.na(Value)) %>%
+  mutate(
+    Response = response_lookup[Variable],
+    Response = factor(Response, levels = names(response_colors))
+  )
+
+#-------------------------------------------------
+# 5. Letters (from letters_df) for all 6 variables
+#-------------------------------------------------
+
+# 5a. Max y per Variable x Typology
+y_pos_df <- dat_long_trace %>%
+  group_by(Variable, Typology) %>%
+  summarise(y_max = max(Value, na.rm = TRUE), .groups = "drop")
+
+# 5b. Attach Response + y positions + nudges to letters_df
+#     letters_df must have: Variable, Typology, Letters
+letters_long_trace <- letters_df %>%
+  filter(Variable %in% vars_trace) %>%
+  mutate(
+    Response = response_lookup[Variable],
+    Response = factor(Response, levels = names(response_colors))
+  ) %>%
+  left_join(
+    y_pos_df,
+    by = c("Variable", "Typology")
+  ) %>%
+  mutate(
+    # add different nudge per facet
+    y_pos = y_max + letter_nudge[as.character(Response)]
+  )
+
+#-------------------------------------------------
+# 6. One faceted trace element panel (x = Typology)
+#-------------------------------------------------
+bioavail_panel <- ggplot(dat_long_trace, aes(
+    x     = Typology,
+    y     = Value,
+    color = Response
+  )) +
+  # Boxplots
+  geom_boxplot(fill = NA, width = 0.6) +
+  
+  # Jittered points
+  geom_jitter(
+    width = 0.15,
+    size  = 1,
+    alpha = 0.7
+  ) +
+  
+  # Letters from Kruskal groups
+  geom_text(
+    data = letters_long_trace,
+    aes(
+      x     = Typology,
+      y     = y_pos,
+      label = Letters
+    ),
+    inherit.aes = FALSE,
+    size = 3.5
+  ) +
+  
+  # Colors by response (your palette)
+  scale_color_manual(values = response_colors) +
+  
+  # One facet per response variable
+  facet_wrap(
+    ~ Response,
+    scales = "free_y",
+    ncol   = 3
+  ) +
+  
+  labs(
+    title = "Trace Elements by Stream Typology",
+    x     = "Stream Typology"
+  ) +
+  
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "none",
+    axis.text.x  = element_text(size = 10, angle = 30, hjust = 1),
+    axis.text.y  = element_text(size = 10),
+    strip.text   = element_text(size = 11),
+    plot.title   = element_text(size = 14)
+  )
+
+# View
+bioavail_panel
+
+# Save as square
+ggsave(
+  filename = file.path("Trace_elements_panel_square.png"),
+  plot     = bioavail_panel,
+  width    = 8.5,
+  height   = 6,
+  dpi      = 300
+)
+
+# Save as rectangle
+ggsave(
+  filename = file.path("Trace_elements_panel_long.png"),
+  plot     = bioavail_panel,
+  width    = 12,
+  height   = 6,
+  dpi      = 300
+)
+```

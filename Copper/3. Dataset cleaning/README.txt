@@ -1,10 +1,13 @@
-Directory: Spatial Assessment of Bioavailability Project > 
-						3. Dataset cleaning
+This folder uses the Cu_dataset_cleaning.Rmd to clean and feature engineer the Bioavailability Master Spreadsheet for each of the 3 tabs (BLM assumptions) to create the Bioavailability Master Spreadsheet Clean.xlsx. The following steps are performed:
 
-In this folder you will find the following files to be used accordingly:
+Standardize units of all concentration variables to uM
 
-	1. Bioavailability_Master_Spreadsheet_Clean.xlsx: contains new and transformed variables for subsequent statistical analyses.
+Create new numeric variables:
 
-	2. Dataset_cleaning.html: knitted web-version of Dataset_cleaning.Rmd.
+Total bioavailable element
 
-	3. Dataset_cleaning.Rmd: code developed to clean the Bioavailability_Master_Spreadsheet.xlsx from the 2. Dataset merging folder.
+Relative proportion of bioavailable element
+
+Create new categorical variables
+
+From numeric inherent stream characteristics (development, distance from main stem, drainage area, and relative elevation)
