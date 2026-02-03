@@ -1,5 +1,5 @@
 ---
-title: "Zn_dataset_cleaning"
+title: "Dataset cleaning Cu BLM"
 author: "Cecilia Albert-Black"
 date: "2025-11-13"
 output: html_document
@@ -26,7 +26,7 @@ Workflow overview
 Set the working directory to the repo
 
 ```{r}
-setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Zinc/3. Dataset cleaning")
+setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Copper/3. Dataset cleaning")
 ```
 
 Upload Bioavailability_Master_Spreadsheet.xlsx
@@ -35,8 +35,8 @@ Upload Bioavailability_Master_Spreadsheet.xlsx
 #load package (must be installed first)
 library(readxl) 
 
-dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Zinc/2. Dataset merging/Bioavailability_Master_Spreadsheet.xlsx", 
-    sheet = "HA 80% Closed System")
+dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Copper/2. Dataset merging/Bioavailability_Master_Spreadsheet.xlsx", 
+    sheet = "HA 10% Closed System")
 
 str(dat)
 ```
@@ -127,7 +127,6 @@ dat <- convert_units_no_dups(dat)
 
 # quick proof they exist now
 names(dat)[str_detect(names(dat), "^BL_.*_nmol_g$")]
-
 ```
 
 Checks
@@ -148,26 +147,26 @@ Total biotic ligand (TBL)-bound trace elements = TBL-element+ TBL-element hydrox
 
 ```{r}
 # TBL-Zn in nmol/g
-dat$TBL_Zn_nmol_g <- dat$BL_Zn_nmol_g + dat$BL_ZnOH_nmol_g
+dat$TBL_Cu_nmol_g <- dat$BL_Cu_nmol_g + dat$BL_CuOH_nmol_g
 
 # TBL-Zn in mol/kg
-dat$TBL_Zn_mol_kg <- dat$BL_Zn_mol_kg + dat$BL_ZnOH_mol_kg
+dat$TBL_Cu_mol_kg <- dat$BL_Cu_mol_kg + dat$BL_CuOH_mol_kg
 
 # Check
-hist(dat$TBL_Zn_nmol_g)
-hist(dat$TBL_Zn_mol_kg)
+hist(dat$TBL_Cu_nmol_g)
+hist(dat$TBL_Cu_mol_kg)
 ```
 
 ### i. Relative Proportion of Bioavailable Element
 
-Relative proportion of element (rel_prop_Zn_nM) = TBL-element / measured element
+Relative proportion of element (rel_prop_Cu_nM) = TBL-element / measured element
 
 ```{r}
 # Zinc
-dat$rel_prop_Zn <- dat$Free_Zn_uM / dat$Zn_uM
+dat$rel_prop_Cu <- dat$Free_Cu_uM / dat$Cu_uM
 
 # Check
-hist(dat$rel_prop_Zn)
+hist(dat$rel_prop_Cu)
 ```
 
 ## IV. Create New Categorical Variables
@@ -511,7 +510,6 @@ writeData(
 # Save
 # ---------------------------------------------------------
 saveWorkbook(wb, file_path, overwrite = TRUE)
-
 ```
 
 Now repeat this for

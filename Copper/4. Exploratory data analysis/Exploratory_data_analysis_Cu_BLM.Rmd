@@ -45,7 +45,7 @@ run_normality_tests <- function(dat) {
 
   # Identify numeric variables
   numeric_vars <- dat %>%
-    select(where(is.numeric)) %>%
+    dplyr::select(where(is.numeric)) %>%
     names()
 
   # Initialize results data frame
@@ -258,7 +258,9 @@ add_log_variables <- function(dat, exclude_vars) {
   dat %>%
     mutate(
       across(
-        .cols = where(is.numeric) & !any_of(exclude_vars),
+        .cols = where(is.numeric) &
+          !any_of(exclude_vars) &
+          !starts_with("log_"),      # <-- prevents re-logging
         .fns  = ~ ifelse(.x > 0, log10(.x), NA_real_),
         .names = "log_{.col}"
       )

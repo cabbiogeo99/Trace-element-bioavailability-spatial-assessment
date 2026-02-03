@@ -1,5 +1,5 @@
 ---
-title: "Cu_dataset_cleaning"
+title: "Dataset cleaning Zn BLM"
 author: "Cecilia Albert-Black"
 date: "2025-11-13"
 output: html_document
@@ -26,7 +26,7 @@ Workflow overview
 Set the working directory to the repo
 
 ```{r}
-setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Copper/3. Dataset cleaning")
+setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Zinc/3. Dataset cleaning")
 ```
 
 Upload Bioavailability_Master_Spreadsheet.xlsx
@@ -35,8 +35,8 @@ Upload Bioavailability_Master_Spreadsheet.xlsx
 #load package (must be installed first)
 library(readxl) 
 
-dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Copper/2. Dataset merging/Bioavailability_Master_Spreadsheet.xlsx", 
-    sheet = "HA 10% Closed System")
+dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Zinc/2. Dataset merging/Bioavailability_Master_Spreadsheet.xlsx", 
+    sheet = "HA 80% Closed System")
 
 str(dat)
 ```
@@ -56,47 +56,77 @@ That way, we have all variables in units of M, uM, and nM (for dissolved species
 ```{r}
 library(dplyr)
 library(stringr)
+library(purrr)
 
-dat <- dat %>%
-  mutate(
-    # ---------------------------------------------------------
-    # 1) From *_uM  -> create NEW *_M columns
-    # ---------------------------------------------------------
-    across(
-      ends_with("_uM"),
-      ~ .x * 1e-6,
-      .names = "{.col}_M"
-    ),
+# Add a column only if it doesn't already exist
+add_if_missing <- function(df, nm, values) {
+  if (nm %in% names(df)) df else df %>% mutate(!!nm := values)
+}
 
-    # ---------------------------------------------------------
-    # 2) From *_M  -> create NEW *_uM and *_nM columns
-    # ---------------------------------------------------------
-    across(
-      ends_with("_M", ignore.case = FALSE), # Ignores when _m so that Relative_elevation_m does not get converted
-      list(uM = ~ .x * 1e6, nM = ~ .x * 1e9),
-      .names = "{.col}_{.fn}"
-    ),
+convert_units_no_dups <- function(dat) {
 
-    # ---------------------------------------------------------
-    # 3) From *_mol_kg -> create NEW *_umol_g and *_nmol_g columns
-    # ---------------------------------------------------------
-    across(
-      ends_with("_mol_kg"),
-      list(umol_g = ~ .x * 1e3, nmol_g = ~ .x * 1e6),
-      .names = "{.col}_{.fn}"
+  # -------------------------
+  # 1) Dissolved species: _M, _uM, _nM
+  # -------------------------
+  diss_vars <- names(dat)[str_detect(names(dat), "(_M|_uM|_nM)$")]
+  diss_base <- unique(str_remove(diss_vars, "(_M|_uM|_nM)$"))
+
+  dat <- reduce(diss_base, function(df, base) {
+
+    nm_M  <- paste0(base, "_M")
+    nm_uM <- paste0(base, "_uM")
+    nm_nM <- paste0(base, "_nM")
+
+    source <- case_when(
+      nm_M  %in% names(df) ~ "M",
+      nm_uM %in% names(df) ~ "uM",
+      nm_nM %in% names(df) ~ "nM",
+      TRUE ~ NA_character_
     )
-  ) %>%
-  # ---------------------------------------------------------
-  # Fix the new names so they look right:
-  # "DOC_uM_M"  -> "DOC_M"
-  # "Free_Cu_M_uM" -> "Free_Cu_uM"  (etc.)
-  # "BL_Cu_mol_kg_umol_g" -> "BL_Cu_umol_g"
-  # ---------------------------------------------------------
-  rename_with(~ str_replace(.x, "_uM_M$", "_M")) %>%
-  rename_with(~ str_replace(.x, "_M_uM$", "_uM")) %>%
-  rename_with(~ str_replace(.x, "_M_nM$", "_nM")) %>%
-  rename_with(~ str_replace(.x, "_mol_kg_umol_g$", "_umol_g")) %>%
-  rename_with(~ str_replace(.x, "_mol_kg_nmol_g$", "_nmol_g"))
+    if (is.na(source)) return(df)
+
+    M_vals <- switch(
+      source,
+      "M"  = df[[nm_M]],
+      "uM" = df[[nm_uM]] / 1e6,
+      "nM" = df[[nm_nM]] / 1e9
+    )
+
+    df %>%
+      add_if_missing(nm_M,  M_vals) %>%
+      add_if_missing(nm_uM, M_vals * 1e6) %>%
+      add_if_missing(nm_nM, M_vals * 1e9)
+
+  }, .init = dat)
+
+  # -------------------------
+  # 2) BL variables: *_mol_kg -> *_nmol_kg and *_nmol_g
+  # -------------------------
+  bl_molkg <- names(dat)[str_detect(names(dat), "_mol_kg$")]
+
+  dat <- reduce(bl_molkg, function(df, nm) {
+
+    base <- str_remove(nm, "_mol_kg$")
+
+    nm_nmol_kg <- paste0(base, "_nmol_kg")  # mol/kg -> nmol/kg (×1e9)
+    nm_nmol_g  <- paste0(base, "_nmol_g")   # mol/kg -> nmol/g  (×1e6)
+
+    vals <- df[[nm]]
+
+    df %>%
+      add_if_missing(nm_nmol_kg, vals * 1e9) %>%
+      add_if_missing(nm_nmol_g,  vals * 1e6)
+
+  }, .init = dat)
+
+  dat
+}
+
+# Asign it back if you want to keep using `dat$...`
+dat <- convert_units_no_dups(dat)
+
+# quick proof they exist now
+names(dat)[str_detect(names(dat), "^BL_.*_nmol_g$")]
 
 ```
 
@@ -118,26 +148,26 @@ Total biotic ligand (TBL)-bound trace elements = TBL-element+ TBL-element hydrox
 
 ```{r}
 # TBL-Zn in nmol/g
-dat$TBL_Cu_nmol_g <- dat$BL_Cu_nmol_g + dat$BL_CuOH_nmol_g
+dat$TBL_Zn_nmol_g <- dat$BL_Zn_nmol_g + dat$BL_ZnOH_nmol_g
 
 # TBL-Zn in mol/kg
-dat$TBL_Cu_mol_kg <- dat$BL_Cu_mol_kg + dat$BL_CuOH_mol_kg
+dat$TBL_Zn_mol_kg <- dat$BL_Zn_mol_kg + dat$BL_ZnOH_mol_kg
 
 # Check
-hist(dat$TBL_Cu_nmol_g)
-hist(dat$TBL_Cu_mol_kg)
+hist(dat$TBL_Zn_nmol_g)
+hist(dat$TBL_Zn_mol_kg)
 ```
 
 ### i. Relative Proportion of Bioavailable Element
 
-Relative proportion of element (rel_prop_Cu_nM) = TBL-element / measured element
+Relative proportion of element (rel_prop_Zn_nM) = TBL-element / measured element
 
 ```{r}
 # Zinc
-dat$rel_prop_Cu <- dat$Free_Cu_uM / dat$Cu_uM
+dat$rel_prop_Zn <- dat$Free_Zn_uM / dat$Zn_uM
 
 # Check
-hist(dat$rel_prop_Cu)
+hist(dat$rel_prop_Zn)
 ```
 
 ## IV. Create New Categorical Variables
@@ -445,35 +475,42 @@ Save to excel as a clean version of the Bioavailability Master Spreadsheet
 library(openxlsx)
 
 file_path <- "Bioavailability_Master_Spreadsheet_Clean.xlsx"
+sheet_name <- "HA 10% Closed System"
 
 # ---------------------------------------------------------
-# 1. Create workbook if file does NOT exist
+# Create or load workbook
 # ---------------------------------------------------------
 if (!file.exists(file_path)) {
-  
   wb <- createWorkbook()
-  addWorksheet(wb, "HA 10% Closed System")
-  writeData(wb, "HA 10% Closed System", dat)
-  saveWorkbook(wb, file_path, overwrite = TRUE)
-
 } else {
-
-  # ---------------------------------------------------------
-  # 2. If the file EXISTS, load it and add/overwrite the sheet
-  # ---------------------------------------------------------
   wb <- loadWorkbook(file_path)
-
-  # Add sheet if missing
-  if (!"HA 10% Closed System" %in% names(wb)) {
-    addWorksheet(wb, "HA 10% Closed System")
-  }
-
-  # Write/overwrite data in that sheet
-  writeData(wb, "HA 10% Closed System", dat)
-
-  # Save
-  saveWorkbook(wb, file_path, overwrite = TRUE)
 }
+
+# ---------------------------------------------------------
+# REMOVE sheet if it already exists  (CRITICAL STEP)
+# ---------------------------------------------------------
+if (sheet_name %in% names(wb)) {
+  removeWorksheet(wb, sheet_name)
+}
+
+# ---------------------------------------------------------
+# Re-create sheet cleanly and write data
+# ---------------------------------------------------------
+addWorksheet(wb, sheet_name)
+
+writeData(
+  wb,
+  sheet      = sheet_name,
+  x          = dat,
+  startRow  = 1,
+  startCol  = 1,
+  colNames  = TRUE
+)
+
+# ---------------------------------------------------------
+# Save
+# ---------------------------------------------------------
+saveWorkbook(wb, file_path, overwrite = TRUE)
 
 ```
 

@@ -1,0 +1,1956 @@
+---
+title: "Data analysis Cu BLM"
+output:
+  html_document:
+    self_contained: true
+output_file: "Data_analysis_Cu_BLM.html"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.show = "hide", fig.keep = "none")
+```
+
+The objectives of this notebook will be to conduct data and statistical analyses on the Bioavailability Master Spreadsheet Clean version 2 using only the baseline BLM assumptions (HA 10% Closed System)
+
+First, set the working directory
+
+```{r}
+setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Copper/5. Statistical data analysis")
+```
+
+# Identifying Stream Typologies
+
+Cluster analysis of all sites in WaDE Synoptic Survey
+
+Import dataset
+
+```{r}
+library(readxl)
+
+dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Copper/4. Exploratory data analysis/Bioavailability_Master_Spreadsheet_Clean2.xlsx", 
+    sheet = "HA 10% Closed System")
+
+head(dat)
+```
+
+## 1. Select variables
+
+We'll use the scaled, log-transformed BLM predictors to conduct a PCA
+
+```{r}
+library(dplyr)
+
+# Variables to select
+vars_to_select <- c("log_Temp_C", "pH", "log_DOC_uM",
+                    "log_DIC_uM", "log_Cl_uM", "log_Ca_uM", 
+                    "log_Mg_uM", "log_SO4_uM", "log_Na_uM", 
+                    "log_K_uM")
+
+# Scale these variables
+scaled_blm_predict <- as.data.frame(
+  scale(dat[vars_to_select])
+)
+
+# Peek
+head(scaled_blm_predict)
+```
+
+## 2. Check variable distributions
+
+QQ plots of the scaled, log-transformed BLM predictors
+
+```{r}
+library(ggplot2)
+library(tidyr)
+
+dr_long <- scaled_blm_predict %>%
+  pivot_longer(cols = everything(), names_to = "variable", values_to = "value")
+
+ggplot(dr_long, aes(sample = value)) +
+  stat_qq() +
+  stat_qq_line(color = "red") +
+  facet_wrap(~ variable, scales = "free") +
+  labs(
+    title = "QQ Plots of Scaled BLM Predictor Variables",
+    subtitle = "Assessing normality after log-transformation and scaling",
+    x = "Theoretical Quantiles",
+    y = "Sample Quantiles"
+  ) +
+  theme_minimal()
+```
+
+## 3. Adequacy test
+
+```{r}
+library(psych)  
+
+# Scaled predictors
+KMO(scaled_blm_predict)
+```
+
+## 4. Run PCA
+
+```{r}
+pca_result <- prcomp(scaled_blm_predict, center = TRUE, scale. = TRUE)
+pca_result
+
+pca_summary <- summary(pca_result)
+pca_summary
+```
+
+## 5. K-means clustering
+
+### i. Identifying the number of clusters
+
+Run k-means using 2-10 and identify which number of clusters minimizes the overlap
+
+```{r}
+library(cluster)
+
+set.seed(123)
+
+sil_df <- lapply(2:10, function(k) {
+  
+  km <- kmeans(
+    scaled_blm_predict,
+    centers = k,
+    nstart = 50
+  )
+  
+  sil <- silhouette(km$cluster, dist(scaled_blm_predict))
+  
+  data.frame(
+    k = k,
+    mean_silhouette = mean(sil[, 3])
+  )
+}) %>%
+  bind_rows()
+
+best_k <- sil_df$k[which.max(sil_df$mean_silhouette)]
+best_k
+
+```
+
+### ii. Clustering
+
+Run k-means using 4 clusters
+
+```{r}
+# Run k-means
+set.seed(123)
+kmeans_result <- kmeans(scaled_blm_predict, centers = 4, nstart = 50)
+
+# Add cluster labels to your data
+dat <- dat %>%
+  mutate(cluster = as.factor(kmeans_result$cluster))
+
+# Check
+str(dat$cluster)
+```
+
+## 6. Plot of clusters on PCA
+
+Overlay clusters on PCA
+
+```{r}
+library(factoextra)
+library(ggplot2)
+
+# PCA biplot
+pca_cluster <- fviz_pca_biplot(
+  pca_result,
+  geom.ind     = "point",          # points for sites
+  col.var      = "black",          # arrows in black
+  habillage    = dat$cluster,      # color by cluster
+  addEllipses  = TRUE,             # cluster ellipses
+  legend.title = "Cluster"
+) +
+  labs(title = "PCA Biplot of All Sites by Cluster")
+
+# View
+pca_cluster
+
+# Define output directory
+out_dir <- "Identifying stream typology plots"
+# Create directory if it does not exist
+if (!dir.exists(out_dir)) {
+  dir.create(out_dir, recursive = TRUE)
+}
+
+# Save
+ggsave(
+  filename = file.path(out_dir, "PCA_Biplot_All_Sites_by_Cluster.png"),
+  plot     = pca_cluster,
+  width    = 8,
+  height   = 6,
+  dpi      = 300
+)
+```
+
+## 7. Characterizing clusters
+
+### i. Frequency table
+
+```{r}
+library(dplyr)
+library(tidyr)
+
+# inherent characteristics 
+site_char <- c("Regime", "Flow_state", "Development", "Relative_elevation")
+
+cluster_summary_table_pct <- dat %>%
+  dplyr::select(all_of(site_char), cluster) %>%  
+  pivot_longer(
+    cols = -cluster,        # reshape all columns except cluster into long format
+    names_to = "Variable",  # original column names become "Variable"
+    values_to = "Value"     # cell contents become "Value"
+  ) %>%
+  count(Variable, cluster, Value, name = "Freq") %>% 
+  group_by(Variable, cluster) %>%          
+  mutate(RelFreq = prop.table(Freq) * 100)       
+
+cluster_summary_table_pct
+```
+
+Save table
+
+```{r}
+out_dir <- "Identifying stream typology plots"
+
+library(openxlsx)
+
+write.xlsx(
+  cluster_summary_table_pct,
+  file = file.path(out_dir, "Relative_freq_percentages_by_cluster.xlsx"),
+  overwrite = TRUE
+)
+
+```
+
+### ii. Plot of relative frequencies
+
+```{r}
+library(dplyr)
+# Combine variable and value
+cluster_summary_table_pct <- cluster_summary_table_pct %>%
+  mutate(Value_labeled = paste0(Variable, ": ", Value))
+
+# Change the order of Variable Values
+cluster_summary_table_pct$Value_labeled <- factor(
+  cluster_summary_table_pct$Value_labeled,
+  levels = c(
+    # Development
+    "Development: Low",
+    "Development: Medium",
+    "Development: High",
+    
+    # Flow_state
+    "Flow_state: Flowing",
+    "Flow_state: Pooled",
+    
+    # Relative_elevation
+    "Relative_elevation: 0 m",
+    "Relative_elevation: <2.1 m",
+    "Relative_elevation: 2.1-10.5 m",
+    "Relative_elevation: >10.5 m",
+    
+    # Regime
+    "Regime: NonPerennial",
+    "Regime: Perennial"
+  )
+)
+
+
+# Create a named color vector for all Value_labeled combinations
+color_map <- c(
+  # Development
+  "Development: Low" = "#fdd49e",
+  "Development: Medium" = "orange2",
+  "Development: High" = "red3",
+  
+  # Flow_state
+  "Flow_state: Flowing" = "#a6d854",
+  "Flow_state: Pooled" = "#1b7837",
+  
+  # Relative_elevation
+  "Relative_elevation: 0 m" = "gray",
+  "Relative_elevation: <2.1 m" = "#dadaeb",
+  "Relative_elevation: 2.1-10.5 m" = "#bcbddc",
+  "Relative_elevation: >10.5 m" = "#756bb1",
+  
+  # Regime
+  "Regime: NonPerennial" = "lightblue",
+  "Regime: Perennial" = "#1f78a4"
+)
+
+# Plot
+library(ggplot2)
+library(dplyr)
+
+rel_freq <- ggplot(cluster_summary_table_pct, 
+       aes(y = Variable, x = RelFreq, fill = Value_labeled)) +
+  geom_bar(stat = "identity", position = "fill", color = "white", linewidth = 0.2) +
+  facet_wrap(~ cluster, ncol = 1, strip.position = "left") +
+  scale_x_continuous(labels = scales::percent_format(scale = 1)) +
+  labs(x = "Relative Frequency (%)", y = NULL, fill = "Category") +
+  theme_minimal(base_size = 12) +
+  theme(
+  strip.placement = "outside",
+  strip.text.y.left = element_text(angle = 0, face = "bold"),
+  panel.spacing = unit(0.6, "lines"),
+  legend.position = "right",        # move to right
+  legend.box = "vertical",          # keep vertical layout
+  legend.direction = "vertical"     # vertical legend
+) +
+guides(fill = guide_legend(ncol = 1)) + # 1 column
+  scale_fill_manual(values = color_map)
+
+rel_freq
+
+# Save
+ggsave(
+  filename = file.path(out_dir, "Relative_freq_plots_by_cluster.png"),
+  plot     = rel_freq,
+  width    = 8,
+  height   = 6,
+  dpi      = 300
+)
+```
+
+-   Cluster 1: Less developed sites
+
+-   Cluster 2: More developed sites
+
+-   Cluster 3: Mostly main stem sites with 0 m relative elevation
+
+-   Cluster 4: Non-perennial sites, far from the main stem, draining small areas, with low-medium development
+
+### iii. Rename clusters to typologies
+
+```{r}
+library(dplyr)
+
+dat <- dat %>%
+  mutate(cluster = as.character(cluster)) %>%
+  mutate(cluster = dplyr::recode(
+    cluster,
+    `1` = "Baseline Tributaries",
+    `2` = "Developed Tributaries",
+    `3` = "Main Stem",
+    `4` = "Pooled Water"
+  )) %>%
+  dplyr::rename(Typology = cluster) %>%
+  dplyr::mutate(Typology = as.factor(Typology)) %>%
+  dplyr::mutate(Typology = factor(Typology, 
+                          levels = c("Pooled Water",
+                                     "Baseline Tributaries",
+                                     "Developed Tributaries",
+                                     "Main Stem")))
+
+# check
+levels(dat$Typology)
+```
+
+Save to Bioavailability_Master_Spreadsheet_Clean3.xlsx
+
+```{r}
+library(openxlsx)
+
+# 1. Create a brand-new workbook
+wb <- createWorkbook()
+
+# 2. Add your sheet
+addWorksheet(wb, "HA 10% Closed System")
+
+# 3. Write your updated dat to the sheet
+writeData(wb, sheet = "HA 10% Closed System", dat)
+
+# 4. Save — overwrite the entire file
+saveWorkbook(wb, "Bioavailability_Master_Spreadsheet_Clean3.xlsx", overwrite = TRUE)
+```
+
+# Identifying Important Predictors of Bioavailability
+
+To determine the relative importance of each BLM predictor on trace element bioavailability, we will conduct a multiple linear regressions (MLR), use step wise selection of the most important predictors, and determine their standardized beta coefficients using the formula:
+
+total bioavailable element = sum of BLM predictors (as standardized log-transformed variables)
+
+## 1. Build and select the MLR
+
+```{r}
+library(MASS)
+
+# BLM predictors
+vars_to_select <- c("log_Cu_uM", "log_Temp_C", "pH", "log_DOC_uM",
+                    "log_DIC_uM", "log_Cl_uM", "log_Ca_uM", 
+                    "log_Mg_uM", "log_SO4_uM", "log_Na_uM", 
+                    "log_K_uM")
+
+# Scale these variables
+scaled_blm_predict <- as.data.frame(
+  scale(dat[vars_to_select])
+)
+
+# Scale the response variable
+scaled_response <- as.numeric(scale(dat$log_TBL_Cu_nmol_g))
+
+# Build the large model
+mod <- lm(
+  scaled_response ~ .,
+  data = scaled_blm_predict
+)
+
+# Step-wise select the best model
+step.mod <- stepAIC(mod, direction = "both", trace = FALSE)
+mod_summary <- summary(step.mod)
+
+# View summary of selected model
+mod_summary
+```
+
+## 2. Quality checks
+
+### i. Multicollinearity among independent variables
+
+```{r}
+library(dplyr)
+library(corrplot)
+
+# Create correlation matrix from DATA, not names
+cor_matrix <- cor(
+  scaled_blm_predict,
+  method = "spearman"
+)
+
+# Save as png inside the folder
+
+# Define output directory
+out_dir <- "Multiple linear regression plots"
+# Create directory if it does not exist
+if (!dir.exists(out_dir)) {
+  dir.create(out_dir, recursive = TRUE)
+}
+
+png(
+  file.path(out_dir, "Spearman_correlation_scaled_log_BLM_predictors.png"),
+  width = 2000,
+  height = 2500,
+  res = 300
+)
+
+corrplot(
+  cor_matrix, 
+  method = "color",
+  type = "lower",
+  tl.cex = 0.7,
+  tl.col = "black",
+  addCoef.col = "black",
+  number.cex = 0.6
+)
+
+title(
+  main = "Spearman Correlation Matrix of Scaled Log BLM Predictors",
+  line = 2
+)
+
+dev.off()
+```
+
+### ii. Homoscedasticity of fitted vs. residual plots and Normality of residuals on the dependent variable
+
+```{r}
+# Save as png inside the folder
+png(
+  file.path(out_dir, "Quality_checks_MLR.png"),
+  width = 2000,
+  height = 2000,
+  res = 300
+)
+
+# Build plot
+par(mfrow = c(2, 2))   # 2 rows, 2 columns
+step.mod_plots <- plot(step.mod)
+
+# View
+step.mod_plots
+
+dev.off()
+```
+
+### iii. Variance inflation factors
+
+```{r}
+library(car)
+
+vif_coeff <- vif(step.mod)
+vif_coeff
+```
+
+## 3. Partial slopes
+
+Partial regression plots of log BLM parameters
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(broom)
+
+# 1. Extract retained predictors from stepwise model
+retained_vars <- names(coef(step.mod))[-1]  # drop intercept
+
+# 2. Function to get partial residuals for each predictor
+get_partial_df <- function(model, data, var) {
+  # Construct model formula terms
+  all_terms <- attr(terms(model), "term.labels")
+  other_terms <- setdiff(all_terms, var)
+  
+  # Get residuals of Y on all predictors except the variable of interest
+  y_formula <- reformulate(other_terms, response = all.vars(formula(model))[1])
+  y_resid <- resid(lm(y_formula, data = data))
+  
+  # Get residuals of X_var on all other predictors
+  x_formula <- reformulate(other_terms, response = var)
+  x_resid <- resid(lm(x_formula, data = data))
+  
+  df <- data.frame(
+    predictor = x_resid,
+    response = y_resid,
+    variable = var
+  )
+  return(df)
+}
+
+# 3. Build combined dataset for all retained predictors
+partial_df <- do.call(rbind, lapply(retained_vars, get_partial_df, 
+                                    model = step.mod, data = dat))
+
+# 4. Plot partial regression slopes
+step.mod_partial_slopes <-
+  ggplot(partial_df, aes(x = predictor, y = response)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm", se = TRUE, color = "blue") + #95% CI
+  facet_wrap(~ variable, scales = "free_x") +
+  labs(
+    x = "Predictor (residuals)",
+    y = "Response (residuals)",
+    title = "Partial Regression Plots for Retained Predictors"
+  ) +
+  theme_minimal(base_size = 12)
+
+step.mod_partial_slopes
+
+# Save
+ggsave(
+  filename = file.path(out_dir, "Partial_slopes_MLR.png"),
+  plot     = step.mod_partial_slopes,
+  width    = 8,
+  height   = 6,
+  dpi      = 300
+)
+```
+
+## 4. Summary table
+
+```{r}
+# 1. Create a data frame with raw beta coefficients (partial slopes)
+summary_mlr <- as.data.frame(summary(step.mod)$coefficients)
+
+# 2. Extract term names
+summary_mlr$Term <- rownames(summary_mlr)
+
+# 3. Reorder columns to put Term first
+summary_mlr <- summary_mlr[, c("Term", setdiff(names(summary_mlr), "Term"))]
+
+# 5. Convert VIF values to data.frame for merging
+vif <- data.frame(
+  Term = names(vif_coeff),
+  VIF = as.numeric(vif_coeff),
+  row.names = NULL
+)
+
+# 6. Merge the result with vif
+summary <- merge(summary_mlr, vif, by = "Term", all.x = TRUE)
+
+# 7. Add model statistics
+mod_summary <- summary(step.mod)
+
+rse <- mod_summary$sigma
+r2 <- mod_summary$r.squared
+adj_r2 <- mod_summary$adj.r.squared
+fstat <- mod_summary$fstatistic[1]
+fnum <- mod_summary$fstatistic[2]
+fden <- mod_summary$fstatistic[3]
+pval <- pf(fstat, fnum, fden, lower.tail = FALSE)
+
+# 8. Create data frame with model statistics matching the structure of summary
+model_stats <- data.frame(
+  Term = c("Residual standard error", "Multiple R-squared", "Adjusted R-squared", "F-statistic", "p-value"),
+  Estimate = c(rse, r2, adj_r2, fstat, pval),
+  `Std. Error` = NA,
+  `t value` = NA,
+  `Pr(>|t|)` = NA,
+  VIF = NA,
+  stringsAsFactors = FALSE
+)
+
+# 9. Check and fix column name mismatches before combining
+
+# 10. Scale both sets of column names
+names(summary) <- c(
+  "Term", "Estimate", "Std. Error", "t value", "Pr(>|t|)", "VIF")
+names(model_stats) <- c("Term", "Estimate", "Std. Error", "t value", "Pr(>|t|)", "VIF")
+
+# 11. Combine coefficients and model stats
+summary_final <- rbind(summary, model_stats)
+
+# View
+summary_final
+
+# Save
+library(openxlsx)
+
+write.xlsx(
+  summary_final,
+  file = file.path(out_dir, "MLR_summary_table.xlsx"),
+  overwrite = TRUE
+)
+
+```
+
+## 5. Outlier detection
+
+```{r}
+# 1. Get model diagnostics
+model_diag <- influence.measures(step.mod)
+
+# 2. Extract indices of influential points flagged by diagnostics
+infl_points <- which(apply(model_diag$is.inf, 1, any))
+
+# 3. Create a dataframe with their info
+flagged_obs <- data.frame(
+  Sample_ID = dat$Sample_ID[infl_points],
+  Fitted = fitted(step.mod)[infl_points],
+  Residual = residuals(step.mod)[infl_points],
+  Std_Residual = rstandard(step.mod)[infl_points],
+  Leverage = hatvalues(step.mod)[infl_points],
+  Cooks_D = cooks.distance(step.mod)[infl_points])
+
+# View flagged observations
+flagged_obs
+
+# Save
+library(openxlsx)
+
+write.xlsx(
+  flagged_obs,
+  file = file.path(out_dir, "MLR_flagged_obs.xlsx"),
+  overwrite = TRUE
+)
+```
+
+Determine whether these flagged observations are clustered around a certain characteristic
+
+```{r}
+library(dplyr)
+
+# 1. Add descriptive variables from dat to flagged observations (already done)
+flagged_obs <- flagged_obs %>%
+  left_join(dat %>% 
+              dplyr::select(Sample_ID, Site, Date, Typology, Development), 
+            by = "Sample_ID")
+
+### ---- By Typology ----
+# 2a. Summarize how many flagged points per cluster
+by_typ <- flagged_obs %>% count(Typology)
+
+# 2b. Proportion of flagged by cluster
+prop_typ <- flagged_obs %>%
+  count(Typology) %>%
+  mutate(prop_flagged = n / sum(n))
+
+# 2c. Overall proportions in dataset
+overall_typ <- dat %>%
+  count(Typology) %>%
+  mutate(prop_overall = n / sum(n))
+
+# 2d. Compare flagged vs overall
+compare_typ <- left_join(prop_typ, overall_typ, by = "Typology")
+
+
+### ---- By Site ----
+# 3a. Summarize flagged points per site
+by_site <- flagged_obs %>% count(Site)
+
+# 3b. Proportion flagged per site
+prop_site <- flagged_obs %>%
+  count(Site) %>%
+  mutate(prop_flagged = n / sum(n))
+
+# 3c. Overall proportions in dataset
+overall_site <- dat %>%
+  count(Site) %>%
+  mutate(prop_overall = n / sum(n))
+
+# 3d. Compare flagged vs overall
+compare_site <- left_join(prop_site, overall_site, by = "Site")
+
+### ---- By Developed LULC ----
+# 4a. Summarize flagged points per site
+by_dev <- flagged_obs %>% count(Development)
+
+# 4b. Proportion flagged per site
+prop_dev <- flagged_obs %>%
+  count(Development) %>%
+  mutate(prop_flagged = n / sum(n))
+
+# 4c. Overall proportions in dataset
+overall_dev <- dat %>%
+  count(Development) %>%
+  mutate(prop_overall = n / sum(n))
+
+# 4d. Compare flagged vs overall
+compare_dev <- left_join(prop_dev, overall_dev, by = "Development")
+
+
+# 5. Combine plots
+library(dplyr)
+
+compare_typ <- compare_typ %>% 
+  rename(Value = Typology)
+
+compare_site <- compare_site %>% 
+  rename(Value = Site)
+
+compare_dev <- compare_dev %>% 
+  rename(Value = Development) 
+
+# 6. Now combine all tables
+flagged_obs_clusters <- bind_rows(compare_typ, compare_site, compare_dev)
+
+# 7. Check result
+flagged_obs_clusters
+
+# 8. Save
+library(openxlsx)
+
+# Path to file
+file_path <- file.path(out_dir, "MLR_flagged_obs.xlsx")
+
+# Load existing workbook
+wb <- loadWorkbook(file_path)
+
+# Add new worksheet
+addWorksheet(wb, "Flagged_Obs_Clusters")
+
+# Write data to the new sheet
+writeData(
+  wb,
+  sheet = "Flagged_Obs_Clusters",
+  x = flagged_obs_clusters
+)
+
+# Save workbook (overwrite = TRUE updates the file)
+saveWorkbook(wb, file_path, overwrite = TRUE)
+```
+
+# Assessing Variables by Typology
+
+Set order of Typologies
+
+```{r}
+# Rearrange order
+dat$Typology <- as.factor(dat$Typology)
+dat$Typology <- factor(dat$Typology, 
+                          levels = c("Pooled Water",
+                                     "Baseline Tributaries",
+                                     "Developed Tributaries",
+                                     "Main Stem"))
+
+# Check
+levels(dat$Typology)
+```
+
+## 1. Summary Statistics
+
+Mean and standard error by typology
+
+```{r}
+library(dplyr)
+library(tidyr)
+
+# Standard error function
+se <- function(x) {
+  sd(x, na.rm = TRUE) / sqrt(sum(!is.na(x)))
+}
+
+# Mode function (returns the most frequent value)
+get_mode <- function(x) {
+  x <- x[!is.na(x)]
+  if (length(x) == 0) return(NA)
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+summary_table <- dat %>%
+  dplyr::select(Typology, where(is.numeric)) %>%  # keep Typology + numeric vars
+  pivot_longer(
+    cols = -Typology,
+    names_to = "Variable",
+    values_to = "Value"
+  ) %>%
+  group_by(Variable, Typology) %>%
+  summarise(
+    Mean     = mean(Value, na.rm = TRUE),
+    Median   = median(Value, na.rm = TRUE),
+    Mode     = get_mode(Value),
+    Variance = var(Value, na.rm = TRUE),
+    SE       = se(Value),
+    .groups = "drop"
+  )
+
+summary_table
+```
+
+Export to excel
+
+```{r}
+library(openxlsx)
+
+# File name
+file_path <- "Statistical_analyses_by_typology.xlsx"
+
+# Load workbook if exists, otherwise create a new one
+if (file.exists(file_path)) {
+  wb <- loadWorkbook(file_path)
+} else {
+  wb <- createWorkbook()
+}
+
+
+# Create sheet if it does NOT exist
+if (!"Summary Stats" %in% names(wb)) {
+  addWorksheet(wb, "Summary Stats")
+}
+
+# Write data to the sheet
+writeData(wb, "Summary Stats", summary_table)
+
+# Save workbook (overwrite = TRUE allows updating)
+saveWorkbook(wb, file_path, overwrite = TRUE)
+
+```
+
+## 2. Check of ANOVA Assumptions
+
+To determine whether variables significantly differ by typology, we could use a parametric ANOVA which assumes variables are normally distributed and have homogeneity of variance by typology. We already determined that most variables were not normally distributed, even after log-transforming them. Now we will assess homogeneity of variance by typology.
+
+### a. Homogeneity of Variance
+
+Using the Levene Test
+
+```{r}
+library(car)  # for leveneTest()
+library(dplyr)
+
+# Set alpha for homogeneity check
+alpha <- 0.05
+
+# Identify all numeric variables EXCEPT Typology
+numeric_vars <- dat %>%
+  dplyr::select(where(is.numeric)) %>%
+  names()
+
+# Initialize results dataframe
+levene_results <- data.frame(
+  Variable = character(),
+  F_value = numeric(),
+  p_value = numeric(),
+  Homogeneous = logical(),
+  stringsAsFactors = FALSE
+)
+
+# Loop over all numeric variables
+for (var in numeric_vars) {
+  
+  # Run Levene's test
+  test <- car::leveneTest(as.formula(paste(var, "~ Typology")), data = dat)
+  
+  # Extract F and p-values
+  F_val <- test[1, "F value"]
+  p_val <- test[1, "Pr(>F)"]
+  
+  # Determine homogeneity
+  homogeneous <- p_val > alpha
+  
+  # Add results to dataframe
+  levene_results <- rbind(
+    levene_results, 
+    data.frame(
+      Variable = var,
+      F_value = F_val,
+      p_value = p_val,
+      Homogeneous = homogeneous
+    )
+  )
+}
+
+# View results
+levene_results
+```
+
+Export results to excel
+
+```{r}
+library(openxlsx)
+
+# Load the existing workbook
+wb <- loadWorkbook("Statistical_analyses_by_typology.xlsx")
+
+# Create sheet if it does NOT exist
+if(!"Homog Var by Typology" %in% names(wb)) {
+  addWorksheet(wb, "Homog Var by Typology")
+}
+
+# Write your new table
+writeData(wb, "Homog Var by Typology", levene_results)
+
+# Save the workbook (overwrite)
+saveWorkbook(wb, "Statistical_analyses_by_typology.xlsx", overwrite = TRUE)
+```
+
+## 3. Kruskal Wallis Test
+
+Since most variables fail the assumptions for an ANOVA, we will use a non-parametric rank-based test to determine whether variables significantly differ by stream typology; the Kruskal Wallis (KW) test. We will also use the Holm-Bonferroni correction factor for multiple comparisons when conducting pairwise comparisons of variables by typology.
+
+KW test relies on the following assumptions
+
+1.  ***For ordinal, interval, or ratio data:*** While most of our variables fail this assumption, we can make an exception while being aware of this.
+
+2.  ***The samples are independent of each other and within each group:*** Our variables meet this assumption.
+
+3.  ***The distributions of the groups should have the same shape.***
+
+### i. Distribution of variables by typology
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# Choose variables whose distributions you want to compare by Typology
+blm_predictors <- c(
+  "log_Cu_uM",
+  "log_Temp_C", 
+  "pH", 
+  "log_DOC_uM",
+  "log_DIC_uM", 
+  "log_Cl_uM", 
+  "log_Ca_uM",
+  "log_Mg_uM", 
+  "log_SO4_uM", 
+  "log_Na_uM",
+  "log_K_uM"
+)
+
+# Change to long format
+dat_long <- dat %>%
+  # Keep Typology and the variables you want to check
+  dplyr::select(Typology, all_of(blm_predictors)) %>%
+  
+  # Turn columns into rows: Variable, Value
+  pivot_longer(
+    cols      = -Typology,
+    names_to  = "Variable",
+    values_to = "Value"
+  )
+
+# Density plots by Typology
+ggplot(dat_long, aes(x = Value, fill = Typology)) +
+  geom_density(alpha = 0.4) +   # alpha for transparent fill
+  facet_wrap(~ Variable, scales = "free") +  # one panel per Variable
+  labs(
+    title = "Distributions by Typology",
+    x = "Value",
+    y = "Density"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 30, hjust = 1)
+  )
+```
+
+### ii. Check for missing values
+
+The KW test also can't handle variables with missing values and no variance, we'll check to see if any variables have these two conditions
+
+```{r}
+library(dplyr)
+
+na_counts <- dat %>%
+  dplyr::select(where(is.numeric)) %>%
+  summarise(across(everything(), ~sum(is.na(.)))) %>%
+  pivot_longer(everything(),
+               names_to = "Variable",
+               values_to = "NA_count") %>%
+  filter(NA_count > 0)
+
+# View results, should be 0
+na_counts
+```
+
+### iii. Check for zero variance
+
+No variables have missing values, now we'll check for lack of variance
+
+```{r}
+no_variance <- dat %>%
+  dplyr::select(where(is.numeric)) %>%
+  summarise(across(everything(), ~dplyr::n_distinct(., na.rm = TRUE))) %>%
+  pivot_longer(everything(),
+               names_to = "Variable",
+               values_to = "Distinct_values") %>%
+  filter(Distinct_values <= 1)
+
+# View results, should be 0
+no_variance
+```
+
+### iv. Run KW tests
+
+Now we can perform the KW test
+
+```{r}
+library(tibble)
+library(agricolae)
+library(dplyr)
+
+alpha <- 0.05
+
+# 1. Get all numeric variables in dat
+numeric_vars <- dat %>%
+  dplyr::select(where(is.numeric)) %>%
+  names()
+
+# 2. Create an empty list to store rows
+combined_list <- list()
+
+# 3. Loop through each numeric variable 
+i <- 1
+for (v in numeric_vars) {
+  
+  # Kruskal-Wallis test
+  formula <- as.formula(paste(v, "~ Typology"))
+  kw_test <- kruskal.test(formula, data = dat)
+  
+  chi_sq     <- kw_test$statistic
+  df_val     <- kw_test$parameter
+  p_val      <- kw_test$p.value
+  significant <- p_val < alpha   # significant when p < 0.05
+  
+  # agricolae::kruskal to assign groups (letters)
+  k_out <- agricolae::kruskal(
+    y    = dat[[v]],
+    trt  = dat$Typology,
+    alpha = alpha,
+    group = TRUE
+  )
+  
+  # Create a data frame from the groups table
+  groups_df <- k_out$groups %>%
+    rownames_to_column("Typology")
+  
+  # Combine test results with group letters
+  combined_list[[i]] <- groups_df %>%
+    mutate(
+      Variable   = v,
+      Chi_sq     = as.numeric(chi_sq),
+      df         = as.numeric(df_val),
+      p_value    = as.numeric(p_val),
+      Significant = significant
+    )
+  
+  i <- i + 1
+}
+
+# 5. Bind everything together
+combined_kruskal <- bind_rows(combined_list)
+
+# View
+combined_kruskal
+```
+
+Export to excel
+
+```{r}
+library(openxlsx)
+
+# Load the existing workbook
+wb <- loadWorkbook("Statistical_analyses_by_typology.xlsx")
+
+# Create sheet if it does NOT exist
+if(!"K-W test by Typology" %in% names(wb)) {
+  addWorksheet(wb, "K-W test by Typology")
+}
+
+# Write your new table
+writeData(wb, "K-W test by Typology", combined_kruskal)
+
+# Save the workbook (overwrite)
+saveWorkbook(wb, "Statistical_analyses_by_typology.xlsx", overwrite = TRUE)
+```
+
+## 4. Boxplots by Typology
+
+We first need to create an object with the pair-wise comparison letters
+
+```{r}
+# Create letters_df from combined_kruskal
+letters_df <- combined_kruskal %>%
+  dplyr::select(Variable, Typology, groups) %>%
+  dplyr::distinct() %>%
+  dplyr::rename(Letters = groups)
+
+```
+
+### a. BLM predictors
+
+Create a boxplots for each BLM predictor
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+# Define output directory (choose ONE)
+out_dir <- "Plots by typology"
+if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+
+# 1. Titles for each variable's plot (panel title)
+title_lookup <- c(
+  "log_Temp_C" = "Temperature",
+  "pH"         = "pH",
+  "log_DOC_uM" = "Dissolved Organic Carbon",
+  "log_DIC_uM" = "Dissolved Inorganic Carbon",
+  "log_Ca_uM"  = "Calcium",
+  "log_Mg_uM"  = "Magnesium",
+  "log_Na_uM"  = "Sodium",
+  "log_K_uM"   = "Potassium",
+  "log_SO4_uM" = "Sulfate",
+  "log_Cl_uM"  = "Chloride"
+)
+
+# 2. Custom y-axis labels for each variable
+y_label_lookup <- c(
+  "log_Temp_C" = "Temperature (°C)",
+  "pH"         = "pH",
+  "log_DOC_uM" = "log DOC (µM)",
+  "log_DIC_uM" = "log DIC (µM)",
+  "log_Ca_uM"  = "log Ca (µM)",
+  "log_Mg_uM"  = "log Mg (µM)",
+  "log_Na_uM"  = "log Na (µM)",
+  "log_K_uM"   = "log K (µM)",
+  "log_SO4_uM" = "log SO₄ (µM)",
+  "log_Cl_uM"  = "log Cl (µM)"
+)
+
+# 3. Colors for each Typology
+typology_colors <- c(
+  "Pooled Water"        = "#E69F00",
+  "Tributaries"         = "#56B4E9",
+  "Developed Tributaries" = "#D55E00",
+  "Main Stem"           = "#999999"
+)
+
+# 4. Loop through variables in title_lookup
+for (var in names(title_lookup)) {
+
+  y_pos_df <- dat %>%
+    group_by(Typology) %>%
+    summarise(
+      y_pos = max(.data[[var]], na.rm = TRUE) * 1.25,
+      .groups = "drop"
+    )
+
+  letters_sub <- letters_df %>%
+    filter(Variable == var) %>%
+    dplyr::select(Typology, Letters)
+
+  letters_plot_df <- letters_sub %>%
+    left_join(y_pos_df, by = "Typology")
+
+  p <- ggplot(dat, aes(
+    x = Typology,
+    y = .data[[var]],
+    color = Typology
+  )) +
+    geom_boxplot(fill = NA, width = 0.6) +
+    geom_jitter(width = 0.15, size = 2, alpha = 0.7) +
+    geom_text(
+      data = letters_plot_df,
+      aes(x = Typology, y = y_pos, label = Letters),
+      inherit.aes = FALSE,
+      size = 5
+    ) +
+    scale_color_manual(values = typology_colors) +
+    labs(
+      title = title_lookup[[var]],
+      y     = y_label_lookup[[var]],
+      x     = ""
+    ) +
+    scale_y_continuous(expand = expansion(mult = c(0, 0.1))) +
+    theme_minimal(base_size = 12) +
+    theme(
+      legend.position = "none",
+      axis.text.x  = element_text(size = 11, angle = 0, vjust = 0.5),
+      axis.title.x = element_text(size = 12),
+      axis.text.y  = element_text(size = 11),
+      axis.title.y = element_text(size = 12),
+      plot.title   = element_text(size = 14)
+    ) +
+    theme(
+  axis.text.x = element_text(
+    angle = 45,
+    hjust = 1,
+    vjust = 1
+  )
+)
+
+  # ---- Save ---
+  file_stub <- paste0("Boxplot_", var, "_by_Typology")
+
+  ggsave(
+    filename = file.path(out_dir, paste0(file_stub, ".png")),
+    plot     = p,
+    width    = 5,
+    height   = 5,
+    dpi      = 300
+  )
+}
+
+```
+
+Boxplots of BLM predictors on a single pane
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# ------------------------------------------------------------------
+# 0. Typology colors
+# ------------------------------------------------------------------
+typology_colors <- c(
+  "Pooled Water"          = "#E69F00",
+  "Baseline Tributaries"  = "#56B4E9",
+  "Developed Tributaries" = "#D55E00",
+  "Main Stem"             = "#999999"
+)
+
+# 1. Make sure output folder exists
+out_dir <- "Plots by typology"
+if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+
+# 2. Put data into long format: one row = 1 observation of 1 variable
+dat_long <- dat %>%
+  dplyr::select(Typology, all_of(names(title_lookup))) %>%  
+  pivot_longer(
+    cols      = -Typology,
+    names_to  = "Variable",
+    values_to = "Value"
+  ) %>%
+  filter(!is.na(Value))
+
+# 3. Prepare letters for all variables in one table ----
+
+# 3a. Get max y per Variable x Typology from the long data
+y_pos_df <- dat_long %>%
+  group_by(Variable, Typology) %>%
+  summarise(y_max = max(Value, na.rm = TRUE), .groups = "drop")
+
+# 3b. Subset letters_df to only the variables you are plotting
+#     letters_df must have: Variable, Typology, Letters
+letters_long <- letters_df %>%
+  filter(Variable %in% names(title_lookup)) %>%
+  # join to get y_max for each Variable x Typology
+  left_join(y_pos_df, by = c("Variable", "Typology")) %>%
+  # position letters slightly above the max
+  mutate(
+    y_pos = y_max * 1.05
+  )
+
+# 4. Facet labels using title_lookup
+facet_labels <- as_labeller(title_lookup)
+
+# 5. Build one faceted plot
+all_vars_panel <- ggplot(dat_long, aes(
+    x     = Typology,
+    y     = Value,
+    color = Typology
+  )) +
+  # Boxplots
+  geom_boxplot(fill = NA, width = 0.6) +
+  
+  # Jittered points
+  geom_jitter(
+    width = 0.15,
+    size  = 1.5,
+    alpha = 0.7
+  ) +
+  
+  # Letters from Kruskal groups
+  geom_text(
+    data = letters_long,
+    aes(
+      x     = Typology,
+      y     = y_pos,
+      label = Letters
+    ),
+    inherit.aes = FALSE,
+    size = 3
+  ) +
+  
+  # Typology colors
+  scale_color_manual(values = typology_colors) +
+  
+  # Facet by Variable, with nice titles
+  facet_wrap(
+    ~ Variable,
+    scales  = "free_y",
+    ncol    = 3,
+    labeller = facet_labels
+  ) +
+  
+  labs(
+    title = "BLM Predictors by Stream Typology",
+    x     = "Stream Typology",
+    y     = "Log Concentration (µM)"
+  ) +
+  
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "none",
+    axis.text.x  = element_text(size = 9, angle = 30, hjust = 1),
+    strip.text   = element_text(size = 11),
+    plot.title   = element_text(size = 14)
+  )
+
+# 6. Show in RStudio
+all_vars_panel
+
+```
+
+Save plot
+
+```{r}
+ggsave(
+  filename = file.path(out_dir, "All_BLM_predictors_square.png"),
+  plot     = all_vars_panel,
+  width    = 9,
+  height   = 9,
+  dpi      = 300
+)
+```
+
+### b. Trace element fractions
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+#-------------------------------------------------
+# 1. Colors by response variable (your mapping)
+#-------------------------------------------------
+response_colors <- c(
+  "Total Cu (uM)"                              = "chocolate4",
+  "Bioavailable Cu (nmol/g wet weight)"        = "peru",
+  "Proportion of Bioavailable Cu (Free/Total)" = "chocolate1"
+)
+
+#-------------------------------------------------
+# 2. Map variable names -> response labels
+#-------------------------------------------------
+response_lookup <- c(
+  "log_Cu_uM"         = "Total Cu (uM)",
+  "log_TBL_Cu_nmol_g" = "Bioavailable Cu (nmol/g wet weight)",
+  "log_rel_prop_Cu"   = "Proportion of Bioavailable Cu (Free/Total)"
+)
+
+vars_trace <- names(response_lookup)
+
+#-------------------------------------------------
+# 3. Custom multipliers for letter heights per plot
+#    (names must match Response labels)
+#-------------------------------------------------
+letter_nudge <- c(
+  "Total Cu (uM)"                              = 1,
+  "Bioavailable Cu (nmol/g wet weight)"        = 2,
+  "Proportion of Bioavailable Cu (Free/Total)" = 1
+)
+
+#-------------------------------------------------
+# 4. Long data for plotting (use Typology)
+#-------------------------------------------------
+dat_long_trace <- dat %>%
+  dplyr::select(Typology, all_of(vars_trace)) %>%
+  pivot_longer(
+    cols      = -Typology,
+    names_to  = "Variable",
+    values_to = "Value"
+  ) %>%
+  filter(!is.na(Value)) %>%
+  mutate(
+    Response = response_lookup[Variable],
+    Response = factor(Response, levels = names(response_colors))
+  )
+
+#-------------------------------------------------
+# 5. Letters (from letters_df) for all 6 variables
+#-------------------------------------------------
+
+# 5a. Max y per Variable x Typology
+y_pos_df <- dat_long_trace %>%
+  group_by(Variable, Typology) %>%
+  summarise(y_max = max(Value, na.rm = TRUE), .groups = "drop")
+
+# 5b. Attach Response + y positions + nudges to letters_df
+#     letters_df must have: Variable, Typology, Letters
+letters_long_trace <- letters_df %>%
+  filter(Variable %in% vars_trace) %>%
+  mutate(
+    Response = response_lookup[Variable],
+    Response = factor(Response, levels = names(response_colors))
+  ) %>%
+  left_join(
+    y_pos_df,
+    by = c("Variable", "Typology")
+  ) %>%
+  mutate(
+    # add different nudge per facet
+    y_pos = y_max + letter_nudge[as.character(Response)]
+  )
+
+#-------------------------------------------------
+# 6. One faceted trace element panel (x = Typology)
+#-------------------------------------------------
+bioavail_panel <- ggplot(dat_long_trace, aes(
+    x     = Typology,
+    y     = Value,
+    color = Response
+  )) +
+  # Boxplots
+  geom_boxplot(fill = NA, width = 0.6) +
+  
+  # Jittered points
+  geom_jitter(
+    width = 0.15,
+    size  = 1,
+    alpha = 0.7
+  ) +
+  
+  # Letters from Kruskal groups
+  geom_text(
+    data = letters_long_trace,
+    aes(
+      x     = Typology,
+      y     = y_pos,
+      label = Letters
+    ),
+    inherit.aes = FALSE,
+    size = 3.5
+  ) +
+  
+  # Colors by response (your palette)
+  scale_color_manual(values = response_colors) +
+  
+  # One facet per response variable
+  facet_wrap(
+    ~ Response,
+    scales = "free_y",
+    ncol   = 3
+  ) +
+  
+  labs(
+    title = "Trace Elements by Stream Typology",
+    x     = "Stream Typology"
+  ) +
+  
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "none",
+    axis.text.x  = element_text(size = 10, angle = 30, hjust = 1),
+    axis.text.y  = element_text(size = 10),
+    strip.text   = element_text(size = 11),
+    plot.title   = element_text(size = 14)
+  )
+
+# View
+bioavail_panel
+
+```
+
+Save plot as a square
+
+```{r}
+ggsave(
+  filename = file.path("Plots by typology", "Trace_elements_panel_square.png"),
+  plot     = bioavail_panel,
+  width    = 10,
+  height   = 6,
+  dpi      = 300
+)
+```
+
+### e. Toxicity
+
+Toxicity to daphnia
+
+```{r}
+library(dplyr)
+
+# 1. Pivot to long format
+dat_cu_daph <- dat %>%
+  dplyr::select(
+    Typology,
+    log_Cu_nM,
+    log_Cu_Chronic_Tox_Daphnia_nM,
+    log_Cu_Acute_Tox_Daphnia_nM
+  ) %>%
+  pivot_longer(
+    cols      = c(
+      log_Cu_nM,
+      log_Cu_Chronic_Tox_Daphnia_nM,
+      log_Cu_Acute_Tox_Daphnia_nM
+    ),
+    names_to  = "Copper_Concentrations",
+    values_to = "Value"
+  ) %>%
+  mutate(
+    Copper_Concentrations = dplyr::recode(
+      Copper_Concentrations,
+      "log_Cu_nM"                          = "Measured Copper",
+      "log_Cu_Chronic_Tox_Daphnia_nM" = "Chronically Toxic to Daphnia",
+      "log_Cu_Acute_Tox_Daphnia_nM"   = "Acutely Toxic to Daphnia"
+    ),
+    Copper_Concentrations = factor(
+      Copper_Concentrations,
+      levels = c(
+        "Measured Copper",
+        "Chronically Toxic to Daphnia",
+        "Acutely Toxic to Daphnia"
+      )
+    )
+  ) %>%
+  filter(!is.na(Value))
+
+# 2. Density plot faceted by Typology
+p_cu_daph_density <- ggplot(
+    dat_cu_daph,
+    aes(x = Value, fill = Copper_Concentrations)
+  ) +
+  geom_density(alpha = 0.5, linewidth = 0.6) +
+  facet_wrap(~ Typology, ncol = 2) +
+  scale_fill_manual(values = c(
+    "Measured Copper"              = "chocolate4",
+    "Chronically Toxic to Daphnia" = "maroon",
+    "Acutely Toxic to Daphnia"     = "red"
+  )) +
+  labs(
+    title = "Copper Toxicity Thresholds vs Measured Cu",
+    x     = "Log Cu (nM)",
+    y     = "Density",
+    fill  = "Copper Concentration"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "bottom",
+    legend.title    = element_text(size = 11),
+    legend.text     = element_text(size = 10),
+    strip.text      = element_text(size = 11),
+    axis.text.x     = element_text(size = 10),
+    axis.text.y     = element_text(size = 10),
+    plot.title      = element_text(size = 14)
+  )
+
+p_cu_daph_density
+
+# Define output directory
+out_dir <- "Plots of Cu Toxicity"
+
+# Create folder if it doesn't exist
+if (!dir.exists(out_dir)) {
+  dir.create(out_dir, recursive = TRUE)
+}
+
+# Save plot
+ggsave(
+  filename = file.path(out_dir, "Cu_toxicity_daphnia.png"),
+  plot = p_cu_daph_density,
+  width = 8,
+  height = 6,
+  units = "in",
+  dpi = "print"
+)
+```
+
+Toxicity to minnow
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+# 1. Pivot to long format
+dat_cu_minn <- dat %>%
+  dplyr::select(
+    Typology,
+    log_Cu_nM,
+    log_Cu_Chronic_Tox_Minnow_nM,
+    log_Cu_Acute_Tox_Minnow_nM
+  ) %>%
+  pivot_longer(
+    cols      = c(
+      log_Cu_nM,
+      log_Cu_Chronic_Tox_Minnow_nM,
+      log_Cu_Acute_Tox_Minnow_nM
+    ),
+    names_to  = "Copper_Concentrations",
+    values_to = "Value"
+  ) %>%
+  mutate(
+    Copper_Concentrations = dplyr::recode(
+      Copper_Concentrations,
+      "log_Cu_nM"                          = "Measured Copper",
+      "log_Cu_Chronic_Tox_Minnow_nM" = "Chronically Toxic to Minnow",
+      "log_Cu_Acute_Tox_Minnow_nM"   = "Acutely Toxic to Minnow"
+    ),
+    Copper_Concentrations = factor(
+      Copper_Concentrations,
+      levels = c(
+        "Measured Copper",
+        "Chronically Toxic to Minnow",
+        "Acutely Toxic to Minnow"
+      )
+    )
+  ) %>%
+  filter(!is.na(Value))
+
+# 2. Density plot faceted by Typology
+p_cu_daph_density_minn <- ggplot(
+    dat_cu_minn,
+    aes(x = Value, fill = Copper_Concentrations)
+  ) +
+  geom_density(alpha = 0.5, linewidth = 0.6) +
+  facet_wrap(~ Typology, ncol = 2) +
+  scale_fill_manual(values = c(
+    "Measured Copper"              = "chocolate4",
+    "Chronically Toxic to Minnow" = "maroon",
+    "Acutely Toxic to Minnow"     = "red"
+  )) +
+  labs(
+    title = "Copper Toxicity Thresholds vs Measured Cu",
+    x     = "Log Cu (nM)",
+    y     = "Density",
+    fill  = "Copper Concentration"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "bottom",
+    legend.title    = element_text(size = 11),
+    legend.text     = element_text(size = 10),
+    strip.text      = element_text(size = 11),
+    axis.text.x     = element_text(size = 10),
+    axis.text.y     = element_text(size = 10),
+    plot.title      = element_text(size = 14)
+  )
+
+p_cu_daph_density_minn
+
+# Define output directory
+out_dir <- "Plots of Cu Toxicity"
+
+# Create folder if it doesn't exist
+if (!dir.exists(out_dir)) {
+  dir.create(out_dir, recursive = TRUE)
+}
+
+# Save plot
+ggsave(
+  filename = file.path(out_dir, "Cu_toxicity_minnow.png"),
+  plot = p_cu_daph_density_minn,
+  width = 8,
+  height = 6,
+  units = "in",
+  dpi = "print"
+)
+```
+
+Calculate probability of overlapping measured copper with toxic levels of copper by stream typology
+
+```{r}
+#Quantify overlapping area of measured copper with toxic concentrations by typology
+
+# Extract the two vectors
+x1 <- dat$log_Cu_nM
+x2 <- dat$log_Cu_Chronic_Tox_Daphnia_nM
+x3 <- dat$log_Cu_Acute_Tox_Daphnia_nM
+x4 <- dat$log_Cu_Chronic_Tox_Minnow_nM
+x5 <- dat$log_Cu_Acute_Tox_Minnow_nM
+
+# Compute density overlaps between measured Cu and toxicity thresholds
+library(dplyr)
+
+overlap_area <- function(x, y, n = 512) {
+  d1 <- density(x, n = n)
+  d2 <- density(y, n = n)
+  
+  # Common x grid
+  x_common <- seq(max(min(d1$x), min(d2$x)), min(max(d1$x), max(d2$x)), length.out = n)
+  
+  y1 <- approx(d1$x, d1$y, x_common)$y
+  y2 <- approx(d2$x, d2$y, x_common)$y
+  
+  # Area under the minimum of both density curves
+  overlap <- sum(pmin(y1, y2)) * diff(x_common[1:2])
+  return(overlap)
+}
+
+# --- Compute overlaps by Typology ---
+overlap_results_by_typology <- dat %>%
+  group_by(Typology) %>%
+  summarise(
+    
+    Overlap_Chronic_Toxicity_Daphnia = 
+      overlap_area(log_Cu_nM, log_Cu_Chronic_Tox_Daphnia_nM),
+    
+    Overlap_Acute_Toxicity_Daphnia   = 
+      overlap_area(log_Cu_nM, log_Cu_Acute_Tox_Daphnia_nM),
+    
+    Overlap_Chronic_Toxicity_Minnow  = 
+      overlap_area(log_Cu_nM, log_Cu_Chronic_Tox_Minnow_nM),
+    
+    Overlap_Acute_Toxicity_Minnow    = 
+      overlap_area(log_Cu_nM, log_Cu_Acute_Tox_Minnow_nM)
+  
+    ) %>%
+  ungroup()
+
+# View
+overlap_results_by_typology
+```
+
+Save
+
+```{r}
+library(openxlsx)
+
+# 1. Define output folder (relative to working directory)
+out_dir <- "Plots of Cu Toxicity"
+
+# 2. Create folder if it doesn't exist
+if (!dir.exists(out_dir)) {
+  dir.create(out_dir, recursive = TRUE)
+}
+
+# 3. Define file path
+file_path <- file.path(out_dir, "overlap_Cu_by_typology.xlsx")
+
+# 4. Create workbook and write table
+wb <- createWorkbook()
+addWorksheet(wb, "Overlap_Cu_by_Typology")
+writeData(wb, "Overlap_Cu_by_Typology", overlap_results_by_typology)
+
+# 5. Save
+saveWorkbook(wb, file_path, overwrite = TRUE)
+```
+
+# Variables by Site within Typology
+
+## **1. Main Stem**
+
+```{r}
+# Isolate Main Stem typology and order the sites
+main_stem <- dat %>%
+  filter(Typology == "Main Stem") %>%
+  mutate(Site = factor(Site, 
+                       levels = unique(Site[order(Dist_from_EFPC_km)])))
+
+
+# Plot by site
+library(ggplot2)
+
+main_stem_plot <- ggplot(
+  main_stem,
+  aes(x = Site, y = log_TBL_Cu_nmol_g)
+) +
+  geom_boxplot(
+    fill = "darkslategray1",    
+    color = "black",             
+    position = position_dodge(width = 0.75)
+  ) +
+  labs(
+    title = "Bioavailable Cu in Main Stem",
+    x = "Site (upstream to downstream)",
+    y = "Log TBL Cu (umol/g wet weight)"
+  ) +
+  theme_test() +
+  theme(
+    axis.text.x = element_text(angle = 30, hjust = 1),
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    legend.position = "none"
+  )
+
+
+# View
+main_stem_plot
+
+# Save 
+out_dir <- "Plots by site within typology"
+# Create directory if it does not exist
+if (!dir.exists(out_dir)) {
+  dir.create(out_dir, recursive = TRUE)
+}
+
+ggsave(
+  filename = file.path(out_dir, "Bioavailability_main_stem.png"),
+  plot     = main_stem_plot,
+  width    = 10,
+  height   = 6,
+  dpi      = 300
+)
+```
+
+## **2. Baseline Tribs**
+
+```{r}
+# Isolate Flowing Tribs typology and order the sites
+f_tribs <- dat %>%
+  filter(Typology == "Baseline Tributaries") %>%
+  mutate(Site = factor(Site, 
+                       levels = unique(Site[order(Dist_from_EFPC_km)])))
+
+
+# Plot by site colored by Network
+library(ggplot2)
+
+baseline_trib <- 
+  ggplot(f_tribs, aes(x = Site, y = log_TBL_Cu_nmol_g, fill = Network)) +
+  geom_boxplot(color = "black", position = position_dodge(width = 0.75)) +
+  labs(
+    title = "Bioavailable Cu in Flowing Tributaries",
+    x = "Site (grouped by network)",
+    y = " Log TBL Cu (umol/g wet weight)"
+  ) +
+  theme_test() +
+  theme(
+    axis.text.x = element_text(angle = 30, hjust = 1),
+    legend.position = "none",
+    plot.title = element_text(hjust = 0.5, face = "bold")
+  ) +
+
+  # Add vertical dividers between networks
+  facet_grid(~Network, scales = "free_x", space = "free_x", switch = "x")
+
+# View 
+baseline_trib
+
+# Save
+ggsave(
+  filename = file.path(out_dir, "Bioavailability_baseline_tribs.png"),
+  plot     = baseline_trib,
+  width    = 10,
+  height   = 6,
+  dpi      = 300
+)
+```
+
+## 3. Pooled Water
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+# 1. Isolate Non-Perennial Pooled Tribs typology and order the sites
+pooled_tribs <- dat %>%
+  filter(Typology == "Pooled Water") %>%
+  mutate(
+    Site = factor(
+      Site,
+      levels = unique(Site[order(Dist_from_EFPC_km)])
+    )
+  )
+
+pooled_tribs_plot <- 
+  ggplot(pooled_tribs, aes(x = Site, y = log_TBL_Cu_nmol_g, fill = Network)) +
+  geom_boxplot(color = "black", position = position_dodge(width = 0.75)) +
+  labs(
+    title = "Bioavailable Cu in Non-Perennial Pooled Tributaries",
+    x = "Site (grouped by network)",
+    y = "Log TBL Cu (umol/g wet weight)"
+  ) +
+  theme_test() +
+  theme(
+    axis.text.x = element_text(angle = 30, hjust = 1),
+    legend.position = "none",
+    plot.title = element_text(hjust = 0.5, face = "bold")
+  ) +
+  facet_grid(~Network, scales = "free_x", space = "free_x", switch = "x")
+
+# View
+pooled_tribs_plot
+
+# Save
+ggsave(
+  filename = file.path(out_dir, "Bioavailability_pooled_water.png"),
+  plot     = pooled_tribs_plot,
+  width    = 10,
+  height   = 6,
+  dpi      = 300
+)
+
+```
+
+## 4. Perennial Developed Tribs
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+# Isolate Developed Tribs typology and order sites
+d_tribs <- dat %>%
+  filter(Typology == "Developed Tributaries") %>%
+  mutate(
+    Site = factor(
+      Site,
+      levels = unique(Site[order(Dist_from_EFPC_km)])
+    )
+  )
+
+d_tribs_plot <- 
+  ggplot(d_tribs, aes(x = Site, y = log_TBL_Cu_nmol_g, fill = Network)) +
+  geom_boxplot(color = "black", position = position_dodge(width = 0.75)) +
+  labs(
+    title = "Bioavailable Cu in Developed Tributaries",
+    x = "Site (grouped by network)",
+    y = "Log TBL Cu (umol/g wet weight)"
+  ) +
+  theme_test() +
+  theme(
+    axis.text.x = element_text(angle = 30, hjust = 1),
+    legend.position = "none",
+    plot.title = element_text(hjust = 0.5, face = "bold")
+  ) +
+  facet_grid(~Network, scales = "free_x", space = "free_x", switch = "x")
+
+
+# View
+d_tribs_plot
+
+# Save
+ggsave(
+  filename = file.path(out_dir, "Bioavailability_developed_tribs.png"),
+  plot     = d_tribs_plot,
+  width    = 10,
+  height   = 6,
+  dpi      = 300
+)
+
+```

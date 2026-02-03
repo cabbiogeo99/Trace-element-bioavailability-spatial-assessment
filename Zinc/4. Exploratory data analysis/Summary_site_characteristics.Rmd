@@ -1,0 +1,311 @@
+---
+title: "Summary of site characteristics"
+output:
+  html_document:
+    df_print: paged
+    self_contained: true
+---
+
+The objectives of this notebook will be to conduct exploratory data analyses on site inherent characteristics of the Bioavailability Master Spreadsheet Clean version using the baseline conditions (HA 10% Closed System). This file should be run after the EDA.Rmd
+
+# Preparing the Variables
+
+Set the working directory
+
+```{r}
+setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Zinc/4. Exploratory data analysis")
+```
+
+Upload the Bioavailability Master Spreadsheet dataset
+
+```{r}
+library(readxl)
+
+dat <- read_excel("Bioavailability_Master_Spreadsheet_Clean2.xlsx", 
+    sheet = "HA 10% Closed System")
+
+# Preview
+head(dat)
+```
+
+## 1. Sites Within Networks
+
+```{r}
+library(dplyr)
+
+sites_by_network <- dat %>%
+  dplyr::select(Network, Site) %>%
+  distinct() %>%                     # remove duplicates
+  group_by(Network) %>%
+  summarise(
+    Sites = paste(Site, collapse = ", "),
+    n_Sites = n()
+  )
+
+sites_by_network
+```
+
+Save to excel
+
+```{r}
+library(openxlsx)
+
+# -------------------------------------------------------
+# 1. Name excel sheet
+# -------------------------------------------------------
+file_path <- "Inherent_characteristics_summary.xlsx"
+
+# -------------------------------------------------------
+# 2. Load if exists, otherwise create new workbook
+# -------------------------------------------------------
+if (file.exists(file_path)) {
+  wb <- loadWorkbook(file_path)
+} else {
+  wb <- createWorkbook()
+}
+
+# -------------------------------------------------------
+# 3. Create sheet if it does NOT exist
+# -------------------------------------------------------
+if (!"Sites by Network" %in% names(wb)) {
+  addWorksheet(wb, "Sites by Network")
+}
+
+# -------------------------------------------------------
+# 4. Add data to the tab (overwrites ONLY that sheet)
+# -------------------------------------------------------
+writeData(wb, sheet = "Sites by Network", sites_by_network)
+
+# -------------------------------------------------------
+# 5. Save workbook without erasing other sheets
+# -------------------------------------------------------
+saveWorkbook(wb, file_path, overwrite = TRUE)
+
+```
+
+## 2. Inherent Characteristics
+
+```{r}
+library(dplyr)
+library(tidyr)
+
+# variables to summarize
+cat_vars <- c(
+  "Development",
+  "Distance_from_EFPC",
+  "Drainage_area",
+  "Relative_elevation",
+  "Orientation",
+  "Regime"
+)
+
+rel_freq_table <- dat %>%
+  dplyr::select(all_of(cat_vars)) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "Variable",
+    values_to = "Value"
+  ) %>%
+  group_by(Variable, Value) %>%
+  summarise(Freq = n(), .groups = "drop_last") %>%
+  mutate(RelFreq = Freq / sum(Freq) * 100) %>%
+  ungroup()
+
+rel_freq_table
+```
+
+Save to excel
+
+```{r}
+library(openxlsx)
+
+# -------------------------------------------------------
+# 1. Name excel sheet
+# -------------------------------------------------------
+file_path <- "Inherent_characteristics_summary.xlsx"
+
+# -------------------------------------------------------
+# 2. Load if exists, otherwise create new workbook
+# -------------------------------------------------------
+if (file.exists(file_path)) {
+  wb <- loadWorkbook(file_path)
+} else {
+  wb <- createWorkbook()
+}
+
+# -------------------------------------------------------
+# 3. Create sheet if it does NOT exist
+# -------------------------------------------------------
+if (!"Relative Frequencies" %in% names(wb)) {
+  addWorksheet(wb, "Relative Frequencies")
+}
+
+# -------------------------------------------------------
+# 4. Add data to the tab (overwrites ONLY that sheet)
+# -------------------------------------------------------
+writeData(wb, sheet = "Relative Frequencies", rel_freq_table)
+
+# -------------------------------------------------------
+# 5. Save workbook without erasing other sheets
+# -------------------------------------------------------
+saveWorkbook(wb, file_path, overwrite = TRUE)
+
+```
+
+Correlation of metrics indicative of stream size/order/position within the watershed
+
+```{r}
+library(dplyr)
+
+# Select variables
+vars_to_select <- c("Relative_elevation_m", "Dist_from_EFPC_km", "Drainage_area_km2")
+
+scaled_vars <- as.data.frame(
+  scale(dat[vars_to_select])
+)
+
+library(corrplot)
+
+# Create correlation matrix from DATA, not names
+cor_matrix <- cor(
+  scaled_vars,
+  method = "pearson"
+)
+
+# Plot
+corrplot(
+  cor_matrix, 
+  method = "color",
+  type = "lower",
+  tl.cex = 0.7,
+  tl.col = "black",
+  addCoef.col = "black",
+  number.cex = 0.6
+)
+```
+
+Multiple correspondence analysis (MCA) of inherent characteristics
+
+```{r}
+library(FactoMineR)
+library(factoextra)
+library(dplyr)
+
+cat_vars <- c(
+  "Development",
+  "Distance_from_EFPC",
+  "Drainage_area",
+  "Relative_elevation",
+  "Orientation",
+  "Regime"
+)
+
+cat_data <- dat %>%
+  dplyr::select(all_of(cat_vars)) %>%
+  mutate(across(everything(), as.factor))
+
+mca_result <- MCA(cat_data, graph = FALSE)
+
+# ------------------------------
+# Results
+# ------------------------------
+# 1. Eigenvalues: shows the most important dimensions explaining most of the variance
+eig_df <- as.data.frame(mca_result$eig) %>%
+  mutate(
+    Dimension = paste0("Dim ", seq_len(n()))
+  ) %>%
+  select(
+    Dimension,
+    eigenvalue = eigenvalue,
+    percent_variance = `percentage of variance`,
+    cumulative_percent = `cumulative percentage of variance`
+  )
+
+# 2. Contributions of the categories on each dimension
+# Rule-of-thumb threshold
+contrib_threshold <- 100 / nrow(mca_result$var$contrib)
+
+# Convert contributions to tidy table
+contrib_df <- mca_result$var$contrib %>%
+  as.data.frame() %>%
+  mutate(
+    Category = rownames(.)
+  ) %>%
+  relocate(Category)
+
+# View
+eig_df
+contrib_df
+```
+
+Save results
+
+```{r}
+file_path <- "Inherent_characteristics_summary.xlsx"
+
+# ------------------------------
+# Load or create workbook
+# ------------------------------
+if (!file.exists(file_path)) {
+  wb <- createWorkbook()
+} else {
+  wb <- loadWorkbook(file_path)
+}
+
+# ------------------------------
+# Helper: add or overwrite sheet
+# ------------------------------
+add_or_replace_sheet <- function(wb, sheet_name, data) {
+  if (sheet_name %in% names(wb)) {
+    removeWorksheet(wb, sheet_name)
+  }
+  addWorksheet(wb, sheet_name)
+  writeData(wb, sheet_name, data)
+}
+
+# ------------------------------
+# Write MCA results
+# ------------------------------
+add_or_replace_sheet(wb, "MCA_Eigenvalues", eig_df)
+add_or_replace_sheet(wb, "MCA_Category_Contributions", contrib_df)
+
+# Optional: threshold metadata (nice for transparency)
+add_or_replace_sheet(
+  wb,
+  "MCA_Notes",
+  data.frame(
+    Item = c("Contribution threshold (%)"),
+    Value = contrib_threshold
+  )
+)
+
+# ------------------------------
+# Save
+# ------------------------------
+saveWorkbook(wb, file_path, overwrite = TRUE)
+```
+
+Plot and save
+
+```{r}
+mca_plot <- fviz_mca_var(
+  mca_result,
+  repel = TRUE,
+  ggtheme = theme_minimal(),
+  label = "var",     # only show variable names
+  title = "MCA Variable Vectors"
+)
+
+# View
+mca_plot
+
+# Save
+ggsave(
+  filename = "MCA_variable_vectors.png",
+  plot = mca_plot,
+  width = 8,
+  height = 6,
+  dpi = 300
+)
+
+```

@@ -2,8 +2,13 @@
 title: "Data analysis Zn BLM"
 output:
   html_document:
-    df_print: paged
+    self_contained: true
+output_file: "Data_analysis_Zn_BLM.html"
 ---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.show = "hide", fig.keep = "none")
+```
 
 The objectives of this notebook will be to conduct data and statistical analyses on the Bioavailability Master Spreadsheet Clean version 2 using only the baseline BLM assumptions (HA 10% Closed System)
 
@@ -192,7 +197,7 @@ library(dplyr)
 library(tidyr)
 
 # inherent characteristics 
-site_char <- c("Regime", "Development", "Orientation", "Distance_from_EFPC", "Drainage_area", "Relative_elevation")
+site_char <- c("Regime", "Flow_state", "Development", "Relative_elevation")
 
 cluster_summary_table_pct <- dat %>%
   dplyr::select(all_of(site_char), cluster) %>%  
@@ -240,27 +245,15 @@ cluster_summary_table_pct$Value_labeled <- factor(
     "Development: Medium",
     "Development: High",
     
-    # Distance_from_EFPC
-    "Distance_from_EFPC: Main stem",
-    "Distance_from_EFPC: <0.22 km",
-    "Distance_from_EFPC: 0.22-0.99 km",
-    "Distance_from_EFPC: >0.99 km",
-    
-    # Drainage_area
-    "Drainage_area: <0.94 km2",
-    "Drainage_area: 0.94-11.81 km2",
-    "Drainage_area: >11.81 km2",
+    # Flow_state
+    "Flow_state: Flowing",
+    "Flow_state: Pooled",
     
     # Relative_elevation
     "Relative_elevation: 0 m",
     "Relative_elevation: <2.1 m",
     "Relative_elevation: 2.1-10.5 m",
     "Relative_elevation: >10.5 m",
-    
-    # Orientation
-    "Orientation: Main stem",
-    "Orientation: North slope",
-    "Orientation: South slope",
     
     # Regime
     "Regime: NonPerennial",
@@ -276,16 +269,9 @@ color_map <- c(
   "Development: Medium" = "orange2",
   "Development: High" = "red3",
   
-  # Distance_from_EFPC
-  "Distance_from_EFPC: Main stem" = "gray",
-  "Distance_from_EFPC: <0.22 km" = "#d9f0d3",
-  "Distance_from_EFPC: 0.22-0.99 km" = "#a6d854",
-  "Distance_from_EFPC: >0.99 km" = "#1b7837",
-  
-  # Drainage_area
-  "Drainage_area: <0.94 km2" = "#c8b69e",
-  "Drainage_area: 0.94-11.81 km2" = "#a6761f",
-  "Drainage_area: >11.81 km2" = "#543005",
+  # Flow_state
+  "Flow_state: Flowing" = "#a6d854",
+  "Flow_state: Pooled" = "#1b7837",
   
   # Relative_elevation
   "Relative_elevation: 0 m" = "gray",
@@ -293,13 +279,8 @@ color_map <- c(
   "Relative_elevation: 2.1-10.5 m" = "#bcbddc",
   "Relative_elevation: >10.5 m" = "#756bb1",
   
-  # Orientation
-  "Orientation: Main stem" = "yellow",
-  "Orientation: North slope" = "pink",
-  "Orientation: South slope" = "brown",
-  
   # Regime
-  "Regime: NonPerennial" = "#4fb6e4",
+  "Regime: NonPerennial" = "lightblue",
   "Regime: Perennial" = "#1f78a4"
 )
 
@@ -337,11 +318,11 @@ ggsave(
 )
 ```
 
--   Cluster 1: "Baseline" tributaries
+-   Cluster 1: Less developed sites
 
--   Cluster 2: Generally perennial highly developed sites
+-   Cluster 2: More developed sites
 
--   Cluster 3: Mostly main stem sites
+-   Cluster 3: Mostly main stem sites with 0 m relative elevation
 
 -   Cluster 4: Non-perennial sites, far from the main stem, draining small areas, with low-medium development
 
