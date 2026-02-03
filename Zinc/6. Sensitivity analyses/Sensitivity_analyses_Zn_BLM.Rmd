@@ -1,0 +1,550 @@
+---
+title: "Sensitivity analyses Zn BLM"
+author: "Cecilia Albert-Black"
+date: "2026-01-21"
+output: html_document
+---
+
+# Objectives
+
+BLM assumptions evaluated (two paired scenarios)
+
+-   **Carbonate charge balance**
+
+    -   Baseline: Closed system, measured DIC as input
+
+    -   Perturbed: Open system, no DIC input, alkalinity estimated by charge balance (assuming in equilibrium with atmospheric partial pressure)
+
+-   **Humic acid fraction of DOC**
+
+    -   Baseline: HA = 10% (suggested by the BLM manual)
+
+    -   Perturbed: HA = 80%
+
+# 1. Setup
+
+We will merge BLM output variables from the baseline conditions (closed system + HA 10%) and the perturbed scenarios (open system + HA 10% and closed system + HA 80%) from the clean Bioavailability Master Spreadsheet version 2 (pre-typology) and version 3 (with typological classification).
+
+First, we'll set the working directory and import each dataset as it's own object
+
+```{r}
+library(readxl)
+
+# -------------------------------------------------
+# 1) Set working directory
+# -------------------------------------------------
+setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Zinc/6. Sensitivity analyses")
+
+# -------------------------------------------------
+# 2) Store file paths once (so you don't repeat them)
+# -------------------------------------------------
+file_master3 <- "C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Zinc/5. Statistical data analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx"
+
+file_master2 <- "C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Zinc/4. Exploratory data analysis/Bioavailability_Master_Spreadsheet_Clean2.xlsx"
+```
+
+Now we'll read each file and create the following scenarios as their own objects
+
+-   ha_10_cs
+
+-   ha_10_os
+
+-   ha_80_cs
+
+```{r}
+read_scenario <- function(path, sheet, scenario_label) {
+  read_excel(path, sheet = sheet) %>%
+    mutate(Scenario = scenario_label) %>%
+    relocate(Scenario, .before = 1)
+}
+
+ha_10_cs <- read_scenario(file_master3, "HA 10% Closed System", "HA 10% Closed System")
+ha_10_os <- read_scenario(file_master2, "HA 10% Open System",   "HA 10% Open System")
+ha_80_cs <- read_scenario(file_master2, "HA 80% Closed System", "HA 80% Closed System")
+```
+
+Now we'll add typology from ha_10_cs to each scenario
+
+```{r}
+library(dplyr)
+
+typology_lookup <- ha_10_cs %>%
+  select(Sample_ID, Typology) %>%
+  distinct()
+
+ha_10_os <- ha_10_os %>% 
+  left_join(typology_lookup, by = "Sample_ID") %>%
+  dplyr::select(Scenario, Sample_ID, Typology, everything())
+
+ha_80_cs <- ha_80_cs %>% 
+  left_join(typology_lookup, by = "Sample_ID") %>%
+  dplyr::select(Scenario, Sample_ID, Typology, everything())
+
+ha_10_cs <- ha_10_cs %>%
+  dplyr::select(Scenario, Sample_ID, Typology, everything())
+
+# quick sanity check: check if there are Sample_IDs that don't match (should be 0)
+setdiff(ha_10_os$Sample_ID, ha_10_cs$Sample_ID)
+setdiff(ha_80_cs$Sample_ID, ha_10_cs$Sample_ID)
+```
+
+Stack each scenario to create one long dataset (dat_long)
+
+```{r}
+dat_long <- bind_rows(ha_10_cs, ha_10_os, ha_80_cs)
+head(dat_long)
+```
+
+Check for missing values in the stacked dataset
+
+```{r}
+# True means missing values, should all be false
+
+table(is.na(dat_long))
+```
+
+# 3. Define response variables + log-transformed variables
+
+```{r}
+id_cols <- c("Scenario", "Sample_ID", "Typology")
+
+response_vars <- c(
+  
+  # Zn aqueous species
+  "Free_Zn_nM",
+  "ZnOH_nM",
+  "Zn_OH_2_nM",
+  "ZnCO3_nM",
+  "ZnHCO3_nM",
+  "ZnSO4_nM",
+  "ZnS_nM",
+  "ZnCl_nM",
+  "TOrg_Zn_nM",
+  
+  # Zn biotic ligand binding
+  "BL_Zn_nmol_g",
+  "BL_Ca_nmol_g",
+  "BL_H_nmol_g",
+  "BL_Mg_nmol_g",
+  "BL_Na_nmol_g",
+  "BL_ZnOH_nmol_g",
+  
+  # Organic cation complexes
+  "TOrg_H_M",
+  "TOrg_Ca_M",
+  "TOrg_Mg_M",
+  "TOrg_Na_M",
+  "TOrg_K_M",
+  
+  # Other complexes
+  "HCO3_M",
+  "H2_CO3_M",
+  "HS_M",
+  "H2S_M",
+  "MgHCO3_M",
+  "MgCO3_M",
+  "MgSO4_M",
+  "CaHCO3_M",
+  "CaCO3_M",
+  
+  # Toxicity
+  "Zn_Toxicity_Daphnia_M"
+  )
+```
+
+# 4. Carbonate assumption SA
+
+## a. Select variables of interest
+
+First, we'll create a paired dataset
+
+```{r}
+library(dplyr)
+
+# Only retain variables in nM and nmol/g for simplicity and consistency (one column per variable and all in same units of measurement)
+ha_10_cs <- ha_10_cs %>%
+  select(
+    Sample_ID,
+    ends_with("_nM"),
+    ends_with("_nmol_kg"),
+    # log-transformed variables
+    -starts_with("log_"),
+    # BLM predictors
+    -"DOC_nM",
+    -"Ca_nM",
+    -"Mg_nM",
+    -"Na_nM",
+    -"K_nM",
+    -"SO4_nM",
+    -"Cl_nM",
+    -"pH",
+    -"DIC_nM",
+    -"Zn_nM",
+    -"Cu_nM"
+  )
+
+ha_10_os <- ha_10_os %>%
+  select(
+    Sample_ID,
+    ends_with("_nM"),
+    ends_with("_nmol_kg"),
+    # log-transformed variables
+    -starts_with("log_"),
+    # BLM predictors
+    -"DOC_nM",
+    -"Ca_nM",
+    -"Mg_nM",
+    -"Na_nM",
+    -"K_nM",
+    -"SO4_nM",
+    -"Cl_nM",
+    -"pH",
+    -"DIC_nM",
+    -"Zn_nM",
+    -"Cu_nM"
+   )
+```
+
+## b. Calculate sensitivity metrics
+
+### i. Delta
+
+Delta is the absolute change in a response variable from baseline to the perturbed BLM system assumptions; calculated as y_s1 - y_s2.
+
+```{r}
+library(dplyr)
+library(stringr)
+
+# 1. Separate the numeric data
+num1 <- ha_10_cs %>% 
+  dplyr::select(where(is.numeric))
+
+num2 <- ha_10_os %>% 
+  dplyr::select(where(is.numeric))
+
+# 2. Subtract num1-num2
+delta_dic <- ha_10_os %>%
+  dplyr::select(Sample_ID) %>%
+  bind_cols(num1 - num2)
+
+# 3. Check
+delta_dic
+```
+
+Summarize delta by variable
+
+```{r}
+library(dplyr)
+library(tidyr)
+
+summary_delta_dic <- delta_dic %>%
+  select(where(is.numeric)) %>%
+  summarise(across(everything(), list(
+    min    = ~min(.x, na.rm = TRUE),
+    q1     = ~quantile(.x, 0.25, na.rm = TRUE),
+    median = ~median(.x, na.rm = TRUE),
+    mean   = ~mean(.x, na.rm = TRUE),
+    q3     = ~quantile(.x, 0.75, na.rm = TRUE),
+    max    = ~max(.x, na.rm = TRUE),
+    iqr    = ~IQR(.x, na.rm = TRUE)
+  ))) %>%
+  # Pivot so it's a readable list instead of 500 columns wide
+  pivot_longer(everything(), 
+               names_to = c("Variable", ".value"), 
+               names_sep = "_(?!.*_)") # Splits at the last underscore
+
+# Check
+head(summary_delta_dic)
+```
+
+### ii. Percent change
+
+Percentage of delta
+
+```{r}
+# Multiply all numeric columns by 100
+percent_change_dic <- delta_dic %>%
+  dplyr::select(where(is.numeric)) * 100
+
+# Check
+head(percent_change_dic)
+```
+
+Summarize percent change by variable
+
+```{r}
+library(dplyr)
+library(tidyr)
+
+summary_percent_change_dic <- percent_change_dic %>%
+  select(where(is.numeric)) %>%
+  summarise(across(everything(), list(
+    min    = ~min(.x, na.rm = TRUE),
+    q1     = ~quantile(.x, 0.25, na.rm = TRUE),
+    median = ~median(.x, na.rm = TRUE),
+    mean   = ~mean(.x, na.rm = TRUE),
+    q3     = ~quantile(.x, 0.75, na.rm = TRUE),
+    max    = ~max(.x, na.rm = TRUE),
+    iqr    = ~IQR(.x, na.rm = TRUE)
+  ))) %>%
+  # Pivot so it's a readable list instead of 500 columns wide
+  pivot_longer(everything(), 
+               names_to = c("Variable", ".value"), 
+               names_sep = "_(?!.*_)") # Splits at the last underscore
+
+# Check
+head(summary_percent_change_dic)
+```
+
+### iii. Log response ratio (LRR)
+
+LRR describes the effect size between the two BLM assumption outputs, calculated as
+
+log10(y_s1) - log10(y_s2)
+
+```{r}
+library(dplyr)
+
+# 1. Log transform each dataframe
+log_ha_10_cs <- ha_10_cs %>%
+  mutate(across(where(is.numeric), log10))
+
+log_ha_10_os <- ha_10_os %>%
+  mutate(across(where(is.numeric), log10))
+
+# 2. Separate the numeric log-transformed data
+log_num1 <- log_ha_10_cs %>% 
+  dplyr::select(where(is.numeric))
+
+log_num2 <- log_ha_10_os %>% 
+  dplyr::select(where(is.numeric))
+
+# 3. Subtract num1-num2
+lrr_dic <- ha_10_os %>%
+  dplyr::select(Sample_ID) %>%
+  bind_cols(log_num1 - log_num2)
+
+# 4. Check
+head(lrr_dic)
+```
+
+Summarize LRR for each numeric variable
+
+```{r}
+library(dplyr)
+library(tidyr)
+
+summary_lrr_dic <- lrr_dic %>%
+  select(where(is.numeric)) %>%
+  summarise(across(everything(), list(
+    min    = ~min(.x, na.rm = TRUE),
+    q1     = ~quantile(.x, 0.25, na.rm = TRUE),
+    median = ~median(.x, na.rm = TRUE),
+    mean   = ~mean(.x, na.rm = TRUE),
+    q3     = ~quantile(.x, 0.75, na.rm = TRUE),
+    max    = ~max(.x, na.rm = TRUE),
+    iqr    = ~IQR(.x, na.rm = TRUE)
+  ))) %>%
+  # Pivot so it's a readable list instead of 500 columns wide
+  pivot_longer(everything(), 
+               names_to = c("Variable", ".value"), 
+               names_sep = "_(?!.*_)") # Splits at the last underscore
+
+# Check
+head(summary_lrr_dic)
+```
+
+### iv. Robustness
+
+To assess directional consistency in LRR, we'll summarize how many variables had a + or - LRR for each variable
+
+```{r}
+library(dplyr)
+
+robustness_dic <- lrr_dic %>%
+  select(where(is.numeric)) %>%
+  summarize(across(everything(), list(
+    positive = ~sum(.x > 0, na.rm = TRUE),
+    negative = ~sum(.x < 0, na.rm = TRUE),
+    zero = ~sum(.x == 0, na.rm = TRUE)
+  ))) %>%
+  # Pivot for readability
+  pivot_longer(everything(),
+               names_to = c("Variable", ".value"), 
+               names_sep = "_(?!.*_)") %>%
+  # Add the ratio of positive/negative LRR values
+  mutate(ratio = positive/negative)
+
+# Check
+head(robustness_dic)
+```
+
+## c. Export SA results
+
+Now we'll compile all of the output to one excel sheet
+
+```{r}
+library(openxlsx)
+
+# Create a list of all output objects
+dic_sa_list <- list(
+  "Delta"              = summary_delta_dic,
+  "Percent Change"     = summary_percent_change_dic,
+  "Log Response Ratio"        = summary_lrr_dic,
+  "Robustness"         = robustness_dic
+)
+
+# Write into excel file
+write.xlsx(dic_sa_list, file = "Carbonate_system_SA.xlsx", overwrite = TRUE)
+```
+
+## d. Plots
+
+### i. Percent change
+
+```{r}
+library(dplyr)
+
+# 1. Pivot table: turn columns into rows
+long_percent_change_dic <- percent_change_dic %>%
+  pivot_longer(cols = everything(),
+               names_to = "Variable",
+               values_to = "Value") %>%
+  # Calculate the stats
+  group_by(Variable) %>%
+  summarize(
+    median = median(Value, na.rm = TRUE),
+    q1 = quantile(Value, 0.25, na.rm = TRUE),
+    q3 = quantile(Value, 0.75, na.rm = TRUE)
+  ) %>%
+  # Sort variables by median value
+  mutate(Variable = reorder(Variable, median))
+  
+  
+# 2. Plot
+library(ggplot2)
+
+pc_plot <- ggplot(long_percent_change_dic, aes(y = Variable, x = median)) +
+  geom_col(aes(fill = median)) +
+  geom_errorbar(aes(xmin = q1, xmax = q3), width = 0.25) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
+  scale_fill_gradient2(
+    low = "red3", mid = "grey95", high = "steelblue4", midpoint = 0) +
+  labs(x = "Percent Change (Median)", y = NULL, 
+       title = "Percent Change Summary",
+       subtitle = "Closed system to open system BLM") +
+  theme_bw() +
+  theme(axis.text.y = element_text(size = 8)) + 
+  guides(fill = "none")
+
+# 3. Save plot
+
+# Define output directory
+out_dir <- "Plots of DIC SA"
+
+# Create folder if it doesn't exist
+if (!dir.exists(out_dir)) {
+  dir.create(out_dir, recursive = TRUE)
+}
+
+# Save plot
+ggsave(
+  filename = file.path(out_dir, "Percent_Change_DIC_SA.png"),
+  plot = pc_plot,
+  width = 10,
+  height = 8,
+  units = "in",
+  dpi = "print"
+)
+```
+
+### ii. Log percent change
+
+```{r}
+library(dplyr)
+
+# 1. PLog transform percent change
+log_percent_change <- long_percent_change_dic %>%
+  mutate(across(c(median, q1, q3), 
+                # Signed log10: keeps the +/- sign, logs the absolute value
+                ~ sign(.x) * log10(abs(.x)), 
+                .names = "log_{.col}"))
+  
+# 2. Plot
+library(ggplot2)
+
+log_pc_plot <- ggplot(
+  log_percent_change, aes(y = Variable, x = log_median)) +
+  geom_col(aes(fill = log_median)) +
+  geom_errorbar(aes(xmin = log_q1, xmax = log_q3), width = 0.25) +
+  geom_vline(
+    xintercept = 0, linetype = "dashed", color = "grey40") +
+  scale_fill_gradient2(
+    low = "red3", mid = "grey95", high = "steelblue4", midpoint = 0) +
+  labs(x = "Log Percent Change (Median)", y = NULL, 
+       title = "Log Percent Change Summary",
+       subtitle = "Closed system to open system BLM") +
+  theme_bw() +
+  theme(axis.text.y = element_text(size = 8)) + 
+  guides(fill = "none")
+
+# 3. Save plot
+ggsave(
+  filename = file.path(out_dir, "Log_Percent_Change_DIC_SA.png"),
+  plot = log_pc_plot,
+  width = 10,
+  height = 8,
+  units = "in",
+  dpi = "print"
+)
+```
+
+### iii. LRR
+
+```{r}
+library(dplyr)
+
+# 1. Pivot table: turn columns into rows
+long_lrr_dic <- lrr_dic %>%
+  pivot_longer(cols = -Sample_ID, 
+               names_to = "Variable",
+               values_to = "Value") %>%
+  # Calculate the stats
+  group_by(Variable) %>%
+  summarize(
+    median = median(Value, na.rm = TRUE),
+    q1 = quantile(Value, 0.25, na.rm = TRUE),
+    q3 = quantile(Value, 0.75, na.rm = TRUE)
+  ) %>%
+  # Sort variables by median value
+  mutate(Variable = reorder(Variable, median))
+  
+  
+# 2. Plot
+library(ggplot2)
+
+lrr_plot <- ggplot(long_lrr_dic, aes(y = Variable, x = median)) +
+  geom_col(aes(fill = median)) +
+  geom_errorbar(aes(xmin = q1, xmax = q3), width = 0.25) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
+  scale_fill_gradient2(
+    low = "red3", mid = "grey95", high = "steelblue4", midpoint = 0) +
+  labs(x = "LRR (Median)", y = NULL, 
+       title = "Log Response Ratio (LRR) Summary",
+       subtitle = "Closed system to open system BLM") +
+  theme_bw() +
+  theme(axis.text.y = element_text(size = 8)) + 
+  guides(fill = "none")
+
+# 3. Save plot
+
+# Save plot
+ggsave(
+  filename = file.path(out_dir, "LRR_DIC_SA.png"),
+  plot = lrr_plot,
+  width = 10,
+  height = 8,
+  units = "in",
+  dpi = "print"
+)
+```
