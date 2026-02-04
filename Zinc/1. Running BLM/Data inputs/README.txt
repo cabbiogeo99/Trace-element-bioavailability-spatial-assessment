@@ -1,3 +1,0 @@
-This folder is intended to create BLM_Data_Entry_for_Zn.xlsx by following the the BLM_Data_Entry.Rmd which uses the WaDE_Synoptic_Summary.xlsx. The markdown file also creates WaDE_Synoptic_Summary_Clean.xlsx after filtering samples by detection limits and NA values and summarizes those omitted samples in Omitted_Samples.xlsx. 
-
-Once these steps have been followed, you're ready to run the Biotic Ligand Model (BLM) to predict Zinc speciation or toxicity. Note that this BLM input file assumes 10% humic acid content and you'll have to change this to 80% when running it for the sensitivity analysis later on. You'll find the BLM file outputs in C:\Spatial Assessment of Bioavailability Project\Zinc\1. Running BLM\Data outputs.
