@@ -1,9 +1,9 @@
 ---
 title: "Data analysis Cu BLM"
+author: "Cecilia Albert-Black"
 output:
   html_document:
     self_contained: true
-output_file: "Data_analysis_Cu_BLM.html"
 ---
 
 ```{r setup, include=FALSE}

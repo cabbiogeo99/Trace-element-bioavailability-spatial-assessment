@@ -1,9 +1,14 @@
 ---
 title: "Dataset cleaning Cu BLM"
 author: "Cecilia Albert-Black"
-date: "2025-11-13"
-output: html_document
+output:
+  html_document:
+self_contained: true
 ---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.show = "hide", fig.keep = "none")
+```
 
 Here I will walk through cleaning and feature engineering the Bioavailability Master Spreadsheet for each of the 3 tabs (BLM assumptions). To run this for each of the tabs, simply replace the file upload which becomes the object called "dat" and replace the tab name of the exported file to the Bioavailability Master Spreadsheet will be, then run the entire Rmd.
 
