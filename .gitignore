@@ -7,10 +7,5 @@
 desktop.ini
 .DS_Store
 
-# Outputs / plots (recommended)
-*.png
-*.pdf
 
-# Optional: large data files
-*.csv
-*.xlsx
+
