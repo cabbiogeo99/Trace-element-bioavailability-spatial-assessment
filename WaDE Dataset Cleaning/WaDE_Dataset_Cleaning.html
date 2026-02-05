@@ -11,7 +11,6 @@
 
 <meta name="author" content="Cecilia Albert-Black" />
 
-<meta name="date" content="2025-11-13" />
 
 <title>WaDE Dataset Cleaning</title>
 
@@ -352,7 +351,6 @@ display: none;
 
 <h1 class="title toc-ignore">WaDE Dataset Cleaning</h1>
 <h4 class="author">Cecilia Albert-Black</h4>
-<h4 class="date">2025-11-13</h4>
 
 </div>
 
@@ -389,12 +387,12 @@ file.</p>
 <div id="import-the-wade-synoptic-survey-dataset" class="section level1">
 <h1>1. Import the WaDE Synoptic Survey Dataset</h1>
 <p>Set working directory</p>
-<pre class="r"><code>setwd(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/WaDE Dataset Cleaning&quot;)</code></pre>
+<pre class="r"><code>setwd(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/WaDE Dataset Cleaning&quot;)</code></pre>
 <p>Import data from the tab called WaDE_SYNOPTIC_SUMMARY in the
 WaDE_Synoptic_Summary.xlsx file</p>
 <pre class="r"><code>library(readxl)
 
-WaDE_Synoptic_Summary &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/WaDE Dataset Cleaning/WaDE_Synoptic_Summary.xlsx&quot;, 
+WaDE_Synoptic_Summary &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/WaDE Dataset Cleaning/WaDE_Synoptic_Summary.xlsx&quot;, 
     sheet = &quot;WaDE_SYNOPTIC_SUMMARY&quot;)</code></pre>
 <pre><code>## New names:
 ## • `NO3_FLAG` -&gt; `NO3_FLAG...30`
@@ -530,7 +528,7 @@ WaDE_Synoptic_Summary &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge N
 <pre><code>## The following objects are masked from &#39;package:base&#39;:
 ## 
 ##     intersect, setdiff, setequal, union</code></pre>
-<pre class="r"><code>WaDE_Synoptic_Summary_Clean &lt;-
+<pre class="r"><code>WaDE_Synoptic_Summary &lt;-
   WaDE_Synoptic_Summary %&gt;%
   
   # 1) Keep only variables of interest
@@ -570,7 +568,7 @@ WaDE_Synoptic_Summary &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge N
   )
 
 # Check
-head(WaDE_Synoptic_Summary_Clean)</code></pre>
+head(WaDE_Synoptic_Summary)</code></pre>
 <pre><code>## # A tibble: 6 × 17
 ##   Sample_ID Site   Date                Regime    Flow_state Temp_C    pH  Zn_uM
 ##   &lt;chr&gt;     &lt;chr&gt;  &lt;dttm&gt;              &lt;chr&gt;     &lt;chr&gt;       &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;
@@ -582,8 +580,8 @@ head(WaDE_Synoptic_Summary_Clean)</code></pre>
 ## 6 WaDE_7    BSL3.2 2023-04-12 00:00:00 Perennial Flowing      15.5  7.65 0.0322
 ## # ℹ 9 more variables: Cu_uM &lt;dbl&gt;, DOC_uM &lt;dbl&gt;, Ca_uM &lt;dbl&gt;, Mg_uM &lt;dbl&gt;,
 ## #   Na_uM &lt;dbl&gt;, K_uM &lt;dbl&gt;, SO4_uM &lt;dbl&gt;, Cl_uM &lt;dbl&gt;, DIC_uM &lt;dbl&gt;</code></pre>
-<p>Count the number of total samples</p>
-<pre class="r"><code>n_total &lt;- length(unique(WaDE_Synoptic_Summary_Clean$Sample_ID))
+<p>Count the number of total samples in raw WaDE_Synoptic_Summary</p>
+<pre class="r"><code>n_total &lt;- length(unique(WaDE_Synoptic_Summary$Sample_ID))
 n_total</code></pre>
 <pre><code>## [1] 629</code></pre>
 </div>
@@ -599,7 +597,7 @@ vars &lt;- c(
   &quot;Na_uM&quot;,&quot;K_uM&quot;,&quot;SO4_uM&quot;,&quot;Cl_uM&quot;,&quot;DIC_uM&quot;
 )
 
-missing_dat &lt;- WaDE_Synoptic_Summary_Clean %&gt;%
+missing_dat &lt;- WaDE_Synoptic_Summary %&gt;%
   filter(if_any(all_of(vars), ~ .x == -9999)) %&gt;%
   dplyr::select(Sample_ID, Site, all_of(vars))
 
@@ -631,8 +629,9 @@ n_missing # total numer of samples with at least 1 missing variable measurement<
 <pre class="r"><code>variable_counts # number of missing values by variable</code></pre>
 <pre><code>## Temp_C  Zn_uM  Cu_uM DOC_uM  Ca_uM  Mg_uM  Na_uM   K_uM SO4_uM  Cl_uM DIC_uM 
 ##    201    201    201    202    201    201    201    201    201    201    243</code></pre>
-<p>Remove these from the WaDE_Synoptic_Summary</p>
-<pre class="r"><code>WaDE_Synoptic_Summary_Clean &lt;- WaDE_Synoptic_Summary_Clean %&gt;%
+<p>Remove these from the WaDE_Synoptic_Summary and create a clean
+version of the dataset</p>
+<pre class="r"><code>WaDE_Synoptic_Summary_Clean &lt;- WaDE_Synoptic_Summary %&gt;%
   filter(!if_any(all_of(vars), ~ .x == -9999))
 
 # Count number of samples leftover
@@ -841,8 +840,7 @@ table(WaDE_Synoptic_Summary_Clean$Cu_flag, useNA = &quot;ifany&quot;)</code></pr
 <pre><code>## 
 ## ADL BDL  ZV 
 ## 332  48   6</code></pre>
-<p>Check to see if there are missing values for Cu (if none, it should
-read that all 386 are FALSE)</p>
+<p>Histogram of measured Cu (uM) with the field DL</p>
 <pre class="r"><code>hist_cu &lt;- ggplot(WaDE_Synoptic_Summary_Clean, aes(x = Cu_uM)) +
   geom_histogram(
     bins = 80,
@@ -875,7 +873,15 @@ value.</p>
 SO4_DL_uM &lt;- 1.7        
 SO4_half_DL_uM &lt;- SO4_DL_uM / 2   # ½ the instrument DL
 
-# 2. Apply detection-limit rules for sulfate
+# 2. Find the lowest reported positive SO4_uM value
+lowest_SO4_uM &lt;- WaDE_Synoptic_Summary_Clean %&gt;%
+  filter(!is.na(SO4_uM), SO4_uM &gt; 0) %&gt;%
+  summarise(min_SO4 = min(SO4_uM)) %&gt;%
+  pull(min_SO4)
+
+lowest_SO4_uM</code></pre>
+<pre><code>## [1] 7.5</code></pre>
+<pre class="r"><code># 3. Apply detection-limit rules for sulfate
 WaDE_Synoptic_Summary_Clean &lt;- WaDE_Synoptic_Summary_Clean %&gt;%
   mutate(
     # Flag column for sulfate
@@ -929,7 +935,15 @@ hist_so4</code></pre>
 Cl_DL_uM &lt;- 2.29e1              # instrument DL = 22.9 uM
 Cl_half_DL_uM &lt;- Cl_DL_uM / 2   # ½ the instrument DL
 
-# 2. Apply detection-limit rules for chloride
+# 2. Find the lowest reported positive Cl_uM value
+lowest_Cl_uM &lt;- WaDE_Synoptic_Summary_Clean %&gt;%
+  filter(!is.na(Cl_uM), Cl_uM &gt; 0) %&gt;%
+  summarise(min_Cl = min(Cl_uM)) %&gt;%
+  pull(min_Cl)
+
+lowest_Cl_uM</code></pre>
+<pre><code>## [1] 16</code></pre>
+<pre class="r"><code># 3. Apply detection-limit rules for chloride
 WaDE_Synoptic_Summary_Clean &lt;- WaDE_Synoptic_Summary_Clean %&gt;%
   mutate(
     # Flag column for chloride

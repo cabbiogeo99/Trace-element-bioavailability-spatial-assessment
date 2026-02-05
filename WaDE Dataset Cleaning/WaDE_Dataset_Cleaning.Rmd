@@ -72,7 +72,7 @@ Add units to variables according to the README tab
 ```{r}
 library(dplyr)
 
-WaDE_Synoptic_Summary_Clean <-
+WaDE_Synoptic_Summary <-
   WaDE_Synoptic_Summary %>%
   
   # 1) Keep only variables of interest
@@ -112,13 +112,13 @@ WaDE_Synoptic_Summary_Clean <-
   )
 
 # Check
-head(WaDE_Synoptic_Summary_Clean)
+head(WaDE_Synoptic_Summary)
 ```
 
-Count the number of total samples
+Count the number of total samples in raw WaDE_Synoptic_Summary
 
 ```{r}
-n_total <- length(unique(WaDE_Synoptic_Summary_Clean$Sample_ID))
+n_total <- length(unique(WaDE_Synoptic_Summary$Sample_ID))
 n_total
 ```
 
@@ -136,7 +136,7 @@ vars <- c(
   "Na_uM","K_uM","SO4_uM","Cl_uM","DIC_uM"
 )
 
-missing_dat <- WaDE_Synoptic_Summary_Clean %>%
+missing_dat <- WaDE_Synoptic_Summary %>%
   filter(if_any(all_of(vars), ~ .x == -9999)) %>%
   dplyr::select(Sample_ID, Site, all_of(vars))
 
@@ -156,10 +156,10 @@ n_missing # total numer of samples with at least 1 missing variable measurement
 variable_counts # number of missing values by variable
 ```
 
-Remove these from the WaDE_Synoptic_Summary
+Remove these from the WaDE_Synoptic_Summary and create a clean version of the dataset
 
 ```{r}
-WaDE_Synoptic_Summary_Clean <- WaDE_Synoptic_Summary_Clean %>%
+WaDE_Synoptic_Summary_Clean <- WaDE_Synoptic_Summary %>%
   filter(!if_any(all_of(vars), ~ .x == -9999))
 
 # Count number of samples leftover
@@ -357,7 +357,7 @@ WaDE_Synoptic_Summary_Clean <- WaDE_Synoptic_Summary_Clean %>%
 table(WaDE_Synoptic_Summary_Clean$Cu_flag, useNA = "ifany")
 ```
 
-Check to see if there are missing values for Cu (if none, it should read that all 386 are FALSE)
+Histogram of measured Cu (uM) with the field DL
 
 ```{r}
 hist_cu <- ggplot(WaDE_Synoptic_Summary_Clean, aes(x = Cu_uM)) +
@@ -392,7 +392,15 @@ library(dplyr)
 SO4_DL_uM <- 1.7        
 SO4_half_DL_uM <- SO4_DL_uM / 2   # ½ the instrument DL
 
-# 2. Apply detection-limit rules for sulfate
+# 2. Find the lowest reported positive SO4_uM value
+lowest_SO4_uM <- WaDE_Synoptic_Summary_Clean %>%
+  filter(!is.na(SO4_uM), SO4_uM > 0) %>%
+  summarise(min_SO4 = min(SO4_uM)) %>%
+  pull(min_SO4)
+
+lowest_SO4_uM
+
+# 3. Apply detection-limit rules for sulfate
 WaDE_Synoptic_Summary_Clean <- WaDE_Synoptic_Summary_Clean %>%
   mutate(
     # Flag column for sulfate
@@ -449,7 +457,15 @@ Instrument DL: 22.9 uM
 Cl_DL_uM <- 2.29e1              # instrument DL = 22.9 uM
 Cl_half_DL_uM <- Cl_DL_uM / 2   # ½ the instrument DL
 
-# 2. Apply detection-limit rules for chloride
+# 2. Find the lowest reported positive Cl_uM value
+lowest_Cl_uM <- WaDE_Synoptic_Summary_Clean %>%
+  filter(!is.na(Cl_uM), Cl_uM > 0) %>%
+  summarise(min_Cl = min(Cl_uM)) %>%
+  pull(min_Cl)
+
+lowest_Cl_uM
+
+# 3. Apply detection-limit rules for chloride
 WaDE_Synoptic_Summary_Clean <- WaDE_Synoptic_Summary_Clean %>%
   mutate(
     # Flag column for chloride
