@@ -1,7 +1,6 @@
 ---
 title: "WaDE Dataset Cleaning"
 author: "Cecilia Albert-Black"
-date: "2025-11-13"
 output: html_document
 ---
 
@@ -48,7 +47,7 @@ At the end, we will have created the WaDE_Synoptic_Summary_Clean.xlsx file.
 Set working directory
 
 ```{r}
-setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/WaDE Dataset Cleaning")
+setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/WaDE Dataset Cleaning")
 ```
 
 Import data from the tab called WaDE_SYNOPTIC_SUMMARY in the WaDE_Synoptic_Summary.xlsx file
@@ -56,7 +55,7 @@ Import data from the tab called WaDE_SYNOPTIC_SUMMARY in the WaDE_Synoptic_Summa
 ```{r}
 library(readxl)
 
-WaDE_Synoptic_Summary <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/WaDE Dataset Cleaning/WaDE_Synoptic_Summary.xlsx", 
+WaDE_Synoptic_Summary <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/WaDE Dataset Cleaning/WaDE_Synoptic_Summary.xlsx", 
     sheet = "WaDE_SYNOPTIC_SUMMARY")
 
 head(WaDE_Synoptic_Summary)
