@@ -197,7 +197,7 @@ library(dplyr)
 library(tidyr)
 
 # inherent characteristics 
-site_char <- c("Regime", "Flow_state", "Development", "Relative_elevation")
+site_char <- c("Type", "Regime", "Flow_state", "Development")
 
 cluster_summary_table_pct <- dat %>%
   dplyr::select(all_of(site_char), cluster) %>%  
@@ -240,22 +240,16 @@ cluster_summary_table_pct <- cluster_summary_table_pct %>%
 cluster_summary_table_pct$Value_labeled <- factor(
   cluster_summary_table_pct$Value_labeled,
   levels = c(
-    # Development
+    "Type: Tributaries",
+    "Type: Main Stem",
+    
     "Development: Low",
     "Development: Medium",
     "Development: High",
     
-    # Flow_state
-    "Flow_state: Flowing",
     "Flow_state: Pooled",
+    "Flow_state: Flowing",
     
-    # Relative_elevation
-    "Relative_elevation: 0 m",
-    "Relative_elevation: <2.1 m",
-    "Relative_elevation: 2.1-10.5 m",
-    "Relative_elevation: >10.5 m",
-    
-    # Regime
     "Regime: NonPerennial",
     "Regime: Perennial"
   )
@@ -264,25 +258,22 @@ cluster_summary_table_pct$Value_labeled <- factor(
 
 # Create a named color vector for all Value_labeled combinations
 color_map <- c(
-  # Development
+  "Type: Tributaries" = "#dadaeb",
+  "Type: Main Stem" = "#756bb1",
+  
   "Development: Low" = "#fdd49e",
   "Development: Medium" = "orange2",
   "Development: High" = "red3",
   
-  # Flow_state
-  "Flow_state: Flowing" = "#a6d854",
-  "Flow_state: Pooled" = "#1b7837",
+  "Flow_state: Pooled" = "#a6d854",
+  "Flow_state: Flowing" = "#1b7837",
   
-  # Relative_elevation
-  "Relative_elevation: 0 m" = "gray",
-  "Relative_elevation: <2.1 m" = "#dadaeb",
-  "Relative_elevation: 2.1-10.5 m" = "#bcbddc",
-  "Relative_elevation: >10.5 m" = "#756bb1",
-  
-  # Regime
   "Regime: NonPerennial" = "lightblue",
   "Regime: Perennial" = "#1f78a4"
 )
+
+# Modify the legend to only display the categorical value
+legend_labels <- gsub("^.*: ", "", levels(cluster_summary_table_pct$Value_labeled))
 
 # Plot
 library(ggplot2)
@@ -304,7 +295,9 @@ rel_freq <- ggplot(cluster_summary_table_pct,
   legend.direction = "vertical"     # vertical legend
 ) +
 guides(fill = guide_legend(ncol = 1)) + # 1 column
-  scale_fill_manual(values = color_map)
+  scale_fill_manual(
+    values = color_map,
+    labels = legend_labels)
 
 rel_freq
 
@@ -322,7 +315,7 @@ ggsave(
 
 -   Cluster 2: More developed sites
 
--   Cluster 3: Mostly main stem sites with 0 m relative elevation
+-   Cluster 3: Mostly main stem sites
 
 -   Cluster 4: Non-perennial sites, far from the main stem, draining small areas, with low-medium development
 
@@ -378,86 +371,129 @@ total bioavailable element = sum of BLM predictors (as standardized log-transfor
 
 ## 1. Build and select the MLR
 
+Use log-transformed variables to build a large model, stepwise select a better model, calculate standardized beta coefficients, variance inflation factors (VIF), and relative importance on bioavailability
+
 ```{r}
 library(MASS)
+library(car)
+library(lm.beta)
+library(relaimpo)
+library(dplyr)
 
-# BLM predictors
 vars_to_select <- c("log_Zn_uM", "log_Temp_C", "pH", "log_DOC_uM",
                     "log_DIC_uM", "log_Cl_uM", "log_Ca_uM", 
                     "log_Mg_uM", "log_SO4_uM", "log_Na_uM", 
                     "log_K_uM")
 
-# Scale these variables
-scaled_blm_predict <- as.data.frame(
-  scale(dat[vars_to_select])
+form <- reformulate(vars_to_select, response = "log_TBL_Zn_nmol_g")
+
+# 1. Build long model
+full_mod <- lm(form, data = dat)
+
+# 2. Stepwise selection (AIC) of long model
+step_mod <- stepAIC(full_mod, direction = "both", trace = FALSE)
+
+# 3. Standardized betas
+step_mod_beta <- lm.beta(step_mod)
+
+coef_table <- summary(step_mod_beta)$coefficients
+
+beta_df <- data.frame(
+  Predictor = rownames(coef_table),
+  Std_Beta  = coef_table[, "Standardized"],
+  p_value   = coef_table[, "Pr(>|t|)"]
+) %>%
+  filter(Predictor != "(Intercept)")
+
+# 4. VIF
+vif_vals <- vif(step_mod)
+
+vif_df <- data.frame(
+  Predictor = names(vif_vals),
+  VIF       = as.numeric(vif_vals)
 )
 
-# Scale the response variable
-scaled_response <- as.numeric(scale(dat$log_TBL_Zn_nmol_g))
+# 5. Relative importance
+rel_imp <- calc.relimp(step_mod, type = "lmg", rela = TRUE)
 
-# Build the large model
-mod <- lm(
-  scaled_response ~ .,
-  data = scaled_blm_predict
+rel_df <- data.frame(
+  Predictor = names(rel_imp$lmg),
+  Rel_Importance = rel_imp$lmg
 )
 
-# Step-wise select the best model
-step.mod <- stepAIC(mod, direction = "both", trace = FALSE)
-mod_summary <- summary(step.mod)
+# 7. Combine into a summary table
+final_table <- beta_df %>%
+  left_join(vif_df, by = "Predictor") %>%
+  left_join(rel_df, by = "Predictor") %>%
+  arrange(desc(Rel_Importance))
 
-# View summary of selected model
-mod_summary
+final_table
 ```
 
-## 2. Quality checks
-
-### i. Multicollinearity among independent variables
+Omitted Na since VIF \>15
 
 ```{r}
+library(MASS)
+library(car)
+library(lm.beta)
+library(relaimpo)
 library(dplyr)
-library(corrplot)
 
-# Create correlation matrix from DATA, not names
-cor_matrix <- cor(
-  scaled_blm_predict,
-  method = "spearman"
+vars_to_select_2 <- c("log_Zn_uM", "log_Temp_C", "pH", "log_DOC_uM",
+                    "log_DIC_uM", "log_Cl_uM", "log_Ca_uM", 
+                    "log_Mg_uM", "log_SO4_uM", 
+                    "log_K_uM")
+
+form <- reformulate(vars_to_select_2, response = "log_TBL_Zn_nmol_g")
+
+# 1. Build long model
+full_mod_2 <- lm(form, data = dat)
+
+# 2. Stepwise selection (AIC) of long model
+step_mod_2 <- stepAIC(full_mod_2, direction = "both", trace = FALSE)
+
+# 3. Standardized betas
+step_mod_beta_2 <- lm.beta(step_mod_2)
+
+coef_table_2 <- summary(step_mod_beta_2)$coefficients
+
+beta_df_2 <- data.frame(
+  Predictor = rownames(coef_table_2),
+  Std_Beta  = coef_table_2[, "Standardized"],
+  p_value   = coef_table_2[, "Pr(>|t|)"]
+) %>%
+  filter(Predictor != "(Intercept)")
+
+# 4. VIF
+vif_vals_2 <- vif(step_mod_2)
+
+vif_df_2 <- data.frame(
+  Predictor = names(vif_vals_2),
+  VIF       = as.numeric(vif_vals_2)
 )
 
-# Save as png inside the folder
+# 5. Relative importance
+rel_imp_2 <- calc.relimp(step_mod_2, type = "lmg", rela = TRUE)
 
-# Define output directory
-out_dir <- "Multiple linear regression plots"
-# Create directory if it does not exist
-if (!dir.exists(out_dir)) {
-  dir.create(out_dir, recursive = TRUE)
-}
-
-png(
-  file.path(out_dir, "Spearman_correlation_scaled_log_BLM_predictors.png"),
-  width = 2000,
-  height = 2500,
-  res = 300
+rel_df_2 <- data.frame(
+  Predictor = names(rel_imp_2$lmg),
+  Rel_Importance = rel_imp_2$lmg
 )
 
-corrplot(
-  cor_matrix, 
-  method = "color",
-  type = "lower",
-  tl.cex = 0.7,
-  tl.col = "black",
-  addCoef.col = "black",
-  number.cex = 0.6
-)
+# 7. Combine into a summary table
+final_table_2 <- beta_df_2 %>%
+  left_join(vif_df_2, by = "Predictor") %>%
+  left_join(rel_df_2, by = "Predictor") %>%
+  arrange(desc(Rel_Importance))
 
-title(
-  main = "Spearman Correlation Matrix of Scaled Log BLM Predictors",
-  line = 2
-)
-
-dev.off()
+final_table_2
 ```
 
-### ii. Homoscedasticity of fitted vs. residual plots and Normality of residuals on the dependent variable
+Better VIF, all \<5
+
+## 2. Check of residuals
+
+Homoscedasticity of fitted vs. residual plots and Normality of residuals on the dependent variable
 
 ```{r}
 # Save as png inside the folder
@@ -470,7 +506,7 @@ png(
 
 # Build plot
 par(mfrow = c(2, 2))   # 2 rows, 2 columns
-step.mod_plots <- plot(step.mod)
+step.mod_plots <- plot(step_mod)
 
 # View
 step.mod_plots
@@ -478,16 +514,7 @@ step.mod_plots
 dev.off()
 ```
 
-### iii. Variance inflation factors
-
-```{r}
-library(car)
-
-vif_coeff <- vif(step.mod)
-vif_coeff
-```
-
-## 3. Partial slopes
+## 3. Partial slope plots
 
 Partial regression plots of log BLM parameters
 
@@ -497,7 +524,7 @@ library(ggplot2)
 library(broom)
 
 # 1. Extract retained predictors from stepwise model
-retained_vars <- names(coef(step.mod))[-1]  # drop intercept
+retained_vars <- names(coef(step_mod))[-1]  # drop intercept
 
 # 2. Function to get partial residuals for each predictor
 get_partial_df <- function(model, data, var) {
@@ -523,7 +550,7 @@ get_partial_df <- function(model, data, var) {
 
 # 3. Build combined dataset for all retained predictors
 partial_df <- do.call(rbind, lapply(retained_vars, get_partial_df, 
-                                    model = step.mod, data = dat))
+                                    model = step_mod, data = dat))
 
 # 4. Plot partial regression slopes
 step.mod_partial_slopes <-
@@ -550,79 +577,11 @@ ggsave(
 )
 ```
 
-## 4. Summary table
-
-```{r}
-# 1. Create a data frame with raw beta coefficients (partial slopes)
-summary_mlr <- as.data.frame(summary(step.mod)$coefficients)
-
-# 2. Extract term names
-summary_mlr$Term <- rownames(summary_mlr)
-
-# 3. Reorder columns to put Term first
-summary_mlr <- summary_mlr[, c("Term", setdiff(names(summary_mlr), "Term"))]
-
-# 5. Convert VIF values to data.frame for merging
-vif <- data.frame(
-  Term = names(vif_coeff),
-  VIF = as.numeric(vif_coeff),
-  row.names = NULL
-)
-
-# 6. Merge the result with vif_zn
-summary <- merge(summary_mlr, vif, by = "Term", all.x = TRUE)
-
-# 7. Add model statistics
-mod_summary <- summary(step.mod)
-
-rse <- mod_summary$sigma
-r2 <- mod_summary$r.squared
-adj_r2 <- mod_summary$adj.r.squared
-fstat <- mod_summary$fstatistic[1]
-fnum <- mod_summary$fstatistic[2]
-fden <- mod_summary$fstatistic[3]
-pval <- pf(fstat, fnum, fden, lower.tail = FALSE)
-
-# 8. Create data frame with model statistics matching the structure of summary_zn
-model_stats <- data.frame(
-  Term = c("Residual standard error", "Multiple R-squared", "Adjusted R-squared", "F-statistic", "p-value"),
-  Estimate = c(rse, r2, adj_r2, fstat, pval),
-  `Std. Error` = NA,
-  `t value` = NA,
-  `Pr(>|t|)` = NA,
-  VIF = NA,
-  stringsAsFactors = FALSE
-)
-
-# 9. Check and fix column name mismatches before combining
-
-# 10. Scale both sets of column names
-names(summary) <- c(
-  "Term", "Estimate", "Std. Error", "t value", "Pr(>|t|)", "VIF")
-names(model_stats) <- c("Term", "Estimate", "Std. Error", "t value", "Pr(>|t|)", "VIF")
-
-# 11. Combine coefficients and model stats
-summary_final <- rbind(summary, model_stats)
-
-# View
-summary_final
-
-# Save
-library(openxlsx)
-
-write.xlsx(
-  summary_final,
-  file = file.path(out_dir, "MLR_summary_table.xlsx"),
-  overwrite = TRUE
-)
-
-```
-
 ## 5. Outlier detection
 
 ```{r}
 # 1. Get model diagnostics
-model_diag <- influence.measures(step.mod)
+model_diag <- influence.measures(step_mod)
 
 # 2. Extract indices of influential points flagged by diagnostics
 infl_points <- which(apply(model_diag$is.inf, 1, any))
@@ -630,11 +589,11 @@ infl_points <- which(apply(model_diag$is.inf, 1, any))
 # 3. Create a dataframe with their info
 flagged_obs <- data.frame(
   Sample_ID = dat$Sample_ID[infl_points],
-  Fitted = fitted(step.mod)[infl_points],
-  Residual = residuals(step.mod)[infl_points],
-  Std_Residual = rstandard(step.mod)[infl_points],
-  Leverage = hatvalues(step.mod)[infl_points],
-  Cooks_D = cooks.distance(step.mod)[infl_points])
+  Fitted = fitted(step_mod)[infl_points],
+  Residual = residuals(step_mod)[infl_points],
+  Std_Residual = rstandard(step_mod)[infl_points],
+  Leverage = hatvalues(step_mod)[infl_points],
+  Cooks_D = cooks.distance(step_mod)[infl_points])
 
 # View flagged observations
 flagged_obs
@@ -1077,7 +1036,7 @@ for (v in numeric_vars) {
 combined_kruskal <- bind_rows(combined_list)
 
 # View
-combined_kruskal
+str(combined_kruskal)
 ```
 
 Export to excel

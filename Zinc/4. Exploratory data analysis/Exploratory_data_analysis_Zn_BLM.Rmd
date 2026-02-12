@@ -34,6 +34,51 @@ ha80_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Res
 
 ## i. Raw Variables
 
+Plot distributions
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# Choose the variables you want to visualize
+vars_to_plot <- c(
+  "pH", "Temp_C", "DOC_uM", "Ca_uM", "Mg_uM", "Na_uM", "K_uM",
+  "SO4_uM", "Cl_uM", "DIC_uM", "Zn_uM", "Cu_uM"
+)
+
+ha10_cs %>%
+  select(any_of(vars_to_plot)) %>%
+  select(where(is.numeric)) %>%              # keeps only numeric among those (extra-safe)
+  pivot_longer(
+    cols = everything(),
+    names_to = "variable",
+    values_to = "value"
+  ) %>%
+  ggplot(aes(x = value)) +
+  geom_histogram(bins = 40, na.rm = TRUE) +
+  facet_wrap(~ variable, scales = "free", ncol = 5) +
+  labs(
+    title = "Distributions BLM predictor variables in ha_10_cs",
+    x = NULL,
+    y = "Count"
+  ) +
+  theme_bw() +
+  theme(
+    strip.text = element_text(size = 8),
+    axis.text.x = element_text(size = 7),
+    axis.text.y = element_text(size = 7)
+  )
+
+# Save
+ggsave(
+  filename = "ha_10_cs_numeric_distributions.png",
+  width = 14,
+  height = 10,
+  dpi = 300
+)
+```
+
 Now continuous variables must be checked for Normality by Shapiro-Wilk's method and skewness.
 
 ```{r}
@@ -246,6 +291,55 @@ saveWorkbook(
   wb,
   file = "Normality_checks_log_vars.xlsx",
   overwrite = TRUE
+)
+```
+
+Plot distributions of log-transformed variables
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+log_long_ha10_cs <- ha10_cs %>%
+  select(any_of(vars_to_plot)) %>%
+  select(where(is.numeric)) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "variable",
+    values_to = "value"
+  ) %>%
+  mutate(
+    log10_value = if_else(value > 0, log10(value), NA_real_),
+    variable = factor(variable, levels = vars_to_plot)
+  )
+
+# Plot
+p_log_dist <- log_long_ha10_cs %>%
+  ggplot(aes(x = log10_value)) +
+  geom_histogram(bins = 40, na.rm = TRUE) +
+  facet_wrap(~ variable, scales = "free", ncol = 5) +
+  labs(
+    title = "Distribution of log10-transformed BLM predictors (ha_10_cs)",
+    x = "log10(value)",
+    y = "Count"
+  ) +
+  theme_bw() +
+  theme(
+    strip.text = element_text(size = 8),
+    axis.text.x = element_text(size = 7),
+    axis.text.y = element_text(size = 7)
+  )
+
+p_log_dist
+
+# Save
+ggsave(
+  filename = "ha_10_cs_log10_numeric_distributions.png",
+  plot = p_log_dist,
+  width = 14,
+  height = 10,
+  dpi = 300
 )
 ```
 

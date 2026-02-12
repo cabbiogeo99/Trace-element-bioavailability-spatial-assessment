@@ -602,7 +602,7 @@ ggsave(
 library(tidyr)
 
 # inherent characteristics 
-site_char &lt;- c(&quot;Regime&quot;, &quot;Flow_state&quot;, &quot;Development&quot;, &quot;Relative_elevation&quot;)
+site_char &lt;- c(&quot;Type&quot;, &quot;Regime&quot;, &quot;Flow_state&quot;, &quot;Development&quot;)
 
 cluster_summary_table_pct &lt;- dat %&gt;%
   dplyr::select(all_of(site_char), cluster) %&gt;%  
@@ -616,7 +616,7 @@ cluster_summary_table_pct &lt;- dat %&gt;%
   mutate(RelFreq = prop.table(Freq) * 100)       
 
 cluster_summary_table_pct</code></pre>
-<pre><code>## # A tibble: 41 × 5
+<pre><code>## # A tibble: 34 × 5
 ## # Groups:   Variable, cluster [16]
 ##    Variable    cluster Value   Freq RelFreq
 ##    &lt;chr&gt;       &lt;fct&gt;   &lt;chr&gt;  &lt;int&gt;   &lt;dbl&gt;
@@ -630,7 +630,7 @@ cluster_summary_table_pct</code></pre>
 ##  8 Development 3       Low       32   24.2 
 ##  9 Development 3       Medium    59   44.7 
 ## 10 Development 4       High       1    5.26
-## # ℹ 31 more rows</code></pre>
+## # ℹ 24 more rows</code></pre>
 <p>Save table</p>
 <pre class="r"><code>out_dir &lt;- &quot;Identifying stream typology plots&quot;
 
@@ -653,22 +653,16 @@ cluster_summary_table_pct &lt;- cluster_summary_table_pct %&gt;%
 cluster_summary_table_pct$Value_labeled &lt;- factor(
   cluster_summary_table_pct$Value_labeled,
   levels = c(
-    # Development
+    &quot;Type: Tributaries&quot;,
+    &quot;Type: Main Stem&quot;,
+    
     &quot;Development: Low&quot;,
     &quot;Development: Medium&quot;,
     &quot;Development: High&quot;,
     
-    # Flow_state
-    &quot;Flow_state: Flowing&quot;,
     &quot;Flow_state: Pooled&quot;,
+    &quot;Flow_state: Flowing&quot;,
     
-    # Relative_elevation
-    &quot;Relative_elevation: 0 m&quot;,
-    &quot;Relative_elevation: &lt;2.1 m&quot;,
-    &quot;Relative_elevation: 2.1-10.5 m&quot;,
-    &quot;Relative_elevation: &gt;10.5 m&quot;,
-    
-    # Regime
     &quot;Regime: NonPerennial&quot;,
     &quot;Regime: Perennial&quot;
   )
@@ -677,25 +671,22 @@ cluster_summary_table_pct$Value_labeled &lt;- factor(
 
 # Create a named color vector for all Value_labeled combinations
 color_map &lt;- c(
-  # Development
+  &quot;Type: Tributaries&quot; = &quot;#dadaeb&quot;,
+  &quot;Type: Main Stem&quot; = &quot;#756bb1&quot;,
+  
   &quot;Development: Low&quot; = &quot;#fdd49e&quot;,
   &quot;Development: Medium&quot; = &quot;orange2&quot;,
   &quot;Development: High&quot; = &quot;red3&quot;,
   
-  # Flow_state
-  &quot;Flow_state: Flowing&quot; = &quot;#a6d854&quot;,
-  &quot;Flow_state: Pooled&quot; = &quot;#1b7837&quot;,
+  &quot;Flow_state: Pooled&quot; = &quot;#a6d854&quot;,
+  &quot;Flow_state: Flowing&quot; = &quot;#1b7837&quot;,
   
-  # Relative_elevation
-  &quot;Relative_elevation: 0 m&quot; = &quot;gray&quot;,
-  &quot;Relative_elevation: &lt;2.1 m&quot; = &quot;#dadaeb&quot;,
-  &quot;Relative_elevation: 2.1-10.5 m&quot; = &quot;#bcbddc&quot;,
-  &quot;Relative_elevation: &gt;10.5 m&quot; = &quot;#756bb1&quot;,
-  
-  # Regime
   &quot;Regime: NonPerennial&quot; = &quot;lightblue&quot;,
   &quot;Regime: Perennial&quot; = &quot;#1f78a4&quot;
 )
+
+# Modify the legend to only display the categorical value
+legend_labels &lt;- gsub(&quot;^.*: &quot;, &quot;&quot;, levels(cluster_summary_table_pct$Value_labeled))
 
 # Plot
 library(ggplot2)
@@ -717,7 +708,9 @@ rel_freq &lt;- ggplot(cluster_summary_table_pct,
   legend.direction = &quot;vertical&quot;     # vertical legend
 ) +
 guides(fill = guide_legend(ncol = 1)) + # 1 column
-  scale_fill_manual(values = color_map)
+  scale_fill_manual(
+    values = color_map,
+    labels = legend_labels)
 
 rel_freq
 
@@ -732,8 +725,7 @@ ggsave(
 <ul>
 <li><p>Cluster 1: Less developed sites</p></li>
 <li><p>Cluster 2: More developed sites</p></li>
-<li><p>Cluster 3: Mostly main stem sites with 0 m relative
-elevation</p></li>
+<li><p>Cluster 3: Mostly main stem sites</p></li>
 <li><p>Cluster 4: Non-perennial sites, far from the main stem, draining
 small areas, with low-medium development</p></li>
 </ul>
@@ -790,140 +782,13 @@ determine their standardized beta coefficients using the formula:</p>
 log-transformed variables)</p>
 <div id="build-and-select-the-mlr" class="section level2">
 <h2>1. Build and select the MLR</h2>
+<p>Use log-transformed variables</p>
 <pre class="r"><code>library(MASS)</code></pre>
 <pre><code>## 
 ## Attaching package: &#39;MASS&#39;</code></pre>
 <pre><code>## The following object is masked from &#39;package:dplyr&#39;:
 ## 
 ##     select</code></pre>
-<pre class="r"><code># BLM predictors
-vars_to_select &lt;- c(&quot;log_Zn_uM&quot;, &quot;log_Temp_C&quot;, &quot;pH&quot;, &quot;log_DOC_uM&quot;,
-                    &quot;log_DIC_uM&quot;, &quot;log_Cl_uM&quot;, &quot;log_Ca_uM&quot;, 
-                    &quot;log_Mg_uM&quot;, &quot;log_SO4_uM&quot;, &quot;log_Na_uM&quot;, 
-                    &quot;log_K_uM&quot;)
-
-# Scale these variables
-scaled_blm_predict &lt;- as.data.frame(
-  scale(dat[vars_to_select])
-)
-
-# Scale the response variable
-scaled_response &lt;- as.numeric(scale(dat$log_TBL_Zn_nmol_g))
-
-# Build the large model
-mod &lt;- lm(
-  scaled_response ~ .,
-  data = scaled_blm_predict
-)
-
-# Step-wise select the best model
-step.mod &lt;- stepAIC(mod, direction = &quot;both&quot;, trace = FALSE)
-mod_summary &lt;- summary(step.mod)
-
-# View summary of selected model
-mod_summary</code></pre>
-<pre><code>## 
-## Call:
-## lm(formula = scaled_response ~ log_Zn_uM + log_Temp_C + pH + 
-##     log_DOC_uM + log_Cl_uM + log_Ca_uM + log_Mg_uM + log_SO4_uM + 
-##     log_Na_uM + log_K_uM, data = scaled_blm_predict)
-## 
-## Residuals:
-##      Min       1Q   Median       3Q      Max 
-## -1.04533 -0.13545 -0.01524  0.12256  1.10119 
-## 
-## Coefficients:
-##               Estimate Std. Error t value Pr(&gt;|t|)    
-## (Intercept) -9.597e-16  1.280e-02   0.000 1.000000    
-## log_Zn_uM    9.091e-01  1.580e-02  57.528  &lt; 2e-16 ***
-## log_Temp_C  -5.568e-02  1.376e-02  -4.046 6.33e-05 ***
-## pH           1.420e-01  1.502e-02   9.452  &lt; 2e-16 ***
-## log_DOC_uM  -4.303e-01  2.018e-02 -21.324  &lt; 2e-16 ***
-## log_Cl_uM   -1.791e-01  3.985e-02  -4.494 9.32e-06 ***
-## log_Ca_uM   -4.432e-01  2.439e-02 -18.172  &lt; 2e-16 ***
-## log_Mg_uM    3.690e-02  2.631e-02   1.403 0.161589    
-## log_SO4_uM   5.453e-02  2.505e-02   2.177 0.030099 *  
-## log_Na_uM    1.873e-01  5.129e-02   3.652 0.000297 ***
-## log_K_uM    -1.158e-01  2.594e-02  -4.463 1.07e-05 ***
-## ---
-## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
-## 
-## Residual standard error: 0.2515 on 375 degrees of freedom
-## Multiple R-squared:  0.9384, Adjusted R-squared:  0.9367 
-## F-statistic: 571.1 on 10 and 375 DF,  p-value: &lt; 2.2e-16</code></pre>
-</div>
-<div id="quality-checks" class="section level2">
-<h2>2. Quality checks</h2>
-<div id="i.-multicollinearity-among-independent-variables" class="section level3">
-<h3>i. Multicollinearity among independent variables</h3>
-<pre class="r"><code>library(dplyr)
-library(corrplot)</code></pre>
-<pre><code>## corrplot 0.95 loaded</code></pre>
-<pre class="r"><code># Create correlation matrix from DATA, not names
-cor_matrix &lt;- cor(
-  scaled_blm_predict,
-  method = &quot;spearman&quot;
-)
-
-# Save as png inside the folder
-
-# Define output directory
-out_dir &lt;- &quot;Multiple linear regression plots&quot;
-# Create directory if it does not exist
-if (!dir.exists(out_dir)) {
-  dir.create(out_dir, recursive = TRUE)
-}
-
-png(
-  file.path(out_dir, &quot;Spearman_correlation_scaled_log_BLM_predictors.png&quot;),
-  width = 2000,
-  height = 2500,
-  res = 300
-)
-
-corrplot(
-  cor_matrix, 
-  method = &quot;color&quot;,
-  type = &quot;lower&quot;,
-  tl.cex = 0.7,
-  tl.col = &quot;black&quot;,
-  addCoef.col = &quot;black&quot;,
-  number.cex = 0.6
-)
-
-title(
-  main = &quot;Spearman Correlation Matrix of Scaled Log BLM Predictors&quot;,
-  line = 2
-)
-
-dev.off()</code></pre>
-<pre><code>## png 
-##   2</code></pre>
-</div>
-<div id="ii.-homoscedasticity-of-fitted-vs.-residual-plots-and-normality-of-residuals-on-the-dependent-variable" class="section level3">
-<h3>ii. Homoscedasticity of fitted vs. residual plots and Normality of
-residuals on the dependent variable</h3>
-<pre class="r"><code># Save as png inside the folder
-png(
-  file.path(out_dir, &quot;Quality_checks_MLR.png&quot;),
-  width = 2000,
-  height = 2000,
-  res = 300
-)
-
-# Build plot
-par(mfrow = c(2, 2))   # 2 rows, 2 columns
-step.mod_plots &lt;- plot(step.mod)
-
-# View
-step.mod_plots</code></pre>
-<pre><code>## NULL</code></pre>
-<pre class="r"><code>dev.off()</code></pre>
-<pre><code>## png 
-##   2</code></pre>
-</div>
-<div id="iii.-variance-inflation-factors" class="section level3">
-<h3>iii. Variance inflation factors</h3>
 <pre class="r"><code>library(car)</code></pre>
 <pre><code>## Loading required package: carData</code></pre>
 <pre><code>## 
@@ -934,23 +799,199 @@ step.mod_plots</code></pre>
 <pre><code>## The following object is masked from &#39;package:dplyr&#39;:
 ## 
 ##     recode</code></pre>
-<pre class="r"><code>vif_coeff &lt;- vif(step.mod)
-vif_coeff</code></pre>
-<pre><code>##  log_Zn_uM log_Temp_C         pH log_DOC_uM  log_Cl_uM  log_Ca_uM  log_Mg_uM 
-##   1.519766   1.152425   1.373079   2.478167   9.667026   3.619928   4.212975 
-## log_SO4_uM  log_Na_uM   log_K_uM 
-##   3.818692  16.013852   4.096431</code></pre>
+<pre class="r"><code>library(lm.beta)
+library(relaimpo)</code></pre>
+<pre><code>## Loading required package: boot</code></pre>
+<pre><code>## 
+## Attaching package: &#39;boot&#39;</code></pre>
+<pre><code>## The following object is masked from &#39;package:car&#39;:
+## 
+##     logit</code></pre>
+<pre><code>## The following object is masked from &#39;package:psych&#39;:
+## 
+##     logit</code></pre>
+<pre><code>## Loading required package: survey</code></pre>
+<pre><code>## Loading required package: grid</code></pre>
+<pre><code>## Loading required package: Matrix</code></pre>
+<pre><code>## 
+## Attaching package: &#39;Matrix&#39;</code></pre>
+<pre><code>## The following objects are masked from &#39;package:tidyr&#39;:
+## 
+##     expand, pack, unpack</code></pre>
+<pre><code>## Loading required package: survival</code></pre>
+<pre><code>## 
+## Attaching package: &#39;survival&#39;</code></pre>
+<pre><code>## The following object is masked from &#39;package:boot&#39;:
+## 
+##     aml</code></pre>
+<pre><code>## 
+## Attaching package: &#39;survey&#39;</code></pre>
+<pre><code>## The following object is masked from &#39;package:graphics&#39;:
+## 
+##     dotchart</code></pre>
+<pre><code>## Loading required package: mitools</code></pre>
+<pre><code>## This is the global version of package relaimpo.</code></pre>
+<pre><code>## If you are a non-US user, a version with the interesting additional metric pmvd is available</code></pre>
+<pre><code>## from Ulrike Groempings web site at prof.beuth-hochschule.de/groemping.</code></pre>
+<pre class="r"><code>library(dplyr)
+
+vars_to_select &lt;- c(&quot;log_Zn_uM&quot;, &quot;log_Temp_C&quot;, &quot;pH&quot;, &quot;log_DOC_uM&quot;,
+                    &quot;log_DIC_uM&quot;, &quot;log_Cl_uM&quot;, &quot;log_Ca_uM&quot;, 
+                    &quot;log_Mg_uM&quot;, &quot;log_SO4_uM&quot;, &quot;log_Na_uM&quot;, 
+                    &quot;log_K_uM&quot;)
+
+form &lt;- reformulate(vars_to_select, response = &quot;log_TBL_Zn_nmol_g&quot;)
+
+# 1. Build long model
+full_mod &lt;- lm(form, data = dat)
+
+# 2. Stepwise selection (AIC) of long model
+step_mod &lt;- stepAIC(full_mod, direction = &quot;both&quot;, trace = FALSE)
+
+# 3. Standardized betas
+step_mod_beta &lt;- lm.beta(step_mod)
+
+coef_table &lt;- summary(step_mod_beta)$coefficients
+
+beta_df &lt;- data.frame(
+  Predictor = rownames(coef_table),
+  Std_Beta  = coef_table[, &quot;Standardized&quot;],
+  p_value   = coef_table[, &quot;Pr(&gt;|t|)&quot;]
+) %&gt;%
+  filter(Predictor != &quot;(Intercept)&quot;)
+
+# 4. VIF
+vif_vals &lt;- vif(step_mod)
+
+vif_df &lt;- data.frame(
+  Predictor = names(vif_vals),
+  VIF       = as.numeric(vif_vals)
+)
+
+# 5. Relative importance
+rel_imp &lt;- calc.relimp(step_mod, type = &quot;lmg&quot;, rela = TRUE)
+
+rel_df &lt;- data.frame(
+  Predictor = names(rel_imp$lmg),
+  Rel_Importance = rel_imp$lmg
+)
+
+# 7. Combine into a summary table
+final_table &lt;- beta_df %&gt;%
+  left_join(vif_df, by = &quot;Predictor&quot;) %&gt;%
+  left_join(rel_df, by = &quot;Predictor&quot;) %&gt;%
+  arrange(desc(Rel_Importance))
+
+final_table</code></pre>
+<pre><code>##     Predictor    Std_Beta       p_value       VIF Rel_Importance
+## 1   log_Zn_uM  0.90905365 3.752564e-188  1.519766    0.616053608
+## 2   log_Ca_uM -0.44318402  2.222058e-53  3.619928    0.138339111
+## 3  log_DOC_uM -0.43028990  1.190365e-66  2.478167    0.115848695
+## 4   log_Mg_uM  0.03690005  1.615886e-01  4.212975    0.026430741
+## 5   log_Cl_uM -0.17911003  9.318642e-06  9.667026    0.025089932
+## 6   log_Na_uM  0.18732796  2.972020e-04 16.013852    0.023038502
+## 7    log_K_uM -0.11578394  1.070610e-05  4.096431    0.021534192
+## 8          pH  0.14197549  3.678085e-19  1.373079    0.014902297
+## 9  log_Temp_C -0.05567598  6.326257e-05  1.152425    0.010116573
+## 10 log_SO4_uM  0.05453209  3.009930e-02  3.818692    0.008646349</code></pre>
+<p>Omitted Na since VIF &gt;15</p>
+<pre class="r"><code>library(MASS)
+library(car)
+library(lm.beta)
+library(relaimpo)
+library(dplyr)
+
+vars_to_select_2 &lt;- c(&quot;log_Zn_uM&quot;, &quot;log_Temp_C&quot;, &quot;pH&quot;, &quot;log_DOC_uM&quot;,
+                    &quot;log_DIC_uM&quot;, &quot;log_Cl_uM&quot;, &quot;log_Ca_uM&quot;, 
+                    &quot;log_Mg_uM&quot;, &quot;log_SO4_uM&quot;, 
+                    &quot;log_K_uM&quot;)
+
+form &lt;- reformulate(vars_to_select_2, response = &quot;log_TBL_Zn_nmol_g&quot;)
+
+# 1. Build long model
+full_mod_2 &lt;- lm(form, data = dat)
+
+# 2. Stepwise selection (AIC) of long model
+step_mod_2 &lt;- stepAIC(full_mod_2, direction = &quot;both&quot;, trace = FALSE)
+
+# 3. Standardized betas
+step_mod_beta_2 &lt;- lm.beta(step_mod_2)
+
+coef_table_2 &lt;- summary(step_mod_beta_2)$coefficients
+
+beta_df_2 &lt;- data.frame(
+  Predictor = rownames(coef_table_2),
+  Std_Beta  = coef_table_2[, &quot;Standardized&quot;],
+  p_value   = coef_table_2[, &quot;Pr(&gt;|t|)&quot;]
+) %&gt;%
+  filter(Predictor != &quot;(Intercept)&quot;)
+
+# 4. VIF
+vif_vals_2 &lt;- vif(step_mod_2)
+
+vif_df_2 &lt;- data.frame(
+  Predictor = names(vif_vals_2),
+  VIF       = as.numeric(vif_vals_2)
+)
+
+# 5. Relative importance
+rel_imp_2 &lt;- calc.relimp(step_mod_2, type = &quot;lmg&quot;, rela = TRUE)
+
+rel_df_2 &lt;- data.frame(
+  Predictor = names(rel_imp_2$lmg),
+  Rel_Importance = rel_imp_2$lmg
+)
+
+# 7. Combine into a summary table
+final_table_2 &lt;- beta_df_2 %&gt;%
+  left_join(vif_df_2, by = &quot;Predictor&quot;) %&gt;%
+  left_join(rel_df_2, by = &quot;Predictor&quot;) %&gt;%
+  arrange(desc(Rel_Importance))
+
+final_table_2</code></pre>
+<pre><code>##    Predictor    Std_Beta       p_value      VIF Rel_Importance
+## 1  log_Zn_uM  0.91188741 2.114379e-187 1.509121    0.634502123
+## 2  log_Ca_uM -0.41407002  6.453636e-84 1.559499    0.142581221
+## 3 log_DOC_uM -0.45010704  1.193484e-84 1.816956    0.123716459
+## 4  log_Cl_uM -0.04801500  1.402461e-02 2.231544    0.038255654
+## 5   log_K_uM -0.06751818  3.342216e-03 3.082141    0.024802566
+## 6         pH  0.14850408  5.351313e-21 1.303408    0.016169737
+## 7 log_Temp_C -0.05455216  1.122774e-04 1.151582    0.010359247
+## 8 log_SO4_uM  0.08756570  8.578786e-05 2.867467    0.009612994</code></pre>
+<p>Better VIF, all &lt;5</p>
 </div>
+<div id="check-of-residuals" class="section level2">
+<h2>2. Check of residuals</h2>
+<p>Homoscedasticity of fitted vs. residual plots and Normality of
+residuals on the dependent variable</p>
+<pre class="r"><code># Save as png inside the folder
+png(
+  file.path(out_dir, &quot;Quality_checks_MLR.png&quot;),
+  width = 2000,
+  height = 2000,
+  res = 300
+)
+
+# Build plot
+par(mfrow = c(2, 2))   # 2 rows, 2 columns
+step.mod_plots &lt;- plot(step_mod)
+
+# View
+step.mod_plots</code></pre>
+<pre><code>## NULL</code></pre>
+<pre class="r"><code>dev.off()</code></pre>
+<pre><code>## png 
+##   2</code></pre>
 </div>
-<div id="partial-slopes" class="section level2">
-<h2>3. Partial slopes</h2>
+<div id="partial-slope-plots" class="section level2">
+<h2>3. Partial slope plots</h2>
 <p>Partial regression plots of log BLM parameters</p>
 <pre class="r"><code>library(dplyr)
 library(ggplot2)
 library(broom)
 
 # 1. Extract retained predictors from stepwise model
-retained_vars &lt;- names(coef(step.mod))[-1]  # drop intercept
+retained_vars &lt;- names(coef(step_mod))[-1]  # drop intercept
 
 # 2. Function to get partial residuals for each predictor
 get_partial_df &lt;- function(model, data, var) {
@@ -976,7 +1017,7 @@ get_partial_df &lt;- function(model, data, var) {
 
 # 3. Build combined dataset for all retained predictors
 partial_df &lt;- do.call(rbind, lapply(retained_vars, get_partial_df, 
-                                    model = step.mod, data = dat))
+                                    model = step_mod, data = dat))
 
 # 4. Plot partial regression slopes
 step.mod_partial_slopes &lt;-
@@ -1003,108 +1044,10 @@ ggsave(
 )</code></pre>
 <pre><code>## `geom_smooth()` using formula = &#39;y ~ x&#39;</code></pre>
 </div>
-<div id="summary-table" class="section level2">
-<h2>4. Summary table</h2>
-<pre class="r"><code># 1. Create a data frame with raw beta coefficients (partial slopes)
-summary_mlr &lt;- as.data.frame(summary(step.mod)$coefficients)
-
-# 2. Extract term names
-summary_mlr$Term &lt;- rownames(summary_mlr)
-
-# 3. Reorder columns to put Term first
-summary_mlr &lt;- summary_mlr[, c(&quot;Term&quot;, setdiff(names(summary_mlr), &quot;Term&quot;))]
-
-# 5. Convert VIF values to data.frame for merging
-vif &lt;- data.frame(
-  Term = names(vif_coeff),
-  VIF = as.numeric(vif_coeff),
-  row.names = NULL
-)
-
-# 6. Merge the result with vif_zn
-summary &lt;- merge(summary_mlr, vif, by = &quot;Term&quot;, all.x = TRUE)
-
-# 7. Add model statistics
-mod_summary &lt;- summary(step.mod)
-
-rse &lt;- mod_summary$sigma
-r2 &lt;- mod_summary$r.squared
-adj_r2 &lt;- mod_summary$adj.r.squared
-fstat &lt;- mod_summary$fstatistic[1]
-fnum &lt;- mod_summary$fstatistic[2]
-fden &lt;- mod_summary$fstatistic[3]
-pval &lt;- pf(fstat, fnum, fden, lower.tail = FALSE)
-
-# 8. Create data frame with model statistics matching the structure of summary_zn
-model_stats &lt;- data.frame(
-  Term = c(&quot;Residual standard error&quot;, &quot;Multiple R-squared&quot;, &quot;Adjusted R-squared&quot;, &quot;F-statistic&quot;, &quot;p-value&quot;),
-  Estimate = c(rse, r2, adj_r2, fstat, pval),
-  `Std. Error` = NA,
-  `t value` = NA,
-  `Pr(&gt;|t|)` = NA,
-  VIF = NA,
-  stringsAsFactors = FALSE
-)
-
-# 9. Check and fix column name mismatches before combining
-
-# 10. Scale both sets of column names
-names(summary) &lt;- c(
-  &quot;Term&quot;, &quot;Estimate&quot;, &quot;Std. Error&quot;, &quot;t value&quot;, &quot;Pr(&gt;|t|)&quot;, &quot;VIF&quot;)
-names(model_stats) &lt;- c(&quot;Term&quot;, &quot;Estimate&quot;, &quot;Std. Error&quot;, &quot;t value&quot;, &quot;Pr(&gt;|t|)&quot;, &quot;VIF&quot;)
-
-# 11. Combine coefficients and model stats
-summary_final &lt;- rbind(summary, model_stats)
-
-# View
-summary_final</code></pre>
-<pre><code>##                       Term       Estimate Std. Error       t value
-## 1              (Intercept)  -9.596823e-16 0.01280152 -7.496628e-14
-## 2                log_Ca_uM  -4.431840e-01 0.02438792 -1.817227e+01
-## 3                log_Cl_uM  -1.791100e-01 0.03985394 -4.494161e+00
-## 4               log_DOC_uM  -4.302899e-01 0.02017856 -2.132412e+01
-## 5                 log_K_uM  -1.157839e-01 0.02594345 -4.462936e+00
-## 6                log_Mg_uM   3.690005e-02 0.02630990  1.402516e+00
-## 7                log_Na_uM   1.873280e-01 0.05129473  3.651993e+00
-## 8               log_SO4_uM   5.453209e-02 0.02504852  2.177058e+00
-## 9               log_Temp_C  -5.567598e-02 0.01376040 -4.046101e+00
-## 10               log_Zn_uM   9.090536e-01 0.01580204  5.752761e+01
-## 11                      pH   1.419755e-01 0.01502009  9.452370e+00
-## 12 Residual standard error   2.515100e-01         NA            NA
-## 13      Multiple R-squared   9.383858e-01         NA            NA
-## 14      Adjusted R-squared   9.367427e-01         NA            NA
-## 15             F-statistic   5.711258e+02         NA            NA
-## 16                 p-value  4.898643e-220         NA            NA
-##         Pr(&gt;|t|)       VIF
-## 1   1.000000e+00        NA
-## 2   2.222058e-53  3.619928
-## 3   9.318642e-06  9.667026
-## 4   1.190365e-66  2.478167
-## 5   1.070610e-05  4.096431
-## 6   1.615886e-01  4.212975
-## 7   2.972020e-04 16.013852
-## 8   3.009930e-02  3.818692
-## 9   6.326257e-05  1.152425
-## 10 3.752564e-188  1.519766
-## 11  3.678085e-19  1.373079
-## 12            NA        NA
-## 13            NA        NA
-## 14            NA        NA
-## 15            NA        NA
-## 16            NA        NA</code></pre>
-<pre class="r"><code># Save
-library(openxlsx)
-
-write.xlsx(
-  summary_final,
-  file = file.path(out_dir, &quot;MLR_summary_table.xlsx&quot;),
-  overwrite = TRUE
-)</code></pre>
-</div>
 <div id="outlier-detection" class="section level2">
 <h2>5. Outlier detection</h2>
 <pre class="r"><code># 1. Get model diagnostics
-model_diag &lt;- influence.measures(step.mod)
+model_diag &lt;- influence.measures(step_mod)
 
 # 2. Extract indices of influential points flagged by diagnostics
 infl_points &lt;- which(apply(model_diag$is.inf, 1, any))
@@ -1112,47 +1055,47 @@ infl_points &lt;- which(apply(model_diag$is.inf, 1, any))
 # 3. Create a dataframe with their info
 flagged_obs &lt;- data.frame(
   Sample_ID = dat$Sample_ID[infl_points],
-  Fitted = fitted(step.mod)[infl_points],
-  Residual = residuals(step.mod)[infl_points],
-  Std_Residual = rstandard(step.mod)[infl_points],
-  Leverage = hatvalues(step.mod)[infl_points],
-  Cooks_D = cooks.distance(step.mod)[infl_points])
+  Fitted = fitted(step_mod)[infl_points],
+  Residual = residuals(step_mod)[infl_points],
+  Std_Residual = rstandard(step_mod)[infl_points],
+  Leverage = hatvalues(step_mod)[infl_points],
+  Cooks_D = cooks.distance(step_mod)[infl_points])
 
 # View flagged observations
 flagged_obs</code></pre>
-<pre><code>##     Sample_ID      Fitted    Residual Std_Residual   Leverage      Cooks_D
-## 4     WaDE_65 -0.38333374 -0.70492365  -3.11923245 0.19261941 2.110204e-01
-## 6     WaDE_67  2.53966204 -0.85508226  -3.63671698 0.12605036 1.734139e-01
-## 7     WaDE_68 -5.77370168  0.15360166   0.68452148 0.20401063 1.091760e-02
-## 27    WaDE_88  1.25819573  1.10118956   4.57426588 0.08384072 1.740741e-01
-## 28   WaDE_108  1.29616077  0.73461471   2.98767569 0.04425516 3.757476e-02
-## 34   WaDE_127 -4.40657232 -0.01397327  -0.05837041 0.09405798 3.215793e-05
-## 74   WaDE_187  2.52536538 -0.59462595  -2.52001276 0.11981927 7.859006e-02
-## 80   WaDE_193 -0.28840383 -0.54133797  -2.28142250 0.10994846 5.845111e-02
-## 82   WaDE_195 -1.06105762 -0.12809995  -0.52629945 0.06346988 1.706550e-03
-## 84   WaDE_198  1.54739570  0.02727966   0.11153355 0.05429305 6.492411e-05
-## 103  WaDE_234  1.17553315 -0.57246897  -2.30807355 0.02748962 1.368930e-02
-## 120  WaDE_305 -0.81191696 -0.20691399  -0.86246062 0.09010601 6.696515e-03
-## 128  WaDE_315  2.58379417  0.70583702   2.86790238 0.04243169 3.313269e-02
-## 132  WaDE_328 -0.59895531 -0.01166209  -0.04802911 0.06796294 1.529169e-05
-## 138  WaDE_338 -1.78898093  0.88507199   3.70755454 0.09911010 1.374765e-01
-## 158  WaDE_358  2.11160532  0.78070480   3.18187939 0.04830915 4.672058e-02
-## 171  WaDE_390  1.84288779  0.33373690   1.42408111 0.13178232 2.798371e-02
-## 172  WaDE_391  0.13176251 -0.03380716  -0.13979206 0.07542519 1.449261e-04
-## 178  WaDE_397  0.86794110  0.85512380   3.49393853 0.05307171 6.219906e-02
-## 179  WaDE_398  2.14839138 -0.23374231  -0.99623646 0.12975925 1.345337e-02
-## 195  WaDE_416  0.99740349 -0.57749932  -2.34113294 0.03807673 1.972326e-02
-## 199  WaDE_420  0.06361017 -0.52434756  -2.17350972 0.07996371 3.732660e-02
-## 201  WaDE_422  0.96733795 -1.00267071  -4.20595505 0.10158494 1.818398e-01
-## 203  WaDE_425  0.30846813 -0.07466990  -0.31837512 0.13043418 1.382212e-03
-## 207  WaDE_438 -0.49768415 -1.04533492  -4.34473835 0.08489004 1.591908e-01
-## 211  WaDE_442  3.05042995 -0.35595409  -1.49435571 0.10304714 2.332285e-02
-## 239  WaDE_480  0.31278340  0.52134793   2.18012687 0.09597303 4.587105e-02
-## 240  WaDE_481  0.14818540 -0.27344631  -1.19408205 0.17097922 2.673336e-02
-## 306  WaDE_593 -0.49822837  0.77511965   3.13162627 0.03152758 2.902355e-02
-## 351  WaDE_696  2.09608202  0.64572615   2.66246735 0.07013952 4.860947e-02
-## 379  WaDE_732  1.16718077  0.68239174   2.77516494 0.04417244 3.235614e-02
-## 380  WaDE_733  3.61442462 -0.17516549  -0.74262683 0.12048059 6.867841e-03</code></pre>
+<pre><code>##     Sample_ID    Fitted     Residual Std_Residual   Leverage      Cooks_D
+## 4     WaDE_65 -6.435458 -0.223743395  -3.11923245 0.19261941 2.110204e-01
+## 6     WaDE_67 -5.507697 -0.271403873  -3.63671698 0.12605036 1.734139e-01
+## 7     WaDE_68 -8.146366  0.048753304   0.68452148 0.20401063 1.091760e-02
+## 27    WaDE_88 -5.914435  0.349518549   4.57426588 0.08384072 1.740741e-01
+## 28   WaDE_108 -5.902385  0.233167366   2.98767569 0.04425516 3.757476e-02
+## 34   WaDE_127 -7.712438 -0.004435129  -0.05837041 0.09405798 3.215793e-05
+## 74   WaDE_187 -5.512235 -0.188734806  -2.52001276 0.11981927 7.859006e-02
+## 80   WaDE_193 -6.405328 -0.171821153  -2.28142250 0.10994846 5.845111e-02
+## 82   WaDE_195 -6.650569 -0.040659040  -0.52629945 0.06346988 1.706550e-03
+## 84   WaDE_198 -5.822643  0.008658589   0.11153355 0.05429305 6.492411e-05
+## 103  WaDE_234 -5.940673 -0.181702164  -2.30807355 0.02748962 1.368930e-02
+## 120  WaDE_305 -6.571491 -0.065674686  -0.86246062 0.09010601 6.696515e-03
+## 128  WaDE_315 -5.493689  0.224033301   2.86790238 0.04243169 3.313269e-02
+## 132  WaDE_328 -6.503897 -0.003701557  -0.04802911 0.06796294 1.529169e-05
+## 138  WaDE_338 -6.881612  0.280922638   3.70755454 0.09911010 1.374765e-01
+## 158  WaDE_358 -5.643563  0.247796400   3.18187939 0.04830915 4.672058e-02
+## 171  WaDE_390 -5.728854  0.105928390   1.42408111 0.13178232 2.798371e-02
+## 172  WaDE_391 -6.271966 -0.010730423  -0.13979206 0.07542519 1.449261e-04
+## 178  WaDE_397 -6.038303  0.271417058   3.49393853 0.05307171 6.219906e-02
+## 179  WaDE_398 -5.631887 -0.074190017  -0.99623646 0.12975925 1.345337e-02
+## 195  WaDE_416 -5.997211 -0.183298801  -2.34113294 0.03807673 1.972326e-02
+## 199  WaDE_420 -6.293598 -0.166428384  -2.17350972 0.07996371 3.732660e-02
+## 201  WaDE_422 -6.006754 -0.318248578  -4.20595505 0.10158494 1.818398e-01
+## 203  WaDE_425 -6.215880 -0.023700292  -0.31837512 0.13043418 1.382212e-03
+## 207  WaDE_438 -6.471753 -0.331790235  -4.34473835 0.08489004 1.591908e-01
+## 211  WaDE_442 -5.345579 -0.112980145  -1.49435571 0.10304714 2.332285e-02
+## 239  WaDE_480 -6.214510  0.165476297   2.18012687 0.09597303 4.587105e-02
+## 240  WaDE_481 -6.266754 -0.086792103  -1.19408205 0.17097922 2.673336e-02
+## 306  WaDE_593 -6.471926  0.246023668   3.13162627 0.03152758 2.902355e-02
+## 351  WaDE_696 -5.648490  0.204954057   2.66246735 0.07013952 4.860947e-02
+## 379  WaDE_732 -5.943324  0.216591748   2.77516494 0.04417244 3.235614e-02
+## 380  WaDE_733 -5.166566 -0.055597682  -0.74262683 0.12048059 6.867841e-03</code></pre>
 <pre class="r"><code># Save
 library(openxlsx)
 
@@ -1880,2081 +1823,16 @@ for (v in numeric_vars) {
 combined_kruskal &lt;- bind_rows(combined_list)
 
 # View
-combined_kruskal</code></pre>
-<pre><code>##                   Typology  dat[[v]] groups                   Variable
-## 1             Pooled Water 352.47368      a       Relative_elevation_m
-## 2     Baseline Tributaries 246.14220      b       Relative_elevation_m
-## 3    Developed Tributaries 228.93254      b       Relative_elevation_m
-## 4                Main Stem  93.32576      c       Relative_elevation_m
-## 5             Pooled Water 302.00000      a          Dist_from_EFPC_km
-## 6    Developed Tributaries 247.77381      b          Dist_from_EFPC_km
-## 7     Baseline Tributaries 216.42661      c          Dist_from_EFPC_km
-## 8                Main Stem 107.14394      d          Dist_from_EFPC_km
-## 9                Main Stem 274.39394      a          Drainage_area_km2
-## 10    Baseline Tributaries 163.63761      b          Drainage_area_km2
-## 11   Developed Tributaries 157.41270      b          Drainage_area_km2
-## 12            Pooled Water  42.13158      c          Drainage_area_km2
-## 13   Developed Tributaries 240.63889      a             Developed_lulc
-## 14               Main Stem 200.41288      b             Developed_lulc
-## 15    Baseline Tributaries 142.96330      c             Developed_lulc
-## 16            Pooled Water 122.78947      c             Developed_lulc
-## 17               Main Stem 268.46212      a                         pH
-## 18    Baseline Tributaries 165.61468      b                         pH
-## 19   Developed Tributaries 149.78968      b                         pH
-## 20            Pooled Water 122.55263      b                         pH
-## 21    Baseline Tributaries 198.02752      a                     Temp_C
-## 22            Pooled Water 193.44737      a                     Temp_C
-## 23   Developed Tributaries 191.97619      a                     Temp_C
-## 24               Main Stem 191.22348      a                     Temp_C
-## 25               Main Stem 253.00000      a                     DOC_uM
-## 26    Baseline Tributaries 239.69266      a                     DOC_uM
-## 27            Pooled Water 194.84211      b                     DOC_uM
-## 28   Developed Tributaries  91.00397      c                     DOC_uM
-## 29               Main Stem 252.37500      a                      Ca_uM
-## 30   Developed Tributaries 219.82937      b                      Ca_uM
-## 31    Baseline Tributaries 123.56881      c                      Ca_uM
-## 32            Pooled Water  11.05263      d                      Ca_uM
-## 33   Developed Tributaries 275.72619      a                      Mg_uM
-## 34               Main Stem 229.68182      b                      Mg_uM
-## 35    Baseline Tributaries  86.31651      c                      Mg_uM
-## 36            Pooled Water  11.73684      d                      Mg_uM
-## 37               Main Stem 315.37879      a                      Na_uM
-## 38   Developed Tributaries 167.69841      b                      Na_uM
-## 39    Baseline Tributaries 103.09633      c                      Na_uM
-## 40            Pooled Water  36.50000      d                      Na_uM
-## 41               Main Stem 299.60227      a                       K_uM
-## 42    Baseline Tributaries 179.47248      b                       K_uM
-## 43   Developed Tributaries 108.17857      c                       K_uM
-## 44            Pooled Water 102.65789      c                       K_uM
-## 45               Main Stem 314.49621      a                     SO4_uM
-## 46    Baseline Tributaries 148.87615      b                     SO4_uM
-## 47   Developed Tributaries 125.26190      c                     SO4_uM
-## 48            Pooled Water  61.42105      d                     SO4_uM
-## 49               Main Stem 297.60227      a                      Cl_uM
-## 50   Developed Tributaries 199.30556      b                      Cl_uM
-## 51    Baseline Tributaries  86.14220      c                      Cl_uM
-## 52            Pooled Water  47.65789      d                      Cl_uM
-## 53   Developed Tributaries 264.87302      a                     DIC_uM
-## 54               Main Stem 208.08333      b                     DIC_uM
-## 55    Baseline Tributaries 125.13761      c                     DIC_uM
-## 56            Pooled Water  11.05263      d                     DIC_uM
-## 57               Main Stem 260.09091      a                      Zn_uM
-## 58            Pooled Water 223.18421      a                      Zn_uM
-## 59   Developed Tributaries 169.02778      b                      Zn_uM
-## 60    Baseline Tributaries 135.97248      c                      Zn_uM
-## 61               Main Stem 284.43939      a                      Cu_uM
-## 62    Baseline Tributaries 180.74771      b                      Cu_uM
-## 63            Pooled Water 130.13158      c                      Cu_uM
-## 64   Developed Tributaries 118.81746      c                      Cu_uM
-## 65   Developed Tributaries 244.49206      a                  Free_Zn_M
-## 66               Main Stem 196.44697      b                  Free_Zn_M
-## 67            Pooled Water 190.42105      b                  Free_Zn_M
-## 68    Baseline Tributaries 131.52294      c                  Free_Zn_M
-## 69               Main Stem 270.74242      a                     ZnOH_M
-## 70   Developed Tributaries 187.89683      b                     ZnOH_M
-## 71    Baseline Tributaries 121.52294      c                     ZnOH_M
-## 72            Pooled Water 106.94737      c                     ZnOH_M
-## 73               Main Stem 274.60606      a                  Zn_OH_2_M
-## 74   Developed Tributaries 166.30952      b                  Zn_OH_2_M
-## 75    Baseline Tributaries 139.85321      c                  Zn_OH_2_M
-## 76            Pooled Water 118.10526      c                  Zn_OH_2_M
-## 77               Main Stem 276.15152      a                    ZnCO3_M
-## 78   Developed Tributaries 207.74603      b                    ZnCO3_M
-## 79    Baseline Tributaries 105.63303      c                    ZnCO3_M
-## 80            Pooled Water  28.89474      d                    ZnCO3_M
-## 81   Developed Tributaries 263.42063      a                   ZnHCO3_M
-## 82               Main Stem 210.62879      b                   ZnHCO3_M
-## 83    Baseline Tributaries 119.69725      c                   ZnHCO3_M
-## 84            Pooled Water  34.21053      d                   ZnHCO3_M
-## 85               Main Stem 293.28788      a                    ZnSO4_M
-## 86   Developed Tributaries 155.84921      b                    ZnSO4_M
-## 87            Pooled Water 130.84211     bc                    ZnSO4_M
-## 88    Baseline Tributaries 127.10092      c                    ZnSO4_M
-## 89               Main Stem 263.59091      a                     ZnCl_M
-## 90   Developed Tributaries 223.27778      b                     ZnCl_M
-## 91            Pooled Water 102.15789      c                     ZnCl_M
-## 92    Baseline Tributaries  90.11927      c                     ZnCl_M
-## 93               Main Stem 257.21591      a                      ZnS_M
-## 94   Developed Tributaries 210.28968      b                      ZnS_M
-## 95    Baseline Tributaries 113.88991      c                      ZnS_M
-## 96            Pooled Water  96.21053      c                      ZnS_M
-## 97               Main Stem 280.71970      a                  TOrg_Zn_M
-## 98            Pooled Water 269.52632      a                  TOrg_Zn_M
-## 99    Baseline Tributaries 190.39450      b                  TOrg_Zn_M
-## 100  Developed Tributaries  93.34921      c                  TOrg_Zn_M
-## 101           Pooled Water 299.73684      a               BL_Zn_mol_kg
-## 102  Developed Tributaries 224.61111      b               BL_Zn_mol_kg
-## 103              Main Stem 171.37121      c               BL_Zn_mol_kg
-## 104   Baseline Tributaries 165.81651      c               BL_Zn_mol_kg
-## 105              Main Stem 224.18939      a               BL_Ca_mol_kg
-## 106  Developed Tributaries 205.96032      a               BL_Ca_mol_kg
-## 107   Baseline Tributaries 173.54128      b               BL_Ca_mol_kg
-## 108           Pooled Water  12.15789      c               BL_Ca_mol_kg
-## 109           Pooled Water 337.21053      a                BL_H_mol_kg
-## 110   Baseline Tributaries 242.27523      b                BL_H_mol_kg
-## 111  Developed Tributaries 220.40476      b                BL_H_mol_kg
-## 112              Main Stem 106.85606      c                BL_H_mol_kg
-## 113  Developed Tributaries 259.61111      a               BL_Mg_mol_kg
-## 114              Main Stem 181.03030      b               BL_Mg_mol_kg
-## 115   Baseline Tributaries 148.96330      c               BL_Mg_mol_kg
-## 116           Pooled Water  97.21053      d               BL_Mg_mol_kg
-## 117              Main Stem 311.43182      a               BL_Na_mol_kg
-## 118           Pooled Water 146.84211      b               BL_Na_mol_kg
-## 119  Developed Tributaries 137.06349      b               BL_Na_mol_kg
-## 120   Baseline Tributaries 124.05505      b               BL_Na_mol_kg
-## 121              Main Stem 253.84848      a             BL_ZnOH_mol_kg
-## 122           Pooled Water 227.78947      a             BL_ZnOH_mol_kg
-## 123  Developed Tributaries 171.43651      b             BL_ZnOH_mol_kg
-## 124   Baseline Tributaries 139.94495      c             BL_ZnOH_mol_kg
-## 125  Developed Tributaries 252.63492      a                     HCO3_M
-## 126              Main Stem 222.62121      b                     HCO3_M
-## 127   Baseline Tributaries 121.68807      c                     HCO3_M
-## 128           Pooled Water  11.00000      d                     HCO3_M
-## 129  Developed Tributaries 265.09524      a                   H2_CO3_M
-## 130   Baseline Tributaries 196.70642      b                   H2_CO3_M
-## 131              Main Stem 138.60606      c                   H2_CO3_M
-## 132           Pooled Water  81.68421      d                   H2_CO3_M
-## 133           Pooled Water 274.15789      a                       HS_M
-## 134   Baseline Tributaries 268.30275      a                       HS_M
-## 135  Developed Tributaries 199.49206      b                       HS_M
-## 136              Main Stem 114.40152      c                       HS_M
-## 137           Pooled Water 277.84211      a                      H2S_M
-## 138   Baseline Tributaries 250.74312      a                      H2S_M
-## 139  Developed Tributaries 220.37302      b                      H2S_M
-## 140              Main Stem 108.43939      c                      H2S_M
-## 141  Developed Tributaries 277.01587      a                   MgHCO3_M
-## 142              Main Stem 226.81818      b                   MgHCO3_M
-## 143   Baseline Tributaries  88.49541      c                   MgHCO3_M
-## 144           Pooled Water  10.57895      d                   MgHCO3_M
-## 145              Main Stem 271.80303      a                    MgCO3_M
-## 146  Developed Tributaries 201.14286      b                    MgCO3_M
-## 147   Baseline Tributaries 119.78899      c                    MgCO3_M
-## 148           Pooled Water  21.68421      d                    MgCO3_M
-## 149              Main Stem 315.46212      a                    MgSO4_M
-## 150  Developed Tributaries 154.51587      b                    MgSO4_M
-## 151   Baseline Tributaries 121.88073      c                    MgSO4_M
-## 152           Pooled Water  15.57895      d                    MgSO4_M
-## 153  Developed Tributaries 243.03968      a                   CaHCO3_M
-## 154              Main Stem 229.87121      a                   CaHCO3_M
-## 155   Baseline Tributaries 124.00917      b                   CaHCO3_M
-## 156           Pooled Water  10.94737      c                   CaHCO3_M
-## 157              Main Stem 279.65909      a                    CaCO3_M
-## 158  Developed Tributaries 183.96032      b                    CaCO3_M
-## 159   Baseline Tributaries 130.13761      c                    CaCO3_M
-## 160           Pooled Water  21.68421      d                    CaCO3_M
-## 161              Main Stem 315.03788      a                    CaSO4_M
-## 162   Baseline Tributaries 142.75229      b                    CaSO4_M
-## 163  Developed Tributaries 136.79365      b                    CaSO4_M
-## 164           Pooled Water  16.31579      c                    CaSO4_M
-## 165           Pooled Water 294.15789      a                   TOrg_H_M
-## 166   Baseline Tributaries 250.31193      a                   TOrg_H_M
-## 167              Main Stem 173.66667      b                   TOrg_H_M
-## 168  Developed Tributaries 149.95238      b                   TOrg_H_M
-## 169              Main Stem 254.89394      a                  TOrg_Ca_M
-## 170   Baseline Tributaries 239.70642      a                  TOrg_Ca_M
-## 171           Pooled Water 168.15789      b                  TOrg_Ca_M
-## 172  Developed Tributaries  93.03175      c                  TOrg_Ca_M
-## 173              Main Stem 255.15152      a                  TOrg_Mg_M
-## 174   Baseline Tributaries 227.48624      b                  TOrg_Mg_M
-## 175           Pooled Water 220.73684      b                  TOrg_Mg_M
-## 176  Developed Tributaries  95.40476      c                  TOrg_Mg_M
-## 177              Main Stem 292.22727      a                  TOrg_Na_M
-## 178           Pooled Water 249.15789      b                  TOrg_Na_M
-## 179   Baseline Tributaries 188.45872      c                  TOrg_Na_M
-## 180  Developed Tributaries  86.03968      d                  TOrg_Na_M
-## 181           Pooled Water 315.73684      a                   TOrg_K_M
-## 182              Main Stem 251.83333      b                   TOrg_K_M
-## 183   Baseline Tributaries 244.55046      b                   TOrg_K_M
-## 184  Developed Tributaries  69.79365      c                   TOrg_K_M
-## 185  Developed Tributaries 230.58730      a      Zn_Toxicity_Daphnia_M
-## 186              Main Stem 206.13636      a      Zn_Toxicity_Daphnia_M
-## 187   Baseline Tributaries 159.02752      b      Zn_Toxicity_Daphnia_M
-## 188           Pooled Water  57.52632      c      Zn_Toxicity_Daphnia_M
-## 189              Main Stem 253.00000      a                      DOC_M
-## 190   Baseline Tributaries 239.69266      a                      DOC_M
-## 191           Pooled Water 194.84211      b                      DOC_M
-## 192  Developed Tributaries  91.00397      c                      DOC_M
-## 193              Main Stem 253.00000      a                     DOC_nM
-## 194   Baseline Tributaries 239.69266      a                     DOC_nM
-## 195           Pooled Water 194.84211      b                     DOC_nM
-## 196  Developed Tributaries  91.00397      c                     DOC_nM
-## 197              Main Stem 252.37500      a                       Ca_M
-## 198  Developed Tributaries 219.82937      b                       Ca_M
-## 199   Baseline Tributaries 123.56881      c                       Ca_M
-## 200           Pooled Water  11.05263      d                       Ca_M
-## 201              Main Stem 252.37500      a                      Ca_nM
-## 202  Developed Tributaries 219.82937      b                      Ca_nM
-## 203   Baseline Tributaries 123.56881      c                      Ca_nM
-## 204           Pooled Water  11.05263      d                      Ca_nM
-## 205  Developed Tributaries 275.72619      a                       Mg_M
-## 206              Main Stem 229.68182      b                       Mg_M
-## 207   Baseline Tributaries  86.31651      c                       Mg_M
-## 208           Pooled Water  11.73684      d                       Mg_M
-## 209  Developed Tributaries 275.72619      a                      Mg_nM
-## 210              Main Stem 229.68182      b                      Mg_nM
-## 211   Baseline Tributaries  86.31651      c                      Mg_nM
-## 212           Pooled Water  11.73684      d                      Mg_nM
-## 213              Main Stem 315.37879      a                       Na_M
-## 214  Developed Tributaries 167.69841      b                       Na_M
-## 215   Baseline Tributaries 103.09633      c                       Na_M
-## 216           Pooled Water  36.50000      d                       Na_M
-## 217              Main Stem 315.37879      a                      Na_nM
-## 218  Developed Tributaries 167.69841      b                      Na_nM
-## 219   Baseline Tributaries 103.09633      c                      Na_nM
-## 220           Pooled Water  36.50000      d                      Na_nM
-## 221              Main Stem 299.60227      a                        K_M
-## 222   Baseline Tributaries 179.47248      b                        K_M
-## 223  Developed Tributaries 108.17857      c                        K_M
-## 224           Pooled Water 102.65789      c                        K_M
-## 225              Main Stem 299.60227      a                       K_nM
-## 226   Baseline Tributaries 179.47248      b                       K_nM
-## 227  Developed Tributaries 108.17857      c                       K_nM
-## 228           Pooled Water 102.65789      c                       K_nM
-## 229              Main Stem 314.49621      a                      SO4_M
-## 230   Baseline Tributaries 148.87615      b                      SO4_M
-## 231  Developed Tributaries 125.26190      c                      SO4_M
-## 232           Pooled Water  61.42105      d                      SO4_M
-## 233              Main Stem 314.49621      a                     SO4_nM
-## 234   Baseline Tributaries 148.87615      b                     SO4_nM
-## 235  Developed Tributaries 125.26190      c                     SO4_nM
-## 236           Pooled Water  61.42105      d                     SO4_nM
-## 237              Main Stem 297.60227      a                       Cl_M
-## 238  Developed Tributaries 199.30556      b                       Cl_M
-## 239   Baseline Tributaries  86.14220      c                       Cl_M
-## 240           Pooled Water  47.65789      d                       Cl_M
-## 241              Main Stem 297.60227      a                      Cl_nM
-## 242  Developed Tributaries 199.30556      b                      Cl_nM
-## 243   Baseline Tributaries  86.14220      c                      Cl_nM
-## 244           Pooled Water  47.65789      d                      Cl_nM
-## 245  Developed Tributaries 264.87302      a                      DIC_M
-## 246              Main Stem 208.08333      b                      DIC_M
-## 247   Baseline Tributaries 125.13761      c                      DIC_M
-## 248           Pooled Water  11.05263      d                      DIC_M
-## 249  Developed Tributaries 264.87302      a                     DIC_nM
-## 250              Main Stem 208.08333      b                     DIC_nM
-## 251   Baseline Tributaries 125.13761      c                     DIC_nM
-## 252           Pooled Water  11.05263      d                     DIC_nM
-## 253              Main Stem 260.09091      a                       Zn_M
-## 254           Pooled Water 223.18421      a                       Zn_M
-## 255  Developed Tributaries 169.02778      b                       Zn_M
-## 256   Baseline Tributaries 135.97248      c                       Zn_M
-## 257              Main Stem 260.09091      a                      Zn_nM
-## 258           Pooled Water 223.18421      a                      Zn_nM
-## 259  Developed Tributaries 169.02778      b                      Zn_nM
-## 260   Baseline Tributaries 135.97248      c                      Zn_nM
-## 261              Main Stem 284.43939      a                       Cu_M
-## 262   Baseline Tributaries 180.74771      b                       Cu_M
-## 263           Pooled Water 130.13158      c                       Cu_M
-## 264  Developed Tributaries 118.81746      c                       Cu_M
-## 265              Main Stem 284.43939      a                      Cu_nM
-## 266   Baseline Tributaries 180.74771      b                      Cu_nM
-## 267           Pooled Water 130.13158      c                      Cu_nM
-## 268  Developed Tributaries 118.81746      c                      Cu_nM
-## 269  Developed Tributaries 244.49206      a                 Free_Zn_uM
-## 270              Main Stem 196.44697      b                 Free_Zn_uM
-## 271           Pooled Water 190.42105      b                 Free_Zn_uM
-## 272   Baseline Tributaries 131.52294      c                 Free_Zn_uM
-## 273  Developed Tributaries 244.49206      a                 Free_Zn_nM
-## 274              Main Stem 196.44697      b                 Free_Zn_nM
-## 275           Pooled Water 190.42105      b                 Free_Zn_nM
-## 276   Baseline Tributaries 131.52294      c                 Free_Zn_nM
-## 277              Main Stem 270.74242      a                    ZnOH_uM
-## 278  Developed Tributaries 187.89683      b                    ZnOH_uM
-## 279   Baseline Tributaries 121.52294      c                    ZnOH_uM
-## 280           Pooled Water 106.94737      c                    ZnOH_uM
-## 281              Main Stem 270.74242      a                    ZnOH_nM
-## 282  Developed Tributaries 187.89683      b                    ZnOH_nM
-## 283   Baseline Tributaries 121.52294      c                    ZnOH_nM
-## 284           Pooled Water 106.94737      c                    ZnOH_nM
-## 285              Main Stem 274.60606      a                 Zn_OH_2_uM
-## 286  Developed Tributaries 166.30952      b                 Zn_OH_2_uM
-## 287   Baseline Tributaries 139.85321      c                 Zn_OH_2_uM
-## 288           Pooled Water 118.10526      c                 Zn_OH_2_uM
-## 289              Main Stem 274.60606      a                 Zn_OH_2_nM
-## 290  Developed Tributaries 166.30952      b                 Zn_OH_2_nM
-## 291   Baseline Tributaries 139.85321      c                 Zn_OH_2_nM
-## 292           Pooled Water 118.10526      c                 Zn_OH_2_nM
-## 293              Main Stem 276.15152      a                   ZnCO3_uM
-## 294  Developed Tributaries 207.74603      b                   ZnCO3_uM
-## 295   Baseline Tributaries 105.63303      c                   ZnCO3_uM
-## 296           Pooled Water  28.89474      d                   ZnCO3_uM
-## 297              Main Stem 276.15152      a                   ZnCO3_nM
-## 298  Developed Tributaries 207.74603      b                   ZnCO3_nM
-## 299   Baseline Tributaries 105.63303      c                   ZnCO3_nM
-## 300           Pooled Water  28.89474      d                   ZnCO3_nM
-## 301  Developed Tributaries 263.42063      a                  ZnHCO3_uM
-## 302              Main Stem 210.62879      b                  ZnHCO3_uM
-## 303   Baseline Tributaries 119.69725      c                  ZnHCO3_uM
-## 304           Pooled Water  34.21053      d                  ZnHCO3_uM
-## 305  Developed Tributaries 263.42063      a                  ZnHCO3_nM
-## 306              Main Stem 210.62879      b                  ZnHCO3_nM
-## 307   Baseline Tributaries 119.69725      c                  ZnHCO3_nM
-## 308           Pooled Water  34.21053      d                  ZnHCO3_nM
-## 309              Main Stem 293.28788      a                   ZnSO4_uM
-## 310  Developed Tributaries 155.84921      b                   ZnSO4_uM
-## 311           Pooled Water 130.84211     bc                   ZnSO4_uM
-## 312   Baseline Tributaries 127.10092      c                   ZnSO4_uM
-## 313              Main Stem 293.28788      a                   ZnSO4_nM
-## 314  Developed Tributaries 155.84921      b                   ZnSO4_nM
-## 315           Pooled Water 130.84211     bc                   ZnSO4_nM
-## 316   Baseline Tributaries 127.10092      c                   ZnSO4_nM
-## 317              Main Stem 263.59091      a                    ZnCl_uM
-## 318  Developed Tributaries 223.27778      b                    ZnCl_uM
-## 319           Pooled Water 102.15789      c                    ZnCl_uM
-## 320   Baseline Tributaries  90.11927      c                    ZnCl_uM
-## 321              Main Stem 263.59091      a                    ZnCl_nM
-## 322  Developed Tributaries 223.27778      b                    ZnCl_nM
-## 323           Pooled Water 102.15789      c                    ZnCl_nM
-## 324   Baseline Tributaries  90.11927      c                    ZnCl_nM
-## 325              Main Stem 257.21591      a                     ZnS_uM
-## 326  Developed Tributaries 210.28968      b                     ZnS_uM
-## 327   Baseline Tributaries 113.88991      c                     ZnS_uM
-## 328           Pooled Water  96.21053      c                     ZnS_uM
-## 329              Main Stem 257.21591      a                     ZnS_nM
-## 330  Developed Tributaries 210.28968      b                     ZnS_nM
-## 331   Baseline Tributaries 113.88991      c                     ZnS_nM
-## 332           Pooled Water  96.21053      c                     ZnS_nM
-## 333              Main Stem 280.71970      a                 TOrg_Zn_uM
-## 334           Pooled Water 269.52632      a                 TOrg_Zn_uM
-## 335   Baseline Tributaries 190.39450      b                 TOrg_Zn_uM
-## 336  Developed Tributaries  93.34921      c                 TOrg_Zn_uM
-## 337              Main Stem 280.71970      a                 TOrg_Zn_nM
-## 338           Pooled Water 269.52632      a                 TOrg_Zn_nM
-## 339   Baseline Tributaries 190.39450      b                 TOrg_Zn_nM
-## 340  Developed Tributaries  93.34921      c                 TOrg_Zn_nM
-## 341  Developed Tributaries 252.63492      a                    HCO3_uM
-## 342              Main Stem 222.62121      b                    HCO3_uM
-## 343   Baseline Tributaries 121.68807      c                    HCO3_uM
-## 344           Pooled Water  11.00000      d                    HCO3_uM
-## 345  Developed Tributaries 252.63492      a                    HCO3_nM
-## 346              Main Stem 222.62121      b                    HCO3_nM
-## 347   Baseline Tributaries 121.68807      c                    HCO3_nM
-## 348           Pooled Water  11.00000      d                    HCO3_nM
-## 349  Developed Tributaries 265.09524      a                  H2_CO3_uM
-## 350   Baseline Tributaries 196.70642      b                  H2_CO3_uM
-## 351              Main Stem 138.60606      c                  H2_CO3_uM
-## 352           Pooled Water  81.68421      d                  H2_CO3_uM
-## 353  Developed Tributaries 265.09524      a                  H2_CO3_nM
-## 354   Baseline Tributaries 196.70642      b                  H2_CO3_nM
-## 355              Main Stem 138.60606      c                  H2_CO3_nM
-## 356           Pooled Water  81.68421      d                  H2_CO3_nM
-## 357           Pooled Water 274.15789      a                      HS_uM
-## 358   Baseline Tributaries 268.30275      a                      HS_uM
-## 359  Developed Tributaries 199.49206      b                      HS_uM
-## 360              Main Stem 114.40152      c                      HS_uM
-## 361           Pooled Water 274.15789      a                      HS_nM
-## 362   Baseline Tributaries 268.30275      a                      HS_nM
-## 363  Developed Tributaries 199.49206      b                      HS_nM
-## 364              Main Stem 114.40152      c                      HS_nM
-## 365           Pooled Water 277.84211      a                     H2S_uM
-## 366   Baseline Tributaries 250.74312      a                     H2S_uM
-## 367  Developed Tributaries 220.37302      b                     H2S_uM
-## 368              Main Stem 108.43939      c                     H2S_uM
-## 369           Pooled Water 277.84211      a                     H2S_nM
-## 370   Baseline Tributaries 250.74312      a                     H2S_nM
-## 371  Developed Tributaries 220.37302      b                     H2S_nM
-## 372              Main Stem 108.43939      c                     H2S_nM
-## 373  Developed Tributaries 277.01587      a                  MgHCO3_uM
-## 374              Main Stem 226.81818      b                  MgHCO3_uM
-## 375   Baseline Tributaries  88.49541      c                  MgHCO3_uM
-## 376           Pooled Water  10.57895      d                  MgHCO3_uM
-## 377  Developed Tributaries 277.01587      a                  MgHCO3_nM
-## 378              Main Stem 226.81818      b                  MgHCO3_nM
-## 379   Baseline Tributaries  88.49541      c                  MgHCO3_nM
-## 380           Pooled Water  10.57895      d                  MgHCO3_nM
-## 381              Main Stem 271.80303      a                   MgCO3_uM
-## 382  Developed Tributaries 201.14286      b                   MgCO3_uM
-## 383   Baseline Tributaries 119.78899      c                   MgCO3_uM
-## 384           Pooled Water  21.68421      d                   MgCO3_uM
-## 385              Main Stem 271.80303      a                   MgCO3_nM
-## 386  Developed Tributaries 201.14286      b                   MgCO3_nM
-## 387   Baseline Tributaries 119.78899      c                   MgCO3_nM
-## 388           Pooled Water  21.68421      d                   MgCO3_nM
-## 389              Main Stem 315.46212      a                   MgSO4_uM
-## 390  Developed Tributaries 154.51587      b                   MgSO4_uM
-## 391   Baseline Tributaries 121.88073      c                   MgSO4_uM
-## 392           Pooled Water  15.57895      d                   MgSO4_uM
-## 393              Main Stem 315.46212      a                   MgSO4_nM
-## 394  Developed Tributaries 154.51587      b                   MgSO4_nM
-## 395   Baseline Tributaries 121.88073      c                   MgSO4_nM
-## 396           Pooled Water  15.57895      d                   MgSO4_nM
-## 397  Developed Tributaries 243.03968      a                  CaHCO3_uM
-## 398              Main Stem 229.87121      a                  CaHCO3_uM
-## 399   Baseline Tributaries 124.00917      b                  CaHCO3_uM
-## 400           Pooled Water  10.94737      c                  CaHCO3_uM
-## 401  Developed Tributaries 243.03968      a                  CaHCO3_nM
-## 402              Main Stem 229.87121      a                  CaHCO3_nM
-## 403   Baseline Tributaries 124.00917      b                  CaHCO3_nM
-## 404           Pooled Water  10.94737      c                  CaHCO3_nM
-## 405              Main Stem 279.65909      a                   CaCO3_uM
-## 406  Developed Tributaries 183.96032      b                   CaCO3_uM
-## 407   Baseline Tributaries 130.13761      c                   CaCO3_uM
-## 408           Pooled Water  21.68421      d                   CaCO3_uM
-## 409              Main Stem 279.65909      a                   CaCO3_nM
-## 410  Developed Tributaries 183.96032      b                   CaCO3_nM
-## 411   Baseline Tributaries 130.13761      c                   CaCO3_nM
-## 412           Pooled Water  21.68421      d                   CaCO3_nM
-## 413              Main Stem 315.03788      a                   CaSO4_uM
-## 414   Baseline Tributaries 142.75229      b                   CaSO4_uM
-## 415  Developed Tributaries 136.79365      b                   CaSO4_uM
-## 416           Pooled Water  16.31579      c                   CaSO4_uM
-## 417              Main Stem 315.03788      a                   CaSO4_nM
-## 418   Baseline Tributaries 142.75229      b                   CaSO4_nM
-## 419  Developed Tributaries 136.79365      b                   CaSO4_nM
-## 420           Pooled Water  16.31579      c                   CaSO4_nM
-## 421           Pooled Water 294.15789      a                  TOrg_H_uM
-## 422   Baseline Tributaries 250.31193      a                  TOrg_H_uM
-## 423              Main Stem 173.66667      b                  TOrg_H_uM
-## 424  Developed Tributaries 149.95238      b                  TOrg_H_uM
-## 425           Pooled Water 294.15789      a                  TOrg_H_nM
-## 426   Baseline Tributaries 250.31193      a                  TOrg_H_nM
-## 427              Main Stem 173.66667      b                  TOrg_H_nM
-## 428  Developed Tributaries 149.95238      b                  TOrg_H_nM
-## 429              Main Stem 254.89394      a                 TOrg_Ca_uM
-## 430   Baseline Tributaries 239.70642      a                 TOrg_Ca_uM
-## 431           Pooled Water 168.15789      b                 TOrg_Ca_uM
-## 432  Developed Tributaries  93.03175      c                 TOrg_Ca_uM
-## 433              Main Stem 254.89394      a                 TOrg_Ca_nM
-## 434   Baseline Tributaries 239.70642      a                 TOrg_Ca_nM
-## 435           Pooled Water 168.15789      b                 TOrg_Ca_nM
-## 436  Developed Tributaries  93.03175      c                 TOrg_Ca_nM
-## 437              Main Stem 255.15152      a                 TOrg_Mg_uM
-## 438   Baseline Tributaries 227.48624      b                 TOrg_Mg_uM
-## 439           Pooled Water 220.73684      b                 TOrg_Mg_uM
-## 440  Developed Tributaries  95.40476      c                 TOrg_Mg_uM
-## 441              Main Stem 255.15152      a                 TOrg_Mg_nM
-## 442   Baseline Tributaries 227.48624      b                 TOrg_Mg_nM
-## 443           Pooled Water 220.73684      b                 TOrg_Mg_nM
-## 444  Developed Tributaries  95.40476      c                 TOrg_Mg_nM
-## 445              Main Stem 292.22727      a                 TOrg_Na_uM
-## 446           Pooled Water 249.15789      b                 TOrg_Na_uM
-## 447   Baseline Tributaries 188.45872      c                 TOrg_Na_uM
-## 448  Developed Tributaries  86.03968      d                 TOrg_Na_uM
-## 449              Main Stem 292.22727      a                 TOrg_Na_nM
-## 450           Pooled Water 249.15789      b                 TOrg_Na_nM
-## 451   Baseline Tributaries 188.45872      c                 TOrg_Na_nM
-## 452  Developed Tributaries  86.03968      d                 TOrg_Na_nM
-## 453           Pooled Water 315.73684      a                  TOrg_K_uM
-## 454              Main Stem 251.83333      b                  TOrg_K_uM
-## 455   Baseline Tributaries 244.55046      b                  TOrg_K_uM
-## 456  Developed Tributaries  69.79365      c                  TOrg_K_uM
-## 457           Pooled Water 315.73684      a                  TOrg_K_nM
-## 458              Main Stem 251.83333      b                  TOrg_K_nM
-## 459   Baseline Tributaries 244.55046      b                  TOrg_K_nM
-## 460  Developed Tributaries  69.79365      c                  TOrg_K_nM
-## 461  Developed Tributaries 230.58730      a     Zn_Toxicity_Daphnia_uM
-## 462              Main Stem 206.13636      a     Zn_Toxicity_Daphnia_uM
-## 463   Baseline Tributaries 159.02752      b     Zn_Toxicity_Daphnia_uM
-## 464           Pooled Water  57.52632      c     Zn_Toxicity_Daphnia_uM
-## 465  Developed Tributaries 230.58730      a     Zn_Toxicity_Daphnia_nM
-## 466              Main Stem 206.13636      a     Zn_Toxicity_Daphnia_nM
-## 467   Baseline Tributaries 159.02752      b     Zn_Toxicity_Daphnia_nM
-## 468           Pooled Water  57.52632      c     Zn_Toxicity_Daphnia_nM
-## 469           Pooled Water 299.73684      a              BL_Zn_nmol_kg
-## 470  Developed Tributaries 224.61111      b              BL_Zn_nmol_kg
-## 471              Main Stem 171.37121      c              BL_Zn_nmol_kg
-## 472   Baseline Tributaries 165.81651      c              BL_Zn_nmol_kg
-## 473           Pooled Water 299.73684      a               BL_Zn_nmol_g
-## 474  Developed Tributaries 224.61111      b               BL_Zn_nmol_g
-## 475              Main Stem 171.37121      c               BL_Zn_nmol_g
-## 476   Baseline Tributaries 165.81651      c               BL_Zn_nmol_g
-## 477              Main Stem 224.18939      a              BL_Ca_nmol_kg
-## 478  Developed Tributaries 205.96032      a              BL_Ca_nmol_kg
-## 479   Baseline Tributaries 173.54128      b              BL_Ca_nmol_kg
-## 480           Pooled Water  12.15789      c              BL_Ca_nmol_kg
-## 481              Main Stem 224.18939      a               BL_Ca_nmol_g
-## 482  Developed Tributaries 205.96032      a               BL_Ca_nmol_g
-## 483   Baseline Tributaries 173.54128      b               BL_Ca_nmol_g
-## 484           Pooled Water  12.15789      c               BL_Ca_nmol_g
-## 485           Pooled Water 337.21053      a               BL_H_nmol_kg
-## 486   Baseline Tributaries 242.27523      b               BL_H_nmol_kg
-## 487  Developed Tributaries 220.40476      b               BL_H_nmol_kg
-## 488              Main Stem 106.85606      c               BL_H_nmol_kg
-## 489           Pooled Water 337.21053      a                BL_H_nmol_g
-## 490   Baseline Tributaries 242.27523      b                BL_H_nmol_g
-## 491  Developed Tributaries 220.40476      b                BL_H_nmol_g
-## 492              Main Stem 106.85606      c                BL_H_nmol_g
-## 493  Developed Tributaries 259.61111      a              BL_Mg_nmol_kg
-## 494              Main Stem 181.03030      b              BL_Mg_nmol_kg
-## 495   Baseline Tributaries 148.96330      c              BL_Mg_nmol_kg
-## 496           Pooled Water  97.21053      d              BL_Mg_nmol_kg
-## 497  Developed Tributaries 259.61111      a               BL_Mg_nmol_g
-## 498              Main Stem 181.03030      b               BL_Mg_nmol_g
-## 499   Baseline Tributaries 148.96330      c               BL_Mg_nmol_g
-## 500           Pooled Water  97.21053      d               BL_Mg_nmol_g
-## 501              Main Stem 311.43182      a              BL_Na_nmol_kg
-## 502           Pooled Water 146.84211      b              BL_Na_nmol_kg
-## 503  Developed Tributaries 137.06349      b              BL_Na_nmol_kg
-## 504   Baseline Tributaries 124.05505      b              BL_Na_nmol_kg
-## 505              Main Stem 311.43182      a               BL_Na_nmol_g
-## 506           Pooled Water 146.84211      b               BL_Na_nmol_g
-## 507  Developed Tributaries 137.06349      b               BL_Na_nmol_g
-## 508   Baseline Tributaries 124.05505      b               BL_Na_nmol_g
-## 509              Main Stem 253.84848      a            BL_ZnOH_nmol_kg
-## 510           Pooled Water 227.78947      a            BL_ZnOH_nmol_kg
-## 511  Developed Tributaries 171.43651      b            BL_ZnOH_nmol_kg
-## 512   Baseline Tributaries 139.94495      c            BL_ZnOH_nmol_kg
-## 513              Main Stem 253.84848      a             BL_ZnOH_nmol_g
-## 514           Pooled Water 227.78947      a             BL_ZnOH_nmol_g
-## 515  Developed Tributaries 171.43651      b             BL_ZnOH_nmol_g
-## 516   Baseline Tributaries 139.94495      c             BL_ZnOH_nmol_g
-## 517           Pooled Water 286.36842      a              TBL_Zn_nmol_g
-## 518              Main Stem 215.22727      b              TBL_Zn_nmol_g
-## 519  Developed Tributaries 200.04762      b              TBL_Zn_nmol_g
-## 520   Baseline Tributaries 143.43119      c              TBL_Zn_nmol_g
-## 521           Pooled Water 286.36842      a              TBL_Zn_mol_kg
-## 522              Main Stem 215.22727      b              TBL_Zn_mol_kg
-## 523  Developed Tributaries 200.04762      b              TBL_Zn_mol_kg
-## 524   Baseline Tributaries 143.43119      c              TBL_Zn_mol_kg
-## 525  Developed Tributaries 294.03968      a                rel_prop_Zn
-## 526   Baseline Tributaries 180.60550      b                rel_prop_Zn
-## 527           Pooled Water 180.52632      b                rel_prop_Zn
-## 528              Main Stem 110.04545      c                rel_prop_Zn
-## 529   Baseline Tributaries 198.02752      a                 log_Temp_C
-## 530           Pooled Water 193.44737      a                 log_Temp_C
-## 531  Developed Tributaries 191.97619      a                 log_Temp_C
-## 532              Main Stem 191.22348      a                 log_Temp_C
-## 533              Main Stem 253.00000      a                 log_DOC_uM
-## 534   Baseline Tributaries 239.69266      a                 log_DOC_uM
-## 535           Pooled Water 194.84211      b                 log_DOC_uM
-## 536  Developed Tributaries  91.00397      c                 log_DOC_uM
-## 537              Main Stem 252.37500      a                  log_Ca_uM
-## 538  Developed Tributaries 219.82937      b                  log_Ca_uM
-## 539   Baseline Tributaries 123.56881      c                  log_Ca_uM
-## 540           Pooled Water  11.05263      d                  log_Ca_uM
-## 541  Developed Tributaries 275.72619      a                  log_Mg_uM
-## 542              Main Stem 229.68182      b                  log_Mg_uM
-## 543   Baseline Tributaries  86.31651      c                  log_Mg_uM
-## 544           Pooled Water  11.73684      d                  log_Mg_uM
-## 545              Main Stem 315.37879      a                  log_Na_uM
-## 546  Developed Tributaries 167.69841      b                  log_Na_uM
-## 547   Baseline Tributaries 103.09633      c                  log_Na_uM
-## 548           Pooled Water  36.50000      d                  log_Na_uM
-## 549              Main Stem 299.60227      a                   log_K_uM
-## 550   Baseline Tributaries 179.47248      b                   log_K_uM
-## 551  Developed Tributaries 108.17857      c                   log_K_uM
-## 552           Pooled Water 102.65789      c                   log_K_uM
-## 553              Main Stem 314.49621      a                 log_SO4_uM
-## 554   Baseline Tributaries 148.87615      b                 log_SO4_uM
-## 555  Developed Tributaries 125.26190      c                 log_SO4_uM
-## 556           Pooled Water  61.42105      d                 log_SO4_uM
-## 557              Main Stem 297.60227      a                  log_Cl_uM
-## 558  Developed Tributaries 199.30556      b                  log_Cl_uM
-## 559   Baseline Tributaries  86.14220      c                  log_Cl_uM
-## 560           Pooled Water  47.65789      d                  log_Cl_uM
-## 561  Developed Tributaries 264.87302      a                 log_DIC_uM
-## 562              Main Stem 208.08333      b                 log_DIC_uM
-## 563   Baseline Tributaries 125.13761      c                 log_DIC_uM
-## 564           Pooled Water  11.05263      d                 log_DIC_uM
-## 565              Main Stem 260.09091      a                  log_Zn_uM
-## 566           Pooled Water 223.18421      a                  log_Zn_uM
-## 567  Developed Tributaries 169.02778      b                  log_Zn_uM
-## 568   Baseline Tributaries 135.97248      c                  log_Zn_uM
-## 569              Main Stem 284.43939      a                  log_Cu_uM
-## 570   Baseline Tributaries 180.74771      b                  log_Cu_uM
-## 571           Pooled Water 130.13158      c                  log_Cu_uM
-## 572  Developed Tributaries 118.81746      c                  log_Cu_uM
-## 573  Developed Tributaries 244.49206      a              log_Free_Zn_M
-## 574              Main Stem 196.44697      b              log_Free_Zn_M
-## 575           Pooled Water 190.42105      b              log_Free_Zn_M
-## 576   Baseline Tributaries 131.52294      c              log_Free_Zn_M
-## 577              Main Stem 270.74242      a                 log_ZnOH_M
-## 578  Developed Tributaries 187.89683      b                 log_ZnOH_M
-## 579   Baseline Tributaries 121.52294      c                 log_ZnOH_M
-## 580           Pooled Water 106.94737      c                 log_ZnOH_M
-## 581              Main Stem 274.60606      a              log_Zn_OH_2_M
-## 582  Developed Tributaries 166.30952      b              log_Zn_OH_2_M
-## 583   Baseline Tributaries 139.85321      c              log_Zn_OH_2_M
-## 584           Pooled Water 118.10526      c              log_Zn_OH_2_M
-## 585              Main Stem 276.15152      a                log_ZnCO3_M
-## 586  Developed Tributaries 207.74603      b                log_ZnCO3_M
-## 587   Baseline Tributaries 105.63303      c                log_ZnCO3_M
-## 588           Pooled Water  28.89474      d                log_ZnCO3_M
-## 589  Developed Tributaries 263.42063      a               log_ZnHCO3_M
-## 590              Main Stem 210.62879      b               log_ZnHCO3_M
-## 591   Baseline Tributaries 119.69725      c               log_ZnHCO3_M
-## 592           Pooled Water  34.21053      d               log_ZnHCO3_M
-## 593              Main Stem 293.28788      a                log_ZnSO4_M
-## 594  Developed Tributaries 155.84921      b                log_ZnSO4_M
-## 595           Pooled Water 130.84211     bc                log_ZnSO4_M
-## 596   Baseline Tributaries 127.10092      c                log_ZnSO4_M
-## 597              Main Stem 263.59091      a                 log_ZnCl_M
-## 598  Developed Tributaries 223.27778      b                 log_ZnCl_M
-## 599           Pooled Water 102.15789      c                 log_ZnCl_M
-## 600   Baseline Tributaries  90.11927      c                 log_ZnCl_M
-## 601              Main Stem 257.21591      a                  log_ZnS_M
-## 602  Developed Tributaries 210.28968      b                  log_ZnS_M
-## 603   Baseline Tributaries 113.88991      c                  log_ZnS_M
-## 604           Pooled Water  96.21053      c                  log_ZnS_M
-## 605              Main Stem 280.71970      a              log_TOrg_Zn_M
-## 606           Pooled Water 269.52632      a              log_TOrg_Zn_M
-## 607   Baseline Tributaries 190.39450      b              log_TOrg_Zn_M
-## 608  Developed Tributaries  93.34921      c              log_TOrg_Zn_M
-## 609           Pooled Water 299.73684      a           log_BL_Zn_mol_kg
-## 610  Developed Tributaries 224.61111      b           log_BL_Zn_mol_kg
-## 611              Main Stem 171.37121      c           log_BL_Zn_mol_kg
-## 612   Baseline Tributaries 165.81651      c           log_BL_Zn_mol_kg
-## 613              Main Stem 224.18939      a           log_BL_Ca_mol_kg
-## 614  Developed Tributaries 205.96032      a           log_BL_Ca_mol_kg
-## 615   Baseline Tributaries 173.54128      b           log_BL_Ca_mol_kg
-## 616           Pooled Water  12.15789      c           log_BL_Ca_mol_kg
-## 617           Pooled Water 337.21053      a            log_BL_H_mol_kg
-## 618   Baseline Tributaries 242.27523      b            log_BL_H_mol_kg
-## 619  Developed Tributaries 220.40476      b            log_BL_H_mol_kg
-## 620              Main Stem 106.85606      c            log_BL_H_mol_kg
-## 621  Developed Tributaries 259.61111      a           log_BL_Mg_mol_kg
-## 622              Main Stem 181.03030      b           log_BL_Mg_mol_kg
-## 623   Baseline Tributaries 148.96330      c           log_BL_Mg_mol_kg
-## 624           Pooled Water  97.21053      d           log_BL_Mg_mol_kg
-## 625              Main Stem 311.43182      a           log_BL_Na_mol_kg
-## 626           Pooled Water 146.84211      b           log_BL_Na_mol_kg
-## 627  Developed Tributaries 137.06349      b           log_BL_Na_mol_kg
-## 628   Baseline Tributaries 124.05505      b           log_BL_Na_mol_kg
-## 629              Main Stem 253.84848      a         log_BL_ZnOH_mol_kg
-## 630           Pooled Water 227.78947      a         log_BL_ZnOH_mol_kg
-## 631  Developed Tributaries 171.43651      b         log_BL_ZnOH_mol_kg
-## 632   Baseline Tributaries 139.94495      c         log_BL_ZnOH_mol_kg
-## 633  Developed Tributaries 252.63492      a                 log_HCO3_M
-## 634              Main Stem 222.62121      b                 log_HCO3_M
-## 635   Baseline Tributaries 121.68807      c                 log_HCO3_M
-## 636           Pooled Water  11.00000      d                 log_HCO3_M
-## 637  Developed Tributaries 265.09524      a               log_H2_CO3_M
-## 638   Baseline Tributaries 196.70642      b               log_H2_CO3_M
-## 639              Main Stem 138.60606      c               log_H2_CO3_M
-## 640           Pooled Water  81.68421      d               log_H2_CO3_M
-## 641           Pooled Water 274.15789      a                   log_HS_M
-## 642   Baseline Tributaries 268.30275      a                   log_HS_M
-## 643  Developed Tributaries 199.49206      b                   log_HS_M
-## 644              Main Stem 114.40152      c                   log_HS_M
-## 645           Pooled Water 277.84211      a                  log_H2S_M
-## 646   Baseline Tributaries 250.74312      a                  log_H2S_M
-## 647  Developed Tributaries 220.37302      b                  log_H2S_M
-## 648              Main Stem 108.43939      c                  log_H2S_M
-## 649  Developed Tributaries 277.01587      a               log_MgHCO3_M
-## 650              Main Stem 226.81818      b               log_MgHCO3_M
-## 651   Baseline Tributaries  88.49541      c               log_MgHCO3_M
-## 652           Pooled Water  10.57895      d               log_MgHCO3_M
-## 653              Main Stem 271.80303      a                log_MgCO3_M
-## 654  Developed Tributaries 201.14286      b                log_MgCO3_M
-## 655   Baseline Tributaries 119.78899      c                log_MgCO3_M
-## 656           Pooled Water  21.68421      d                log_MgCO3_M
-## 657              Main Stem 315.46212      a                log_MgSO4_M
-## 658  Developed Tributaries 154.51587      b                log_MgSO4_M
-## 659   Baseline Tributaries 121.88073      c                log_MgSO4_M
-## 660           Pooled Water  15.57895      d                log_MgSO4_M
-## 661  Developed Tributaries 243.03968      a               log_CaHCO3_M
-## 662              Main Stem 229.87121      a               log_CaHCO3_M
-## 663   Baseline Tributaries 124.00917      b               log_CaHCO3_M
-## 664           Pooled Water  10.94737      c               log_CaHCO3_M
-## 665              Main Stem 279.65909      a                log_CaCO3_M
-## 666  Developed Tributaries 183.96032      b                log_CaCO3_M
-## 667   Baseline Tributaries 130.13761      c                log_CaCO3_M
-## 668           Pooled Water  21.68421      d                log_CaCO3_M
-## 669              Main Stem 315.03788      a                log_CaSO4_M
-## 670   Baseline Tributaries 142.75229      b                log_CaSO4_M
-## 671  Developed Tributaries 136.79365      b                log_CaSO4_M
-## 672           Pooled Water  16.31579      c                log_CaSO4_M
-## 673           Pooled Water 294.15789      a               log_TOrg_H_M
-## 674   Baseline Tributaries 250.31193      a               log_TOrg_H_M
-## 675              Main Stem 173.66667      b               log_TOrg_H_M
-## 676  Developed Tributaries 149.95238      b               log_TOrg_H_M
-## 677              Main Stem 254.89394      a              log_TOrg_Ca_M
-## 678   Baseline Tributaries 239.70642      a              log_TOrg_Ca_M
-## 679           Pooled Water 168.15789      b              log_TOrg_Ca_M
-## 680  Developed Tributaries  93.03175      c              log_TOrg_Ca_M
-## 681              Main Stem 255.15152      a              log_TOrg_Mg_M
-## 682   Baseline Tributaries 227.48624      b              log_TOrg_Mg_M
-## 683           Pooled Water 220.73684      b              log_TOrg_Mg_M
-## 684  Developed Tributaries  95.40476      c              log_TOrg_Mg_M
-## 685              Main Stem 292.22727      a              log_TOrg_Na_M
-## 686           Pooled Water 249.15789      b              log_TOrg_Na_M
-## 687   Baseline Tributaries 188.45872      c              log_TOrg_Na_M
-## 688  Developed Tributaries  86.03968      d              log_TOrg_Na_M
-## 689           Pooled Water 315.73684      a               log_TOrg_K_M
-## 690              Main Stem 251.83333      b               log_TOrg_K_M
-## 691   Baseline Tributaries 244.55046      b               log_TOrg_K_M
-## 692  Developed Tributaries  69.79365      c               log_TOrg_K_M
-## 693  Developed Tributaries 230.58730      a  log_Zn_Toxicity_Daphnia_M
-## 694              Main Stem 206.13636      a  log_Zn_Toxicity_Daphnia_M
-## 695   Baseline Tributaries 159.02752      b  log_Zn_Toxicity_Daphnia_M
-## 696           Pooled Water  57.52632      c  log_Zn_Toxicity_Daphnia_M
-## 697              Main Stem 253.00000      a                  log_DOC_M
-## 698   Baseline Tributaries 239.69266      a                  log_DOC_M
-## 699           Pooled Water 194.84211      b                  log_DOC_M
-## 700  Developed Tributaries  91.00397      c                  log_DOC_M
-## 701              Main Stem 253.00000      a                 log_DOC_nM
-## 702   Baseline Tributaries 239.69266      a                 log_DOC_nM
-## 703           Pooled Water 194.84211      b                 log_DOC_nM
-## 704  Developed Tributaries  91.00397      c                 log_DOC_nM
-## 705              Main Stem 252.37500      a                   log_Ca_M
-## 706  Developed Tributaries 219.82937      b                   log_Ca_M
-## 707   Baseline Tributaries 123.56881      c                   log_Ca_M
-## 708           Pooled Water  11.05263      d                   log_Ca_M
-## 709              Main Stem 252.37500      a                  log_Ca_nM
-## 710  Developed Tributaries 219.82937      b                  log_Ca_nM
-## 711   Baseline Tributaries 123.56881      c                  log_Ca_nM
-## 712           Pooled Water  11.05263      d                  log_Ca_nM
-## 713  Developed Tributaries 275.72619      a                   log_Mg_M
-## 714              Main Stem 229.68182      b                   log_Mg_M
-## 715   Baseline Tributaries  86.31651      c                   log_Mg_M
-## 716           Pooled Water  11.73684      d                   log_Mg_M
-## 717  Developed Tributaries 275.72619      a                  log_Mg_nM
-## 718              Main Stem 229.68182      b                  log_Mg_nM
-## 719   Baseline Tributaries  86.31651      c                  log_Mg_nM
-## 720           Pooled Water  11.73684      d                  log_Mg_nM
-## 721              Main Stem 315.37879      a                   log_Na_M
-## 722  Developed Tributaries 167.69841      b                   log_Na_M
-## 723   Baseline Tributaries 103.09633      c                   log_Na_M
-## 724           Pooled Water  36.50000      d                   log_Na_M
-## 725              Main Stem 315.37879      a                  log_Na_nM
-## 726  Developed Tributaries 167.69841      b                  log_Na_nM
-## 727   Baseline Tributaries 103.09633      c                  log_Na_nM
-## 728           Pooled Water  36.50000      d                  log_Na_nM
-## 729              Main Stem 299.60227      a                    log_K_M
-## 730   Baseline Tributaries 179.47248      b                    log_K_M
-## 731  Developed Tributaries 108.17857      c                    log_K_M
-## 732           Pooled Water 102.65789      c                    log_K_M
-## 733              Main Stem 299.60227      a                   log_K_nM
-## 734   Baseline Tributaries 179.47248      b                   log_K_nM
-## 735  Developed Tributaries 108.17857      c                   log_K_nM
-## 736           Pooled Water 102.65789      c                   log_K_nM
-## 737              Main Stem 314.49621      a                  log_SO4_M
-## 738   Baseline Tributaries 148.87615      b                  log_SO4_M
-## 739  Developed Tributaries 125.26190      c                  log_SO4_M
-## 740           Pooled Water  61.42105      d                  log_SO4_M
-## 741              Main Stem 314.49621      a                 log_SO4_nM
-## 742   Baseline Tributaries 148.87615      b                 log_SO4_nM
-## 743  Developed Tributaries 125.26190      c                 log_SO4_nM
-## 744           Pooled Water  61.42105      d                 log_SO4_nM
-## 745              Main Stem 297.60227      a                   log_Cl_M
-## 746  Developed Tributaries 199.30556      b                   log_Cl_M
-## 747   Baseline Tributaries  86.14220      c                   log_Cl_M
-## 748           Pooled Water  47.65789      d                   log_Cl_M
-## 749              Main Stem 297.60227      a                  log_Cl_nM
-## 750  Developed Tributaries 199.30556      b                  log_Cl_nM
-## 751   Baseline Tributaries  86.14220      c                  log_Cl_nM
-## 752           Pooled Water  47.65789      d                  log_Cl_nM
-## 753  Developed Tributaries 264.87302      a                  log_DIC_M
-## 754              Main Stem 208.08333      b                  log_DIC_M
-## 755   Baseline Tributaries 125.13761      c                  log_DIC_M
-## 756           Pooled Water  11.05263      d                  log_DIC_M
-## 757  Developed Tributaries 264.87302      a                 log_DIC_nM
-## 758              Main Stem 208.08333      b                 log_DIC_nM
-## 759   Baseline Tributaries 125.13761      c                 log_DIC_nM
-## 760           Pooled Water  11.05263      d                 log_DIC_nM
-## 761              Main Stem 260.09091      a                   log_Zn_M
-## 762           Pooled Water 223.18421      a                   log_Zn_M
-## 763  Developed Tributaries 169.02778      b                   log_Zn_M
-## 764   Baseline Tributaries 135.97248      c                   log_Zn_M
-## 765              Main Stem 260.09091      a                  log_Zn_nM
-## 766           Pooled Water 223.18421      a                  log_Zn_nM
-## 767  Developed Tributaries 169.02778      b                  log_Zn_nM
-## 768   Baseline Tributaries 135.97248      c                  log_Zn_nM
-## 769              Main Stem 284.43939      a                   log_Cu_M
-## 770   Baseline Tributaries 180.74771      b                   log_Cu_M
-## 771           Pooled Water 130.13158      c                   log_Cu_M
-## 772  Developed Tributaries 118.81746      c                   log_Cu_M
-## 773              Main Stem 284.43939      a                  log_Cu_nM
-## 774   Baseline Tributaries 180.74771      b                  log_Cu_nM
-## 775           Pooled Water 130.13158      c                  log_Cu_nM
-## 776  Developed Tributaries 118.81746      c                  log_Cu_nM
-## 777  Developed Tributaries 244.49206      a             log_Free_Zn_uM
-## 778              Main Stem 196.44697      b             log_Free_Zn_uM
-## 779           Pooled Water 190.42105      b             log_Free_Zn_uM
-## 780   Baseline Tributaries 131.52294      c             log_Free_Zn_uM
-## 781  Developed Tributaries 244.49206      a             log_Free_Zn_nM
-## 782              Main Stem 196.44697      b             log_Free_Zn_nM
-## 783           Pooled Water 190.42105      b             log_Free_Zn_nM
-## 784   Baseline Tributaries 131.52294      c             log_Free_Zn_nM
-## 785              Main Stem 270.74242      a                log_ZnOH_uM
-## 786  Developed Tributaries 187.89683      b                log_ZnOH_uM
-## 787   Baseline Tributaries 121.52294      c                log_ZnOH_uM
-## 788           Pooled Water 106.94737      c                log_ZnOH_uM
-## 789              Main Stem 270.74242      a                log_ZnOH_nM
-## 790  Developed Tributaries 187.89683      b                log_ZnOH_nM
-## 791   Baseline Tributaries 121.52294      c                log_ZnOH_nM
-## 792           Pooled Water 106.94737      c                log_ZnOH_nM
-## 793              Main Stem 274.60606      a             log_Zn_OH_2_uM
-## 794  Developed Tributaries 166.30952      b             log_Zn_OH_2_uM
-## 795   Baseline Tributaries 139.85321      c             log_Zn_OH_2_uM
-## 796           Pooled Water 118.10526      c             log_Zn_OH_2_uM
-## 797              Main Stem 274.60606      a             log_Zn_OH_2_nM
-## 798  Developed Tributaries 166.30952      b             log_Zn_OH_2_nM
-## 799   Baseline Tributaries 139.85321      c             log_Zn_OH_2_nM
-## 800           Pooled Water 118.10526      c             log_Zn_OH_2_nM
-## 801              Main Stem 276.15152      a               log_ZnCO3_uM
-## 802  Developed Tributaries 207.74603      b               log_ZnCO3_uM
-## 803   Baseline Tributaries 105.63303      c               log_ZnCO3_uM
-## 804           Pooled Water  28.89474      d               log_ZnCO3_uM
-## 805              Main Stem 276.15152      a               log_ZnCO3_nM
-## 806  Developed Tributaries 207.74603      b               log_ZnCO3_nM
-## 807   Baseline Tributaries 105.63303      c               log_ZnCO3_nM
-## 808           Pooled Water  28.89474      d               log_ZnCO3_nM
-## 809  Developed Tributaries 263.42063      a              log_ZnHCO3_uM
-## 810              Main Stem 210.62879      b              log_ZnHCO3_uM
-## 811   Baseline Tributaries 119.69725      c              log_ZnHCO3_uM
-## 812           Pooled Water  34.21053      d              log_ZnHCO3_uM
-## 813  Developed Tributaries 263.42063      a              log_ZnHCO3_nM
-## 814              Main Stem 210.62879      b              log_ZnHCO3_nM
-## 815   Baseline Tributaries 119.69725      c              log_ZnHCO3_nM
-## 816           Pooled Water  34.21053      d              log_ZnHCO3_nM
-## 817              Main Stem 293.28788      a               log_ZnSO4_uM
-## 818  Developed Tributaries 155.84921      b               log_ZnSO4_uM
-## 819           Pooled Water 130.84211     bc               log_ZnSO4_uM
-## 820   Baseline Tributaries 127.10092      c               log_ZnSO4_uM
-## 821              Main Stem 293.28788      a               log_ZnSO4_nM
-## 822  Developed Tributaries 155.84921      b               log_ZnSO4_nM
-## 823           Pooled Water 130.84211     bc               log_ZnSO4_nM
-## 824   Baseline Tributaries 127.10092      c               log_ZnSO4_nM
-## 825              Main Stem 263.59091      a                log_ZnCl_uM
-## 826  Developed Tributaries 223.27778      b                log_ZnCl_uM
-## 827           Pooled Water 102.15789      c                log_ZnCl_uM
-## 828   Baseline Tributaries  90.11927      c                log_ZnCl_uM
-## 829              Main Stem 263.59091      a                log_ZnCl_nM
-## 830  Developed Tributaries 223.27778      b                log_ZnCl_nM
-## 831           Pooled Water 102.15789      c                log_ZnCl_nM
-## 832   Baseline Tributaries  90.11927      c                log_ZnCl_nM
-## 833              Main Stem 257.21591      a                 log_ZnS_uM
-## 834  Developed Tributaries 210.28968      b                 log_ZnS_uM
-## 835   Baseline Tributaries 113.88991      c                 log_ZnS_uM
-## 836           Pooled Water  96.21053      c                 log_ZnS_uM
-## 837              Main Stem 257.21591      a                 log_ZnS_nM
-## 838  Developed Tributaries 210.28968      b                 log_ZnS_nM
-## 839   Baseline Tributaries 113.88991      c                 log_ZnS_nM
-## 840           Pooled Water  96.21053      c                 log_ZnS_nM
-## 841              Main Stem 280.71970      a             log_TOrg_Zn_uM
-## 842           Pooled Water 269.52632      a             log_TOrg_Zn_uM
-## 843   Baseline Tributaries 190.39450      b             log_TOrg_Zn_uM
-## 844  Developed Tributaries  93.34921      c             log_TOrg_Zn_uM
-## 845              Main Stem 280.71970      a             log_TOrg_Zn_nM
-## 846           Pooled Water 269.52632      a             log_TOrg_Zn_nM
-## 847   Baseline Tributaries 190.39450      b             log_TOrg_Zn_nM
-## 848  Developed Tributaries  93.34921      c             log_TOrg_Zn_nM
-## 849  Developed Tributaries 252.63492      a                log_HCO3_uM
-## 850              Main Stem 222.62121      b                log_HCO3_uM
-## 851   Baseline Tributaries 121.68807      c                log_HCO3_uM
-## 852           Pooled Water  11.00000      d                log_HCO3_uM
-## 853  Developed Tributaries 252.63492      a                log_HCO3_nM
-## 854              Main Stem 222.62121      b                log_HCO3_nM
-## 855   Baseline Tributaries 121.68807      c                log_HCO3_nM
-## 856           Pooled Water  11.00000      d                log_HCO3_nM
-## 857  Developed Tributaries 265.09524      a              log_H2_CO3_uM
-## 858   Baseline Tributaries 196.70642      b              log_H2_CO3_uM
-## 859              Main Stem 138.60606      c              log_H2_CO3_uM
-## 860           Pooled Water  81.68421      d              log_H2_CO3_uM
-## 861  Developed Tributaries 265.09524      a              log_H2_CO3_nM
-## 862   Baseline Tributaries 196.70642      b              log_H2_CO3_nM
-## 863              Main Stem 138.60606      c              log_H2_CO3_nM
-## 864           Pooled Water  81.68421      d              log_H2_CO3_nM
-## 865           Pooled Water 274.15789      a                  log_HS_uM
-## 866   Baseline Tributaries 268.30275      a                  log_HS_uM
-## 867  Developed Tributaries 199.49206      b                  log_HS_uM
-## 868              Main Stem 114.40152      c                  log_HS_uM
-## 869           Pooled Water 274.15789      a                  log_HS_nM
-## 870   Baseline Tributaries 268.30275      a                  log_HS_nM
-## 871  Developed Tributaries 199.49206      b                  log_HS_nM
-## 872              Main Stem 114.40152      c                  log_HS_nM
-## 873           Pooled Water 277.84211      a                 log_H2S_uM
-## 874   Baseline Tributaries 250.74312      a                 log_H2S_uM
-## 875  Developed Tributaries 220.37302      b                 log_H2S_uM
-## 876              Main Stem 108.43939      c                 log_H2S_uM
-## 877           Pooled Water 277.84211      a                 log_H2S_nM
-## 878   Baseline Tributaries 250.74312      a                 log_H2S_nM
-## 879  Developed Tributaries 220.37302      b                 log_H2S_nM
-## 880              Main Stem 108.43939      c                 log_H2S_nM
-## 881  Developed Tributaries 277.01587      a              log_MgHCO3_uM
-## 882              Main Stem 226.81818      b              log_MgHCO3_uM
-## 883   Baseline Tributaries  88.49541      c              log_MgHCO3_uM
-## 884           Pooled Water  10.57895      d              log_MgHCO3_uM
-## 885  Developed Tributaries 277.01587      a              log_MgHCO3_nM
-## 886              Main Stem 226.81818      b              log_MgHCO3_nM
-## 887   Baseline Tributaries  88.49541      c              log_MgHCO3_nM
-## 888           Pooled Water  10.57895      d              log_MgHCO3_nM
-## 889              Main Stem 271.80303      a               log_MgCO3_uM
-## 890  Developed Tributaries 201.14286      b               log_MgCO3_uM
-## 891   Baseline Tributaries 119.78899      c               log_MgCO3_uM
-## 892           Pooled Water  21.68421      d               log_MgCO3_uM
-## 893              Main Stem 271.80303      a               log_MgCO3_nM
-## 894  Developed Tributaries 201.14286      b               log_MgCO3_nM
-## 895   Baseline Tributaries 119.78899      c               log_MgCO3_nM
-## 896           Pooled Water  21.68421      d               log_MgCO3_nM
-## 897              Main Stem 315.46212      a               log_MgSO4_uM
-## 898  Developed Tributaries 154.51587      b               log_MgSO4_uM
-## 899   Baseline Tributaries 121.88073      c               log_MgSO4_uM
-## 900           Pooled Water  15.57895      d               log_MgSO4_uM
-## 901              Main Stem 315.46212      a               log_MgSO4_nM
-## 902  Developed Tributaries 154.51587      b               log_MgSO4_nM
-## 903   Baseline Tributaries 121.88073      c               log_MgSO4_nM
-## 904           Pooled Water  15.57895      d               log_MgSO4_nM
-## 905  Developed Tributaries 243.03968      a              log_CaHCO3_uM
-## 906              Main Stem 229.87121      a              log_CaHCO3_uM
-## 907   Baseline Tributaries 124.00917      b              log_CaHCO3_uM
-## 908           Pooled Water  10.94737      c              log_CaHCO3_uM
-## 909  Developed Tributaries 243.03968      a              log_CaHCO3_nM
-## 910              Main Stem 229.87121      a              log_CaHCO3_nM
-## 911   Baseline Tributaries 124.00917      b              log_CaHCO3_nM
-## 912           Pooled Water  10.94737      c              log_CaHCO3_nM
-## 913              Main Stem 279.65909      a               log_CaCO3_uM
-## 914  Developed Tributaries 183.96032      b               log_CaCO3_uM
-## 915   Baseline Tributaries 130.13761      c               log_CaCO3_uM
-## 916           Pooled Water  21.68421      d               log_CaCO3_uM
-## 917              Main Stem 279.65909      a               log_CaCO3_nM
-## 918  Developed Tributaries 183.96032      b               log_CaCO3_nM
-## 919   Baseline Tributaries 130.13761      c               log_CaCO3_nM
-## 920           Pooled Water  21.68421      d               log_CaCO3_nM
-## 921              Main Stem 315.03788      a               log_CaSO4_uM
-## 922   Baseline Tributaries 142.75229      b               log_CaSO4_uM
-## 923  Developed Tributaries 136.79365      b               log_CaSO4_uM
-## 924           Pooled Water  16.31579      c               log_CaSO4_uM
-## 925              Main Stem 315.03788      a               log_CaSO4_nM
-## 926   Baseline Tributaries 142.75229      b               log_CaSO4_nM
-## 927  Developed Tributaries 136.79365      b               log_CaSO4_nM
-## 928           Pooled Water  16.31579      c               log_CaSO4_nM
-## 929           Pooled Water 294.15789      a              log_TOrg_H_uM
-## 930   Baseline Tributaries 250.31193      a              log_TOrg_H_uM
-## 931              Main Stem 173.66667      b              log_TOrg_H_uM
-## 932  Developed Tributaries 149.95238      b              log_TOrg_H_uM
-## 933           Pooled Water 294.15789      a              log_TOrg_H_nM
-## 934   Baseline Tributaries 250.31193      a              log_TOrg_H_nM
-## 935              Main Stem 173.66667      b              log_TOrg_H_nM
-## 936  Developed Tributaries 149.95238      b              log_TOrg_H_nM
-## 937              Main Stem 254.89394      a             log_TOrg_Ca_uM
-## 938   Baseline Tributaries 239.70642      a             log_TOrg_Ca_uM
-## 939           Pooled Water 168.15789      b             log_TOrg_Ca_uM
-## 940  Developed Tributaries  93.03175      c             log_TOrg_Ca_uM
-## 941              Main Stem 254.89394      a             log_TOrg_Ca_nM
-## 942   Baseline Tributaries 239.70642      a             log_TOrg_Ca_nM
-## 943           Pooled Water 168.15789      b             log_TOrg_Ca_nM
-## 944  Developed Tributaries  93.03175      c             log_TOrg_Ca_nM
-## 945              Main Stem 255.15152      a             log_TOrg_Mg_uM
-## 946   Baseline Tributaries 227.48624      b             log_TOrg_Mg_uM
-## 947           Pooled Water 220.73684      b             log_TOrg_Mg_uM
-## 948  Developed Tributaries  95.40476      c             log_TOrg_Mg_uM
-## 949              Main Stem 255.15152      a             log_TOrg_Mg_nM
-## 950   Baseline Tributaries 227.48624      b             log_TOrg_Mg_nM
-## 951           Pooled Water 220.73684      b             log_TOrg_Mg_nM
-## 952  Developed Tributaries  95.40476      c             log_TOrg_Mg_nM
-## 953              Main Stem 292.22727      a             log_TOrg_Na_uM
-## 954           Pooled Water 249.15789      b             log_TOrg_Na_uM
-## 955   Baseline Tributaries 188.45872      c             log_TOrg_Na_uM
-## 956  Developed Tributaries  86.03968      d             log_TOrg_Na_uM
-## 957              Main Stem 292.22727      a             log_TOrg_Na_nM
-## 958           Pooled Water 249.15789      b             log_TOrg_Na_nM
-## 959   Baseline Tributaries 188.45872      c             log_TOrg_Na_nM
-## 960  Developed Tributaries  86.03968      d             log_TOrg_Na_nM
-## 961           Pooled Water 315.73684      a              log_TOrg_K_uM
-## 962              Main Stem 251.83333      b              log_TOrg_K_uM
-## 963   Baseline Tributaries 244.55046      b              log_TOrg_K_uM
-## 964  Developed Tributaries  69.79365      c              log_TOrg_K_uM
-## 965           Pooled Water 315.73684      a              log_TOrg_K_nM
-## 966              Main Stem 251.83333      b              log_TOrg_K_nM
-## 967   Baseline Tributaries 244.55046      b              log_TOrg_K_nM
-## 968  Developed Tributaries  69.79365      c              log_TOrg_K_nM
-## 969  Developed Tributaries 230.58730      a log_Zn_Toxicity_Daphnia_uM
-## 970              Main Stem 206.13636      a log_Zn_Toxicity_Daphnia_uM
-## 971   Baseline Tributaries 159.02752      b log_Zn_Toxicity_Daphnia_uM
-## 972           Pooled Water  57.52632      c log_Zn_Toxicity_Daphnia_uM
-## 973  Developed Tributaries 230.58730      a log_Zn_Toxicity_Daphnia_nM
-## 974              Main Stem 206.13636      a log_Zn_Toxicity_Daphnia_nM
-## 975   Baseline Tributaries 159.02752      b log_Zn_Toxicity_Daphnia_nM
-## 976           Pooled Water  57.52632      c log_Zn_Toxicity_Daphnia_nM
-## 977           Pooled Water 299.73684      a          log_BL_Zn_nmol_kg
-## 978  Developed Tributaries 224.61111      b          log_BL_Zn_nmol_kg
-## 979              Main Stem 171.37121      c          log_BL_Zn_nmol_kg
-## 980   Baseline Tributaries 165.81651      c          log_BL_Zn_nmol_kg
-## 981           Pooled Water 299.73684      a           log_BL_Zn_nmol_g
-## 982  Developed Tributaries 224.61111      b           log_BL_Zn_nmol_g
-## 983              Main Stem 171.37121      c           log_BL_Zn_nmol_g
-## 984   Baseline Tributaries 165.81651      c           log_BL_Zn_nmol_g
-## 985              Main Stem 224.18939      a          log_BL_Ca_nmol_kg
-## 986  Developed Tributaries 205.96032      a          log_BL_Ca_nmol_kg
-## 987   Baseline Tributaries 173.54128      b          log_BL_Ca_nmol_kg
-## 988           Pooled Water  12.15789      c          log_BL_Ca_nmol_kg
-## 989              Main Stem 224.18939      a           log_BL_Ca_nmol_g
-## 990  Developed Tributaries 205.96032      a           log_BL_Ca_nmol_g
-## 991   Baseline Tributaries 173.54128      b           log_BL_Ca_nmol_g
-## 992           Pooled Water  12.15789      c           log_BL_Ca_nmol_g
-## 993           Pooled Water 337.21053      a           log_BL_H_nmol_kg
-## 994   Baseline Tributaries 242.27523      b           log_BL_H_nmol_kg
-## 995  Developed Tributaries 220.40476      b           log_BL_H_nmol_kg
-## 996              Main Stem 106.85606      c           log_BL_H_nmol_kg
-## 997           Pooled Water 337.21053      a            log_BL_H_nmol_g
-## 998   Baseline Tributaries 242.27523      b            log_BL_H_nmol_g
-## 999  Developed Tributaries 220.40476      b            log_BL_H_nmol_g
-## 1000             Main Stem 106.85606      c            log_BL_H_nmol_g
-## 1001 Developed Tributaries 259.61111      a          log_BL_Mg_nmol_kg
-## 1002             Main Stem 181.03030      b          log_BL_Mg_nmol_kg
-## 1003  Baseline Tributaries 148.96330      c          log_BL_Mg_nmol_kg
-## 1004          Pooled Water  97.21053      d          log_BL_Mg_nmol_kg
-## 1005 Developed Tributaries 259.61111      a           log_BL_Mg_nmol_g
-## 1006             Main Stem 181.03030      b           log_BL_Mg_nmol_g
-## 1007  Baseline Tributaries 148.96330      c           log_BL_Mg_nmol_g
-## 1008          Pooled Water  97.21053      d           log_BL_Mg_nmol_g
-## 1009             Main Stem 311.43182      a          log_BL_Na_nmol_kg
-## 1010          Pooled Water 146.84211      b          log_BL_Na_nmol_kg
-## 1011 Developed Tributaries 137.06349      b          log_BL_Na_nmol_kg
-## 1012  Baseline Tributaries 124.05505      b          log_BL_Na_nmol_kg
-## 1013             Main Stem 311.43182      a           log_BL_Na_nmol_g
-## 1014          Pooled Water 146.84211      b           log_BL_Na_nmol_g
-## 1015 Developed Tributaries 137.06349      b           log_BL_Na_nmol_g
-## 1016  Baseline Tributaries 124.05505      b           log_BL_Na_nmol_g
-## 1017             Main Stem 253.84848      a        log_BL_ZnOH_nmol_kg
-## 1018          Pooled Water 227.78947      a        log_BL_ZnOH_nmol_kg
-## 1019 Developed Tributaries 171.43651      b        log_BL_ZnOH_nmol_kg
-## 1020  Baseline Tributaries 139.94495      c        log_BL_ZnOH_nmol_kg
-## 1021             Main Stem 253.84848      a         log_BL_ZnOH_nmol_g
-## 1022          Pooled Water 227.78947      a         log_BL_ZnOH_nmol_g
-## 1023 Developed Tributaries 171.43651      b         log_BL_ZnOH_nmol_g
-## 1024  Baseline Tributaries 139.94495      c         log_BL_ZnOH_nmol_g
-## 1025          Pooled Water 286.36842      a          log_TBL_Zn_nmol_g
-## 1026             Main Stem 215.22727      b          log_TBL_Zn_nmol_g
-## 1027 Developed Tributaries 200.04762      b          log_TBL_Zn_nmol_g
-## 1028  Baseline Tributaries 143.43119      c          log_TBL_Zn_nmol_g
-## 1029          Pooled Water 286.36842      a          log_TBL_Zn_mol_kg
-## 1030             Main Stem 215.22727      b          log_TBL_Zn_mol_kg
-## 1031 Developed Tributaries 200.04762      b          log_TBL_Zn_mol_kg
-## 1032  Baseline Tributaries 143.43119      c          log_TBL_Zn_mol_kg
-## 1033 Developed Tributaries 294.03968      a            log_rel_prop_Zn
-## 1034  Baseline Tributaries 180.60550      b            log_rel_prop_Zn
-## 1035          Pooled Water 180.52632      b            log_rel_prop_Zn
-## 1036             Main Stem 110.04545      c            log_rel_prop_Zn
-##           Chi_sq df      p_value Significant
-## 1    185.8876514  3 4.719462e-40        TRUE
-## 2    185.8876514  3 4.719462e-40        TRUE
-## 3    185.8876514  3 4.719462e-40        TRUE
-## 4    185.8876514  3 4.719462e-40        TRUE
-## 5    134.3041383  3 6.388663e-29        TRUE
-## 6    134.3041383  3 6.388663e-29        TRUE
-## 7    134.3041383  3 6.388663e-29        TRUE
-## 8    134.3041383  3 6.388663e-29        TRUE
-## 9    125.4437904  3 5.185770e-27        TRUE
-## 10   125.4437904  3 5.185770e-27        TRUE
-## 11   125.4437904  3 5.185770e-27        TRUE
-## 12   125.4437904  3 5.185770e-27        TRUE
-## 13    53.0295862  3 1.806927e-11        TRUE
-## 14    53.0295862  3 1.806927e-11        TRUE
-## 15    53.0295862  3 1.806927e-11        TRUE
-## 16    53.0295862  3 1.806927e-11        TRUE
-## 17    93.4266144  3 4.021795e-20        TRUE
-## 18    93.4266144  3 4.021795e-20        TRUE
-## 19    93.4266144  3 4.021795e-20        TRUE
-## 20    93.4266144  3 4.021795e-20        TRUE
-## 21     0.2579718  3 9.677288e-01       FALSE
-## 22     0.2579718  3 9.677288e-01       FALSE
-## 23     0.2579718  3 9.677288e-01       FALSE
-## 24     0.2579718  3 9.677288e-01       FALSE
-## 25   162.5589611  3 5.138815e-35        TRUE
-## 26   162.5589611  3 5.138815e-35        TRUE
-## 27   162.5589611  3 5.138815e-35        TRUE
-## 28   162.5589611  3 5.138815e-35        TRUE
-## 29   137.3991218  3 1.374735e-29        TRUE
-## 30   137.3991218  3 1.374735e-29        TRUE
-## 31   137.3991218  3 1.374735e-29        TRUE
-## 32   137.3991218  3 1.374735e-29        TRUE
-## 33   233.3368241  3 2.626235e-50        TRUE
-## 34   233.3368241  3 2.626235e-50        TRUE
-## 35   233.3368241  3 2.626235e-50        TRUE
-## 36   233.3368241  3 2.626235e-50        TRUE
-## 37   273.4387901  3 5.565074e-59        TRUE
-## 38   273.4387901  3 5.565074e-59        TRUE
-## 39   273.4387901  3 5.565074e-59        TRUE
-## 40   273.4387901  3 5.565074e-59        TRUE
-## 41   207.3781123  3 1.073534e-44        TRUE
-## 42   207.3781123  3 1.073534e-44        TRUE
-## 43   207.3781123  3 1.073534e-44        TRUE
-## 44   207.3781123  3 1.073534e-44        TRUE
-## 45   246.4339872  3 3.864397e-53        TRUE
-## 46   246.4339872  3 3.864397e-53        TRUE
-## 47   246.4339872  3 3.864397e-53        TRUE
-## 48   246.4339872  3 3.864397e-53        TRUE
-## 49   248.6455990  3 1.284579e-53        TRUE
-## 50   248.6455990  3 1.284579e-53        TRUE
-## 51   248.6455990  3 1.284579e-53        TRUE
-## 52   248.6455990  3 1.284579e-53        TRUE
-## 53   145.5429250  3 2.410709e-31        TRUE
-## 54   145.5429250  3 2.410709e-31        TRUE
-## 55   145.5429250  3 2.410709e-31        TRUE
-## 56   145.5429250  3 2.410709e-31        TRUE
-## 57    83.4060125  3 5.705184e-18        TRUE
-## 58    83.4060125  3 5.705184e-18        TRUE
-## 59    83.4060125  3 5.705184e-18        TRUE
-## 60    83.4060125  3 5.705184e-18        TRUE
-## 61   151.7005494  3 1.132173e-32        TRUE
-## 62   151.7005494  3 1.132173e-32        TRUE
-## 63   151.7005494  3 1.132173e-32        TRUE
-## 64   151.7005494  3 1.132173e-32        TRUE
-## 65    60.0583649  3 5.711856e-13        TRUE
-## 66    60.0583649  3 5.711856e-13        TRUE
-## 67    60.0583649  3 5.711856e-13        TRUE
-## 68    60.0583649  3 5.711856e-13        TRUE
-## 69   120.3800826  3 6.391140e-26        TRUE
-## 70   120.3800826  3 6.391140e-26        TRUE
-## 71   120.3800826  3 6.391140e-26        TRUE
-## 72   120.3800826  3 6.391140e-26        TRUE
-## 73   111.1120710  3 6.324092e-24        TRUE
-## 74   111.1120710  3 6.324092e-24        TRUE
-## 75   111.1120710  3 6.324092e-24        TRUE
-## 76   111.1120710  3 6.324092e-24        TRUE
-## 77   183.4476882  3 1.588127e-39        TRUE
-## 78   183.4476882  3 1.588127e-39        TRUE
-## 79   183.4476882  3 1.588127e-39        TRUE
-## 80   183.4476882  3 1.588127e-39        TRUE
-## 81   139.0147259  3 6.164493e-30        TRUE
-## 82   139.0147259  3 6.164493e-30        TRUE
-## 83   139.0147259  3 6.164493e-30        TRUE
-## 84   139.0147259  3 6.164493e-30        TRUE
-## 85   164.5321837  3 1.927399e-35        TRUE
-## 86   164.5321837  3 1.927399e-35        TRUE
-## 87   164.5321837  3 1.927399e-35        TRUE
-## 88   164.5321837  3 1.927399e-35        TRUE
-## 89   167.3838083  3 4.671285e-36        TRUE
-## 90   167.3838083  3 4.671285e-36        TRUE
-## 91   167.3838083  3 4.671285e-36        TRUE
-## 92   167.3838083  3 4.671285e-36        TRUE
-## 93   115.9099520  3 5.863726e-25        TRUE
-## 94   115.9099520  3 5.863726e-25        TRUE
-## 95   115.9099520  3 5.863726e-25        TRUE
-## 96   115.9099520  3 5.863726e-25        TRUE
-## 97   191.0940646  3 3.542174e-41        TRUE
-## 98   191.0940646  3 3.542174e-41        TRUE
-## 99   191.0940646  3 3.542174e-41        TRUE
-## 100  191.0940646  3 3.542174e-41        TRUE
-## 101   38.9257927  3 1.799642e-08        TRUE
-## 102   38.9257927  3 1.799642e-08        TRUE
-## 103   38.9257927  3 1.799642e-08        TRUE
-## 104   38.9257927  3 1.799642e-08        TRUE
-## 105   65.2383695  3 4.460361e-14        TRUE
-## 106   65.2383695  3 4.460361e-14        TRUE
-## 107   65.2383695  3 4.460361e-14        TRUE
-## 108   65.2383695  3 4.460361e-14        TRUE
-## 109  139.2833656  3 5.394812e-30        TRUE
-## 110  139.2833656  3 5.394812e-30        TRUE
-## 111  139.2833656  3 5.394812e-30        TRUE
-## 112  139.2833656  3 5.394812e-30        TRUE
-## 113   77.4065683  3 1.104617e-16        TRUE
-## 114   77.4065683  3 1.104617e-16        TRUE
-## 115   77.4065683  3 1.104617e-16        TRUE
-## 116   77.4065683  3 1.104617e-16        TRUE
-## 117  225.2633189  3 1.461815e-48        TRUE
-## 118  225.2633189  3 1.461815e-48        TRUE
-## 119  225.2633189  3 1.461815e-48        TRUE
-## 120  225.2633189  3 1.461815e-48        TRUE
-## 121   70.4534450  3 3.413171e-15        TRUE
-## 122   70.4534450  3 3.413171e-15        TRUE
-## 123   70.4534450  3 3.413171e-15        TRUE
-## 124   70.4534450  3 3.413171e-15        TRUE
-## 125  140.3769802  3 3.134552e-30        TRUE
-## 126  140.3769802  3 3.134552e-30        TRUE
-## 127  140.3769802  3 3.134552e-30        TRUE
-## 128  140.3769802  3 3.134552e-30        TRUE
-## 129  103.0080264  3 3.504477e-22        TRUE
-## 130  103.0080264  3 3.504477e-22        TRUE
-## 131  103.0080264  3 3.504477e-22        TRUE
-## 132  103.0080264  3 3.504477e-22        TRUE
-## 133  125.6298954  3 4.728441e-27        TRUE
-## 134  125.6298954  3 4.728441e-27        TRUE
-## 135  125.6298954  3 4.728441e-27        TRUE
-## 136  125.6298954  3 4.728441e-27        TRUE
-## 137  123.5794821  3 1.307502e-26        TRUE
-## 138  123.5794821  3 1.307502e-26        TRUE
-## 139  123.5794821  3 1.307502e-26        TRUE
-## 140  123.5794821  3 1.307502e-26        TRUE
-## 141  229.9829711  3 1.394750e-49        TRUE
-## 142  229.9829711  3 1.394750e-49        TRUE
-## 143  229.9829711  3 1.394750e-49        TRUE
-## 144  229.9829711  3 1.394750e-49        TRUE
-## 145  158.2378552  3 4.399472e-34        TRUE
-## 146  158.2378552  3 4.399472e-34        TRUE
-## 147  158.2378552  3 4.399472e-34        TRUE
-## 148  158.2378552  3 4.399472e-34        TRUE
-## 149  266.3386063  3 1.912428e-57        TRUE
-## 150  266.3386063  3 1.912428e-57        TRUE
-## 151  266.3386063  3 1.912428e-57        TRUE
-## 152  266.3386063  3 1.912428e-57        TRUE
-## 153  132.0148572  3 1.989952e-28        TRUE
-## 154  132.0148572  3 1.989952e-28        TRUE
-## 155  132.0148572  3 1.989952e-28        TRUE
-## 156  132.0148572  3 1.989952e-28        TRUE
-## 157  159.8472907  3 1.977363e-34        TRUE
-## 158  159.8472907  3 1.977363e-34        TRUE
-## 159  159.8472907  3 1.977363e-34        TRUE
-## 160  159.8472907  3 1.977363e-34        TRUE
-## 161  259.6457916  3 5.363231e-56        TRUE
-## 162  259.6457916  3 5.363231e-56        TRUE
-## 163  259.6457916  3 5.363231e-56        TRUE
-## 164  259.6457916  3 5.363231e-56        TRUE
-## 165   67.0912585  3 1.790299e-14        TRUE
-## 166   67.0912585  3 1.790299e-14        TRUE
-## 167   67.0912585  3 1.790299e-14        TRUE
-## 168   67.0912585  3 1.790299e-14        TRUE
-## 169  161.8094533  3 7.458048e-35        TRUE
-## 170  161.8094533  3 7.458048e-35        TRUE
-## 171  161.8094533  3 7.458048e-35        TRUE
-## 172  161.8094533  3 7.458048e-35        TRUE
-## 173  148.9476049  3 4.444085e-32        TRUE
-## 174  148.9476049  3 4.444085e-32        TRUE
-## 175  148.9476049  3 4.444085e-32        TRUE
-## 176  148.9476049  3 4.444085e-32        TRUE
-## 177  225.1881693  3 1.517536e-48        TRUE
-## 178  225.1881693  3 1.517536e-48        TRUE
-## 179  225.1881693  3 1.517536e-48        TRUE
-## 180  225.1881693  3 1.517536e-48        TRUE
-## 181  236.6022312  3 5.167159e-51        TRUE
-## 182  236.6022312  3 5.167159e-51        TRUE
-## 183  236.6022312  3 5.167159e-51        TRUE
-## 184  236.6022312  3 5.167159e-51        TRUE
-## 185   54.2398490  3 9.973834e-12        TRUE
-## 186   54.2398490  3 9.973834e-12        TRUE
-## 187   54.2398490  3 9.973834e-12        TRUE
-## 188   54.2398490  3 9.973834e-12        TRUE
-## 189  162.5589611  3 5.138815e-35        TRUE
-## 190  162.5589611  3 5.138815e-35        TRUE
-## 191  162.5589611  3 5.138815e-35        TRUE
-## 192  162.5589611  3 5.138815e-35        TRUE
-## 193  162.5589611  3 5.138815e-35        TRUE
-## 194  162.5589611  3 5.138815e-35        TRUE
-## 195  162.5589611  3 5.138815e-35        TRUE
-## 196  162.5589611  3 5.138815e-35        TRUE
-## 197  137.3991218  3 1.374735e-29        TRUE
-## 198  137.3991218  3 1.374735e-29        TRUE
-## 199  137.3991218  3 1.374735e-29        TRUE
-## 200  137.3991218  3 1.374735e-29        TRUE
-## 201  137.3991218  3 1.374735e-29        TRUE
-## 202  137.3991218  3 1.374735e-29        TRUE
-## 203  137.3991218  3 1.374735e-29        TRUE
-## 204  137.3991218  3 1.374735e-29        TRUE
-## 205  233.3368241  3 2.626235e-50        TRUE
-## 206  233.3368241  3 2.626235e-50        TRUE
-## 207  233.3368241  3 2.626235e-50        TRUE
-## 208  233.3368241  3 2.626235e-50        TRUE
-## 209  233.3368241  3 2.626235e-50        TRUE
-## 210  233.3368241  3 2.626235e-50        TRUE
-## 211  233.3368241  3 2.626235e-50        TRUE
-## 212  233.3368241  3 2.626235e-50        TRUE
-## 213  273.4387901  3 5.565074e-59        TRUE
-## 214  273.4387901  3 5.565074e-59        TRUE
-## 215  273.4387901  3 5.565074e-59        TRUE
-## 216  273.4387901  3 5.565074e-59        TRUE
-## 217  273.4387901  3 5.565074e-59        TRUE
-## 218  273.4387901  3 5.565074e-59        TRUE
-## 219  273.4387901  3 5.565074e-59        TRUE
-## 220  273.4387901  3 5.565074e-59        TRUE
-## 221  207.3781123  3 1.073534e-44        TRUE
-## 222  207.3781123  3 1.073534e-44        TRUE
-## 223  207.3781123  3 1.073534e-44        TRUE
-## 224  207.3781123  3 1.073534e-44        TRUE
-## 225  207.3781123  3 1.073534e-44        TRUE
-## 226  207.3781123  3 1.073534e-44        TRUE
-## 227  207.3781123  3 1.073534e-44        TRUE
-## 228  207.3781123  3 1.073534e-44        TRUE
-## 229  246.4339872  3 3.864397e-53        TRUE
-## 230  246.4339872  3 3.864397e-53        TRUE
-## 231  246.4339872  3 3.864397e-53        TRUE
-## 232  246.4339872  3 3.864397e-53        TRUE
-## 233  246.4339872  3 3.864397e-53        TRUE
-## 234  246.4339872  3 3.864397e-53        TRUE
-## 235  246.4339872  3 3.864397e-53        TRUE
-## 236  246.4339872  3 3.864397e-53        TRUE
-## 237  248.6455990  3 1.284579e-53        TRUE
-## 238  248.6455990  3 1.284579e-53        TRUE
-## 239  248.6455990  3 1.284579e-53        TRUE
-## 240  248.6455990  3 1.284579e-53        TRUE
-## 241  248.6455990  3 1.284579e-53        TRUE
-## 242  248.6455990  3 1.284579e-53        TRUE
-## 243  248.6455990  3 1.284579e-53        TRUE
-## 244  248.6455990  3 1.284579e-53        TRUE
-## 245  145.5429250  3 2.410709e-31        TRUE
-## 246  145.5429250  3 2.410709e-31        TRUE
-## 247  145.5429250  3 2.410709e-31        TRUE
-## 248  145.5429250  3 2.410709e-31        TRUE
-## 249  145.5429250  3 2.410709e-31        TRUE
-## 250  145.5429250  3 2.410709e-31        TRUE
-## 251  145.5429250  3 2.410709e-31        TRUE
-## 252  145.5429250  3 2.410709e-31        TRUE
-## 253   83.4060125  3 5.705184e-18        TRUE
-## 254   83.4060125  3 5.705184e-18        TRUE
-## 255   83.4060125  3 5.705184e-18        TRUE
-## 256   83.4060125  3 5.705184e-18        TRUE
-## 257   83.4060125  3 5.705184e-18        TRUE
-## 258   83.4060125  3 5.705184e-18        TRUE
-## 259   83.4060125  3 5.705184e-18        TRUE
-## 260   83.4060125  3 5.705184e-18        TRUE
-## 261  151.7005494  3 1.132173e-32        TRUE
-## 262  151.7005494  3 1.132173e-32        TRUE
-## 263  151.7005494  3 1.132173e-32        TRUE
-## 264  151.7005494  3 1.132173e-32        TRUE
-## 265  151.7005494  3 1.132173e-32        TRUE
-## 266  151.7005494  3 1.132173e-32        TRUE
-## 267  151.7005494  3 1.132173e-32        TRUE
-## 268  151.7005494  3 1.132173e-32        TRUE
-## 269   60.0583649  3 5.711856e-13        TRUE
-## 270   60.0583649  3 5.711856e-13        TRUE
-## 271   60.0583649  3 5.711856e-13        TRUE
-## 272   60.0583649  3 5.711856e-13        TRUE
-## 273   60.0583649  3 5.711856e-13        TRUE
-## 274   60.0583649  3 5.711856e-13        TRUE
-## 275   60.0583649  3 5.711856e-13        TRUE
-## 276   60.0583649  3 5.711856e-13        TRUE
-## 277  120.3800826  3 6.391140e-26        TRUE
-## 278  120.3800826  3 6.391140e-26        TRUE
-## 279  120.3800826  3 6.391140e-26        TRUE
-## 280  120.3800826  3 6.391140e-26        TRUE
-## 281  120.3800826  3 6.391140e-26        TRUE
-## 282  120.3800826  3 6.391140e-26        TRUE
-## 283  120.3800826  3 6.391140e-26        TRUE
-## 284  120.3800826  3 6.391140e-26        TRUE
-## 285  111.1120710  3 6.324092e-24        TRUE
-## 286  111.1120710  3 6.324092e-24        TRUE
-## 287  111.1120710  3 6.324092e-24        TRUE
-## 288  111.1120710  3 6.324092e-24        TRUE
-## 289  111.1120710  3 6.324092e-24        TRUE
-## 290  111.1120710  3 6.324092e-24        TRUE
-## 291  111.1120710  3 6.324092e-24        TRUE
-## 292  111.1120710  3 6.324092e-24        TRUE
-## 293  183.4476882  3 1.588127e-39        TRUE
-## 294  183.4476882  3 1.588127e-39        TRUE
-## 295  183.4476882  3 1.588127e-39        TRUE
-## 296  183.4476882  3 1.588127e-39        TRUE
-## 297  183.4476882  3 1.588127e-39        TRUE
-## 298  183.4476882  3 1.588127e-39        TRUE
-## 299  183.4476882  3 1.588127e-39        TRUE
-## 300  183.4476882  3 1.588127e-39        TRUE
-## 301  139.0147259  3 6.164493e-30        TRUE
-## 302  139.0147259  3 6.164493e-30        TRUE
-## 303  139.0147259  3 6.164493e-30        TRUE
-## 304  139.0147259  3 6.164493e-30        TRUE
-## 305  139.0147259  3 6.164493e-30        TRUE
-## 306  139.0147259  3 6.164493e-30        TRUE
-## 307  139.0147259  3 6.164493e-30        TRUE
-## 308  139.0147259  3 6.164493e-30        TRUE
-## 309  164.5321837  3 1.927399e-35        TRUE
-## 310  164.5321837  3 1.927399e-35        TRUE
-## 311  164.5321837  3 1.927399e-35        TRUE
-## 312  164.5321837  3 1.927399e-35        TRUE
-## 313  164.5321837  3 1.927399e-35        TRUE
-## 314  164.5321837  3 1.927399e-35        TRUE
-## 315  164.5321837  3 1.927399e-35        TRUE
-## 316  164.5321837  3 1.927399e-35        TRUE
-## 317  167.3838083  3 4.671285e-36        TRUE
-## 318  167.3838083  3 4.671285e-36        TRUE
-## 319  167.3838083  3 4.671285e-36        TRUE
-## 320  167.3838083  3 4.671285e-36        TRUE
-## 321  167.3838083  3 4.671285e-36        TRUE
-## 322  167.3838083  3 4.671285e-36        TRUE
-## 323  167.3838083  3 4.671285e-36        TRUE
-## 324  167.3838083  3 4.671285e-36        TRUE
-## 325  115.9099520  3 5.863726e-25        TRUE
-## 326  115.9099520  3 5.863726e-25        TRUE
-## 327  115.9099520  3 5.863726e-25        TRUE
-## 328  115.9099520  3 5.863726e-25        TRUE
-## 329  115.9099520  3 5.863726e-25        TRUE
-## 330  115.9099520  3 5.863726e-25        TRUE
-## 331  115.9099520  3 5.863726e-25        TRUE
-## 332  115.9099520  3 5.863726e-25        TRUE
-## 333  191.0940646  3 3.542174e-41        TRUE
-## 334  191.0940646  3 3.542174e-41        TRUE
-## 335  191.0940646  3 3.542174e-41        TRUE
-## 336  191.0940646  3 3.542174e-41        TRUE
-## 337  191.0940646  3 3.542174e-41        TRUE
-## 338  191.0940646  3 3.542174e-41        TRUE
-## 339  191.0940646  3 3.542174e-41        TRUE
-## 340  191.0940646  3 3.542174e-41        TRUE
-## 341  140.3769802  3 3.134552e-30        TRUE
-## 342  140.3769802  3 3.134552e-30        TRUE
-## 343  140.3769802  3 3.134552e-30        TRUE
-## 344  140.3769802  3 3.134552e-30        TRUE
-## 345  140.3769802  3 3.134552e-30        TRUE
-## 346  140.3769802  3 3.134552e-30        TRUE
-## 347  140.3769802  3 3.134552e-30        TRUE
-## 348  140.3769802  3 3.134552e-30        TRUE
-## 349  103.0080264  3 3.504477e-22        TRUE
-## 350  103.0080264  3 3.504477e-22        TRUE
-## 351  103.0080264  3 3.504477e-22        TRUE
-## 352  103.0080264  3 3.504477e-22        TRUE
-## 353  103.0080264  3 3.504477e-22        TRUE
-## 354  103.0080264  3 3.504477e-22        TRUE
-## 355  103.0080264  3 3.504477e-22        TRUE
-## 356  103.0080264  3 3.504477e-22        TRUE
-## 357  125.6298954  3 4.728441e-27        TRUE
-## 358  125.6298954  3 4.728441e-27        TRUE
-## 359  125.6298954  3 4.728441e-27        TRUE
-## 360  125.6298954  3 4.728441e-27        TRUE
-## 361  125.6298954  3 4.728441e-27        TRUE
-## 362  125.6298954  3 4.728441e-27        TRUE
-## 363  125.6298954  3 4.728441e-27        TRUE
-## 364  125.6298954  3 4.728441e-27        TRUE
-## 365  123.5794821  3 1.307502e-26        TRUE
-## 366  123.5794821  3 1.307502e-26        TRUE
-## 367  123.5794821  3 1.307502e-26        TRUE
-## 368  123.5794821  3 1.307502e-26        TRUE
-## 369  123.5794821  3 1.307502e-26        TRUE
-## 370  123.5794821  3 1.307502e-26        TRUE
-## 371  123.5794821  3 1.307502e-26        TRUE
-## 372  123.5794821  3 1.307502e-26        TRUE
-## 373  229.9829711  3 1.394750e-49        TRUE
-## 374  229.9829711  3 1.394750e-49        TRUE
-## 375  229.9829711  3 1.394750e-49        TRUE
-## 376  229.9829711  3 1.394750e-49        TRUE
-## 377  229.9829711  3 1.394750e-49        TRUE
-## 378  229.9829711  3 1.394750e-49        TRUE
-## 379  229.9829711  3 1.394750e-49        TRUE
-## 380  229.9829711  3 1.394750e-49        TRUE
-## 381  158.2378552  3 4.399472e-34        TRUE
-## 382  158.2378552  3 4.399472e-34        TRUE
-## 383  158.2378552  3 4.399472e-34        TRUE
-## 384  158.2378552  3 4.399472e-34        TRUE
-## 385  158.2378552  3 4.399472e-34        TRUE
-## 386  158.2378552  3 4.399472e-34        TRUE
-## 387  158.2378552  3 4.399472e-34        TRUE
-## 388  158.2378552  3 4.399472e-34        TRUE
-## 389  266.3386063  3 1.912428e-57        TRUE
-## 390  266.3386063  3 1.912428e-57        TRUE
-## 391  266.3386063  3 1.912428e-57        TRUE
-## 392  266.3386063  3 1.912428e-57        TRUE
-## 393  266.3386063  3 1.912428e-57        TRUE
-## 394  266.3386063  3 1.912428e-57        TRUE
-## 395  266.3386063  3 1.912428e-57        TRUE
-## 396  266.3386063  3 1.912428e-57        TRUE
-## 397  132.0148572  3 1.989952e-28        TRUE
-## 398  132.0148572  3 1.989952e-28        TRUE
-## 399  132.0148572  3 1.989952e-28        TRUE
-## 400  132.0148572  3 1.989952e-28        TRUE
-## 401  132.0148572  3 1.989952e-28        TRUE
-## 402  132.0148572  3 1.989952e-28        TRUE
-## 403  132.0148572  3 1.989952e-28        TRUE
-## 404  132.0148572  3 1.989952e-28        TRUE
-## 405  159.8472907  3 1.977363e-34        TRUE
-## 406  159.8472907  3 1.977363e-34        TRUE
-## 407  159.8472907  3 1.977363e-34        TRUE
-## 408  159.8472907  3 1.977363e-34        TRUE
-## 409  159.8472907  3 1.977363e-34        TRUE
-## 410  159.8472907  3 1.977363e-34        TRUE
-## 411  159.8472907  3 1.977363e-34        TRUE
-## 412  159.8472907  3 1.977363e-34        TRUE
-## 413  259.6457916  3 5.363231e-56        TRUE
-## 414  259.6457916  3 5.363231e-56        TRUE
-## 415  259.6457916  3 5.363231e-56        TRUE
-## 416  259.6457916  3 5.363231e-56        TRUE
-## 417  259.6457916  3 5.363231e-56        TRUE
-## 418  259.6457916  3 5.363231e-56        TRUE
-## 419  259.6457916  3 5.363231e-56        TRUE
-## 420  259.6457916  3 5.363231e-56        TRUE
-## 421   67.0912585  3 1.790299e-14        TRUE
-## 422   67.0912585  3 1.790299e-14        TRUE
-## 423   67.0912585  3 1.790299e-14        TRUE
-## 424   67.0912585  3 1.790299e-14        TRUE
-## 425   67.0912585  3 1.790299e-14        TRUE
-## 426   67.0912585  3 1.790299e-14        TRUE
-## 427   67.0912585  3 1.790299e-14        TRUE
-## 428   67.0912585  3 1.790299e-14        TRUE
-## 429  161.8094533  3 7.458048e-35        TRUE
-## 430  161.8094533  3 7.458048e-35        TRUE
-## 431  161.8094533  3 7.458048e-35        TRUE
-## 432  161.8094533  3 7.458048e-35        TRUE
-## 433  161.8094533  3 7.458048e-35        TRUE
-## 434  161.8094533  3 7.458048e-35        TRUE
-## 435  161.8094533  3 7.458048e-35        TRUE
-## 436  161.8094533  3 7.458048e-35        TRUE
-## 437  148.9476049  3 4.444085e-32        TRUE
-## 438  148.9476049  3 4.444085e-32        TRUE
-## 439  148.9476049  3 4.444085e-32        TRUE
-## 440  148.9476049  3 4.444085e-32        TRUE
-## 441  148.9476049  3 4.444085e-32        TRUE
-## 442  148.9476049  3 4.444085e-32        TRUE
-## 443  148.9476049  3 4.444085e-32        TRUE
-## 444  148.9476049  3 4.444085e-32        TRUE
-## 445  225.1881693  3 1.517536e-48        TRUE
-## 446  225.1881693  3 1.517536e-48        TRUE
-## 447  225.1881693  3 1.517536e-48        TRUE
-## 448  225.1881693  3 1.517536e-48        TRUE
-## 449  225.1881693  3 1.517536e-48        TRUE
-## 450  225.1881693  3 1.517536e-48        TRUE
-## 451  225.1881693  3 1.517536e-48        TRUE
-## 452  225.1881693  3 1.517536e-48        TRUE
-## 453  236.6022312  3 5.167159e-51        TRUE
-## 454  236.6022312  3 5.167159e-51        TRUE
-## 455  236.6022312  3 5.167159e-51        TRUE
-## 456  236.6022312  3 5.167159e-51        TRUE
-## 457  236.6022312  3 5.167159e-51        TRUE
-## 458  236.6022312  3 5.167159e-51        TRUE
-## 459  236.6022312  3 5.167159e-51        TRUE
-## 460  236.6022312  3 5.167159e-51        TRUE
-## 461   54.2398490  3 9.973834e-12        TRUE
-## 462   54.2398490  3 9.973834e-12        TRUE
-## 463   54.2398490  3 9.973834e-12        TRUE
-## 464   54.2398490  3 9.973834e-12        TRUE
-## 465   54.2398490  3 9.973834e-12        TRUE
-## 466   54.2398490  3 9.973834e-12        TRUE
-## 467   54.2398490  3 9.973834e-12        TRUE
-## 468   54.2398490  3 9.973834e-12        TRUE
-## 469   38.9257927  3 1.799642e-08        TRUE
-## 470   38.9257927  3 1.799642e-08        TRUE
-## 471   38.9257927  3 1.799642e-08        TRUE
-## 472   38.9257927  3 1.799642e-08        TRUE
-## 473   38.9257927  3 1.799642e-08        TRUE
-## 474   38.9257927  3 1.799642e-08        TRUE
-## 475   38.9257927  3 1.799642e-08        TRUE
-## 476   38.9257927  3 1.799642e-08        TRUE
-## 477   65.2383695  3 4.460361e-14        TRUE
-## 478   65.2383695  3 4.460361e-14        TRUE
-## 479   65.2383695  3 4.460361e-14        TRUE
-## 480   65.2383695  3 4.460361e-14        TRUE
-## 481   65.2383695  3 4.460361e-14        TRUE
-## 482   65.2383695  3 4.460361e-14        TRUE
-## 483   65.2383695  3 4.460361e-14        TRUE
-## 484   65.2383695  3 4.460361e-14        TRUE
-## 485  139.2833656  3 5.394812e-30        TRUE
-## 486  139.2833656  3 5.394812e-30        TRUE
-## 487  139.2833656  3 5.394812e-30        TRUE
-## 488  139.2833656  3 5.394812e-30        TRUE
-## 489  139.2833656  3 5.394812e-30        TRUE
-## 490  139.2833656  3 5.394812e-30        TRUE
-## 491  139.2833656  3 5.394812e-30        TRUE
-## 492  139.2833656  3 5.394812e-30        TRUE
-## 493   77.4065683  3 1.104617e-16        TRUE
-## 494   77.4065683  3 1.104617e-16        TRUE
-## 495   77.4065683  3 1.104617e-16        TRUE
-## 496   77.4065683  3 1.104617e-16        TRUE
-## 497   77.4065683  3 1.104617e-16        TRUE
-## 498   77.4065683  3 1.104617e-16        TRUE
-## 499   77.4065683  3 1.104617e-16        TRUE
-## 500   77.4065683  3 1.104617e-16        TRUE
-## 501  225.2633189  3 1.461815e-48        TRUE
-## 502  225.2633189  3 1.461815e-48        TRUE
-## 503  225.2633189  3 1.461815e-48        TRUE
-## 504  225.2633189  3 1.461815e-48        TRUE
-## 505  225.2633189  3 1.461815e-48        TRUE
-## 506  225.2633189  3 1.461815e-48        TRUE
-## 507  225.2633189  3 1.461815e-48        TRUE
-## 508  225.2633189  3 1.461815e-48        TRUE
-## 509   70.4534450  3 3.413171e-15        TRUE
-## 510   70.4534450  3 3.413171e-15        TRUE
-## 511   70.4534450  3 3.413171e-15        TRUE
-## 512   70.4534450  3 3.413171e-15        TRUE
-## 513   70.4534450  3 3.413171e-15        TRUE
-## 514   70.4534450  3 3.413171e-15        TRUE
-## 515   70.4534450  3 3.413171e-15        TRUE
-## 516   70.4534450  3 3.413171e-15        TRUE
-## 517   40.5536771  3 8.131573e-09        TRUE
-## 518   40.5536771  3 8.131573e-09        TRUE
-## 519   40.5536771  3 8.131573e-09        TRUE
-## 520   40.5536771  3 8.131573e-09        TRUE
-## 521   40.5536771  3 8.131573e-09        TRUE
-## 522   40.5536771  3 8.131573e-09        TRUE
-## 523   40.5536771  3 8.131573e-09        TRUE
-## 524   40.5536771  3 8.131573e-09        TRUE
-## 525  177.8763062  3 2.535545e-38        TRUE
-## 526  177.8763062  3 2.535545e-38        TRUE
-## 527  177.8763062  3 2.535545e-38        TRUE
-## 528  177.8763062  3 2.535545e-38        TRUE
-## 529    0.2579718  3 9.677288e-01       FALSE
-## 530    0.2579718  3 9.677288e-01       FALSE
-## 531    0.2579718  3 9.677288e-01       FALSE
-## 532    0.2579718  3 9.677288e-01       FALSE
-## 533  162.5589611  3 5.138815e-35        TRUE
-## 534  162.5589611  3 5.138815e-35        TRUE
-## 535  162.5589611  3 5.138815e-35        TRUE
-## 536  162.5589611  3 5.138815e-35        TRUE
-## 537  137.3991218  3 1.374735e-29        TRUE
-## 538  137.3991218  3 1.374735e-29        TRUE
-## 539  137.3991218  3 1.374735e-29        TRUE
-## 540  137.3991218  3 1.374735e-29        TRUE
-## 541  233.3368241  3 2.626235e-50        TRUE
-## 542  233.3368241  3 2.626235e-50        TRUE
-## 543  233.3368241  3 2.626235e-50        TRUE
-## 544  233.3368241  3 2.626235e-50        TRUE
-## 545  273.4387901  3 5.565074e-59        TRUE
-## 546  273.4387901  3 5.565074e-59        TRUE
-## 547  273.4387901  3 5.565074e-59        TRUE
-## 548  273.4387901  3 5.565074e-59        TRUE
-## 549  207.3781123  3 1.073534e-44        TRUE
-## 550  207.3781123  3 1.073534e-44        TRUE
-## 551  207.3781123  3 1.073534e-44        TRUE
-## 552  207.3781123  3 1.073534e-44        TRUE
-## 553  246.4339872  3 3.864397e-53        TRUE
-## 554  246.4339872  3 3.864397e-53        TRUE
-## 555  246.4339872  3 3.864397e-53        TRUE
-## 556  246.4339872  3 3.864397e-53        TRUE
-## 557  248.6455990  3 1.284579e-53        TRUE
-## 558  248.6455990  3 1.284579e-53        TRUE
-## 559  248.6455990  3 1.284579e-53        TRUE
-## 560  248.6455990  3 1.284579e-53        TRUE
-## 561  145.5429250  3 2.410709e-31        TRUE
-## 562  145.5429250  3 2.410709e-31        TRUE
-## 563  145.5429250  3 2.410709e-31        TRUE
-## 564  145.5429250  3 2.410709e-31        TRUE
-## 565   83.4060125  3 5.705184e-18        TRUE
-## 566   83.4060125  3 5.705184e-18        TRUE
-## 567   83.4060125  3 5.705184e-18        TRUE
-## 568   83.4060125  3 5.705184e-18        TRUE
-## 569  151.7005494  3 1.132173e-32        TRUE
-## 570  151.7005494  3 1.132173e-32        TRUE
-## 571  151.7005494  3 1.132173e-32        TRUE
-## 572  151.7005494  3 1.132173e-32        TRUE
-## 573   60.0583649  3 5.711856e-13        TRUE
-## 574   60.0583649  3 5.711856e-13        TRUE
-## 575   60.0583649  3 5.711856e-13        TRUE
-## 576   60.0583649  3 5.711856e-13        TRUE
-## 577  120.3800826  3 6.391140e-26        TRUE
-## 578  120.3800826  3 6.391140e-26        TRUE
-## 579  120.3800826  3 6.391140e-26        TRUE
-## 580  120.3800826  3 6.391140e-26        TRUE
-## 581  111.1120710  3 6.324092e-24        TRUE
-## 582  111.1120710  3 6.324092e-24        TRUE
-## 583  111.1120710  3 6.324092e-24        TRUE
-## 584  111.1120710  3 6.324092e-24        TRUE
-## 585  183.4476882  3 1.588127e-39        TRUE
-## 586  183.4476882  3 1.588127e-39        TRUE
-## 587  183.4476882  3 1.588127e-39        TRUE
-## 588  183.4476882  3 1.588127e-39        TRUE
-## 589  139.0147259  3 6.164493e-30        TRUE
-## 590  139.0147259  3 6.164493e-30        TRUE
-## 591  139.0147259  3 6.164493e-30        TRUE
-## 592  139.0147259  3 6.164493e-30        TRUE
-## 593  164.5321837  3 1.927399e-35        TRUE
-## 594  164.5321837  3 1.927399e-35        TRUE
-## 595  164.5321837  3 1.927399e-35        TRUE
-## 596  164.5321837  3 1.927399e-35        TRUE
-## 597  167.3838083  3 4.671285e-36        TRUE
-## 598  167.3838083  3 4.671285e-36        TRUE
-## 599  167.3838083  3 4.671285e-36        TRUE
-## 600  167.3838083  3 4.671285e-36        TRUE
-## 601  115.9099520  3 5.863726e-25        TRUE
-## 602  115.9099520  3 5.863726e-25        TRUE
-## 603  115.9099520  3 5.863726e-25        TRUE
-## 604  115.9099520  3 5.863726e-25        TRUE
-## 605  191.0940646  3 3.542174e-41        TRUE
-## 606  191.0940646  3 3.542174e-41        TRUE
-## 607  191.0940646  3 3.542174e-41        TRUE
-## 608  191.0940646  3 3.542174e-41        TRUE
-## 609   38.9257927  3 1.799642e-08        TRUE
-## 610   38.9257927  3 1.799642e-08        TRUE
-## 611   38.9257927  3 1.799642e-08        TRUE
-## 612   38.9257927  3 1.799642e-08        TRUE
-## 613   65.2383695  3 4.460361e-14        TRUE
-## 614   65.2383695  3 4.460361e-14        TRUE
-## 615   65.2383695  3 4.460361e-14        TRUE
-## 616   65.2383695  3 4.460361e-14        TRUE
-## 617  139.2833656  3 5.394812e-30        TRUE
-## 618  139.2833656  3 5.394812e-30        TRUE
-## 619  139.2833656  3 5.394812e-30        TRUE
-## 620  139.2833656  3 5.394812e-30        TRUE
-## 621   77.4065683  3 1.104617e-16        TRUE
-## 622   77.4065683  3 1.104617e-16        TRUE
-## 623   77.4065683  3 1.104617e-16        TRUE
-## 624   77.4065683  3 1.104617e-16        TRUE
-## 625  225.2633189  3 1.461815e-48        TRUE
-## 626  225.2633189  3 1.461815e-48        TRUE
-## 627  225.2633189  3 1.461815e-48        TRUE
-## 628  225.2633189  3 1.461815e-48        TRUE
-## 629   70.4534450  3 3.413171e-15        TRUE
-## 630   70.4534450  3 3.413171e-15        TRUE
-## 631   70.4534450  3 3.413171e-15        TRUE
-## 632   70.4534450  3 3.413171e-15        TRUE
-## 633  140.3769802  3 3.134552e-30        TRUE
-## 634  140.3769802  3 3.134552e-30        TRUE
-## 635  140.3769802  3 3.134552e-30        TRUE
-## 636  140.3769802  3 3.134552e-30        TRUE
-## 637  103.0080264  3 3.504477e-22        TRUE
-## 638  103.0080264  3 3.504477e-22        TRUE
-## 639  103.0080264  3 3.504477e-22        TRUE
-## 640  103.0080264  3 3.504477e-22        TRUE
-## 641  125.6298954  3 4.728441e-27        TRUE
-## 642  125.6298954  3 4.728441e-27        TRUE
-## 643  125.6298954  3 4.728441e-27        TRUE
-## 644  125.6298954  3 4.728441e-27        TRUE
-## 645  123.5794821  3 1.307502e-26        TRUE
-## 646  123.5794821  3 1.307502e-26        TRUE
-## 647  123.5794821  3 1.307502e-26        TRUE
-## 648  123.5794821  3 1.307502e-26        TRUE
-## 649  229.9829711  3 1.394750e-49        TRUE
-## 650  229.9829711  3 1.394750e-49        TRUE
-## 651  229.9829711  3 1.394750e-49        TRUE
-## 652  229.9829711  3 1.394750e-49        TRUE
-## 653  158.2378552  3 4.399472e-34        TRUE
-## 654  158.2378552  3 4.399472e-34        TRUE
-## 655  158.2378552  3 4.399472e-34        TRUE
-## 656  158.2378552  3 4.399472e-34        TRUE
-## 657  266.3386063  3 1.912428e-57        TRUE
-## 658  266.3386063  3 1.912428e-57        TRUE
-## 659  266.3386063  3 1.912428e-57        TRUE
-## 660  266.3386063  3 1.912428e-57        TRUE
-## 661  132.0148572  3 1.989952e-28        TRUE
-## 662  132.0148572  3 1.989952e-28        TRUE
-## 663  132.0148572  3 1.989952e-28        TRUE
-## 664  132.0148572  3 1.989952e-28        TRUE
-## 665  159.8472907  3 1.977363e-34        TRUE
-## 666  159.8472907  3 1.977363e-34        TRUE
-## 667  159.8472907  3 1.977363e-34        TRUE
-## 668  159.8472907  3 1.977363e-34        TRUE
-## 669  259.6457916  3 5.363231e-56        TRUE
-## 670  259.6457916  3 5.363231e-56        TRUE
-## 671  259.6457916  3 5.363231e-56        TRUE
-## 672  259.6457916  3 5.363231e-56        TRUE
-## 673   67.0912585  3 1.790299e-14        TRUE
-## 674   67.0912585  3 1.790299e-14        TRUE
-## 675   67.0912585  3 1.790299e-14        TRUE
-## 676   67.0912585  3 1.790299e-14        TRUE
-## 677  161.8094533  3 7.458048e-35        TRUE
-## 678  161.8094533  3 7.458048e-35        TRUE
-## 679  161.8094533  3 7.458048e-35        TRUE
-## 680  161.8094533  3 7.458048e-35        TRUE
-## 681  148.9476049  3 4.444085e-32        TRUE
-## 682  148.9476049  3 4.444085e-32        TRUE
-## 683  148.9476049  3 4.444085e-32        TRUE
-## 684  148.9476049  3 4.444085e-32        TRUE
-## 685  225.1881693  3 1.517536e-48        TRUE
-## 686  225.1881693  3 1.517536e-48        TRUE
-## 687  225.1881693  3 1.517536e-48        TRUE
-## 688  225.1881693  3 1.517536e-48        TRUE
-## 689  236.6022312  3 5.167159e-51        TRUE
-## 690  236.6022312  3 5.167159e-51        TRUE
-## 691  236.6022312  3 5.167159e-51        TRUE
-## 692  236.6022312  3 5.167159e-51        TRUE
-## 693   54.2398490  3 9.973834e-12        TRUE
-## 694   54.2398490  3 9.973834e-12        TRUE
-## 695   54.2398490  3 9.973834e-12        TRUE
-## 696   54.2398490  3 9.973834e-12        TRUE
-## 697  162.5589611  3 5.138815e-35        TRUE
-## 698  162.5589611  3 5.138815e-35        TRUE
-## 699  162.5589611  3 5.138815e-35        TRUE
-## 700  162.5589611  3 5.138815e-35        TRUE
-## 701  162.5589611  3 5.138815e-35        TRUE
-## 702  162.5589611  3 5.138815e-35        TRUE
-## 703  162.5589611  3 5.138815e-35        TRUE
-## 704  162.5589611  3 5.138815e-35        TRUE
-## 705  137.3991218  3 1.374735e-29        TRUE
-## 706  137.3991218  3 1.374735e-29        TRUE
-## 707  137.3991218  3 1.374735e-29        TRUE
-## 708  137.3991218  3 1.374735e-29        TRUE
-## 709  137.3991218  3 1.374735e-29        TRUE
-## 710  137.3991218  3 1.374735e-29        TRUE
-## 711  137.3991218  3 1.374735e-29        TRUE
-## 712  137.3991218  3 1.374735e-29        TRUE
-## 713  233.3368241  3 2.626235e-50        TRUE
-## 714  233.3368241  3 2.626235e-50        TRUE
-## 715  233.3368241  3 2.626235e-50        TRUE
-## 716  233.3368241  3 2.626235e-50        TRUE
-## 717  233.3368241  3 2.626235e-50        TRUE
-## 718  233.3368241  3 2.626235e-50        TRUE
-## 719  233.3368241  3 2.626235e-50        TRUE
-## 720  233.3368241  3 2.626235e-50        TRUE
-## 721  273.4387901  3 5.565074e-59        TRUE
-## 722  273.4387901  3 5.565074e-59        TRUE
-## 723  273.4387901  3 5.565074e-59        TRUE
-## 724  273.4387901  3 5.565074e-59        TRUE
-## 725  273.4387901  3 5.565074e-59        TRUE
-## 726  273.4387901  3 5.565074e-59        TRUE
-## 727  273.4387901  3 5.565074e-59        TRUE
-## 728  273.4387901  3 5.565074e-59        TRUE
-## 729  207.3781123  3 1.073534e-44        TRUE
-## 730  207.3781123  3 1.073534e-44        TRUE
-## 731  207.3781123  3 1.073534e-44        TRUE
-## 732  207.3781123  3 1.073534e-44        TRUE
-## 733  207.3781123  3 1.073534e-44        TRUE
-## 734  207.3781123  3 1.073534e-44        TRUE
-## 735  207.3781123  3 1.073534e-44        TRUE
-## 736  207.3781123  3 1.073534e-44        TRUE
-## 737  246.4339872  3 3.864397e-53        TRUE
-## 738  246.4339872  3 3.864397e-53        TRUE
-## 739  246.4339872  3 3.864397e-53        TRUE
-## 740  246.4339872  3 3.864397e-53        TRUE
-## 741  246.4339872  3 3.864397e-53        TRUE
-## 742  246.4339872  3 3.864397e-53        TRUE
-## 743  246.4339872  3 3.864397e-53        TRUE
-## 744  246.4339872  3 3.864397e-53        TRUE
-## 745  248.6455990  3 1.284579e-53        TRUE
-## 746  248.6455990  3 1.284579e-53        TRUE
-## 747  248.6455990  3 1.284579e-53        TRUE
-## 748  248.6455990  3 1.284579e-53        TRUE
-## 749  248.6455990  3 1.284579e-53        TRUE
-## 750  248.6455990  3 1.284579e-53        TRUE
-## 751  248.6455990  3 1.284579e-53        TRUE
-## 752  248.6455990  3 1.284579e-53        TRUE
-## 753  145.5429250  3 2.410709e-31        TRUE
-## 754  145.5429250  3 2.410709e-31        TRUE
-## 755  145.5429250  3 2.410709e-31        TRUE
-## 756  145.5429250  3 2.410709e-31        TRUE
-## 757  145.5429250  3 2.410709e-31        TRUE
-## 758  145.5429250  3 2.410709e-31        TRUE
-## 759  145.5429250  3 2.410709e-31        TRUE
-## 760  145.5429250  3 2.410709e-31        TRUE
-## 761   83.4060125  3 5.705184e-18        TRUE
-## 762   83.4060125  3 5.705184e-18        TRUE
-## 763   83.4060125  3 5.705184e-18        TRUE
-## 764   83.4060125  3 5.705184e-18        TRUE
-## 765   83.4060125  3 5.705184e-18        TRUE
-## 766   83.4060125  3 5.705184e-18        TRUE
-## 767   83.4060125  3 5.705184e-18        TRUE
-## 768   83.4060125  3 5.705184e-18        TRUE
-## 769  151.7005494  3 1.132173e-32        TRUE
-## 770  151.7005494  3 1.132173e-32        TRUE
-## 771  151.7005494  3 1.132173e-32        TRUE
-## 772  151.7005494  3 1.132173e-32        TRUE
-## 773  151.7005494  3 1.132173e-32        TRUE
-## 774  151.7005494  3 1.132173e-32        TRUE
-## 775  151.7005494  3 1.132173e-32        TRUE
-## 776  151.7005494  3 1.132173e-32        TRUE
-## 777   60.0583649  3 5.711856e-13        TRUE
-## 778   60.0583649  3 5.711856e-13        TRUE
-## 779   60.0583649  3 5.711856e-13        TRUE
-## 780   60.0583649  3 5.711856e-13        TRUE
-## 781   60.0583649  3 5.711856e-13        TRUE
-## 782   60.0583649  3 5.711856e-13        TRUE
-## 783   60.0583649  3 5.711856e-13        TRUE
-## 784   60.0583649  3 5.711856e-13        TRUE
-## 785  120.3800826  3 6.391140e-26        TRUE
-## 786  120.3800826  3 6.391140e-26        TRUE
-## 787  120.3800826  3 6.391140e-26        TRUE
-## 788  120.3800826  3 6.391140e-26        TRUE
-## 789  120.3800826  3 6.391140e-26        TRUE
-## 790  120.3800826  3 6.391140e-26        TRUE
-## 791  120.3800826  3 6.391140e-26        TRUE
-## 792  120.3800826  3 6.391140e-26        TRUE
-## 793  111.1120710  3 6.324092e-24        TRUE
-## 794  111.1120710  3 6.324092e-24        TRUE
-## 795  111.1120710  3 6.324092e-24        TRUE
-## 796  111.1120710  3 6.324092e-24        TRUE
-## 797  111.1120710  3 6.324092e-24        TRUE
-## 798  111.1120710  3 6.324092e-24        TRUE
-## 799  111.1120710  3 6.324092e-24        TRUE
-## 800  111.1120710  3 6.324092e-24        TRUE
-## 801  183.4476882  3 1.588127e-39        TRUE
-## 802  183.4476882  3 1.588127e-39        TRUE
-## 803  183.4476882  3 1.588127e-39        TRUE
-## 804  183.4476882  3 1.588127e-39        TRUE
-## 805  183.4476882  3 1.588127e-39        TRUE
-## 806  183.4476882  3 1.588127e-39        TRUE
-## 807  183.4476882  3 1.588127e-39        TRUE
-## 808  183.4476882  3 1.588127e-39        TRUE
-## 809  139.0147259  3 6.164493e-30        TRUE
-## 810  139.0147259  3 6.164493e-30        TRUE
-## 811  139.0147259  3 6.164493e-30        TRUE
-## 812  139.0147259  3 6.164493e-30        TRUE
-## 813  139.0147259  3 6.164493e-30        TRUE
-## 814  139.0147259  3 6.164493e-30        TRUE
-## 815  139.0147259  3 6.164493e-30        TRUE
-## 816  139.0147259  3 6.164493e-30        TRUE
-## 817  164.5321837  3 1.927399e-35        TRUE
-## 818  164.5321837  3 1.927399e-35        TRUE
-## 819  164.5321837  3 1.927399e-35        TRUE
-## 820  164.5321837  3 1.927399e-35        TRUE
-## 821  164.5321837  3 1.927399e-35        TRUE
-## 822  164.5321837  3 1.927399e-35        TRUE
-## 823  164.5321837  3 1.927399e-35        TRUE
-## 824  164.5321837  3 1.927399e-35        TRUE
-## 825  167.3838083  3 4.671285e-36        TRUE
-## 826  167.3838083  3 4.671285e-36        TRUE
-## 827  167.3838083  3 4.671285e-36        TRUE
-## 828  167.3838083  3 4.671285e-36        TRUE
-## 829  167.3838083  3 4.671285e-36        TRUE
-## 830  167.3838083  3 4.671285e-36        TRUE
-## 831  167.3838083  3 4.671285e-36        TRUE
-## 832  167.3838083  3 4.671285e-36        TRUE
-## 833  115.9099520  3 5.863726e-25        TRUE
-## 834  115.9099520  3 5.863726e-25        TRUE
-## 835  115.9099520  3 5.863726e-25        TRUE
-## 836  115.9099520  3 5.863726e-25        TRUE
-## 837  115.9099520  3 5.863726e-25        TRUE
-## 838  115.9099520  3 5.863726e-25        TRUE
-## 839  115.9099520  3 5.863726e-25        TRUE
-## 840  115.9099520  3 5.863726e-25        TRUE
-## 841  191.0940646  3 3.542174e-41        TRUE
-## 842  191.0940646  3 3.542174e-41        TRUE
-## 843  191.0940646  3 3.542174e-41        TRUE
-## 844  191.0940646  3 3.542174e-41        TRUE
-## 845  191.0940646  3 3.542174e-41        TRUE
-## 846  191.0940646  3 3.542174e-41        TRUE
-## 847  191.0940646  3 3.542174e-41        TRUE
-## 848  191.0940646  3 3.542174e-41        TRUE
-## 849  140.3769802  3 3.134552e-30        TRUE
-## 850  140.3769802  3 3.134552e-30        TRUE
-## 851  140.3769802  3 3.134552e-30        TRUE
-## 852  140.3769802  3 3.134552e-30        TRUE
-## 853  140.3769802  3 3.134552e-30        TRUE
-## 854  140.3769802  3 3.134552e-30        TRUE
-## 855  140.3769802  3 3.134552e-30        TRUE
-## 856  140.3769802  3 3.134552e-30        TRUE
-## 857  103.0080264  3 3.504477e-22        TRUE
-## 858  103.0080264  3 3.504477e-22        TRUE
-## 859  103.0080264  3 3.504477e-22        TRUE
-## 860  103.0080264  3 3.504477e-22        TRUE
-## 861  103.0080264  3 3.504477e-22        TRUE
-## 862  103.0080264  3 3.504477e-22        TRUE
-## 863  103.0080264  3 3.504477e-22        TRUE
-## 864  103.0080264  3 3.504477e-22        TRUE
-## 865  125.6298954  3 4.728441e-27        TRUE
-## 866  125.6298954  3 4.728441e-27        TRUE
-## 867  125.6298954  3 4.728441e-27        TRUE
-## 868  125.6298954  3 4.728441e-27        TRUE
-## 869  125.6298954  3 4.728441e-27        TRUE
-## 870  125.6298954  3 4.728441e-27        TRUE
-## 871  125.6298954  3 4.728441e-27        TRUE
-## 872  125.6298954  3 4.728441e-27        TRUE
-## 873  123.5794821  3 1.307502e-26        TRUE
-## 874  123.5794821  3 1.307502e-26        TRUE
-## 875  123.5794821  3 1.307502e-26        TRUE
-## 876  123.5794821  3 1.307502e-26        TRUE
-## 877  123.5794821  3 1.307502e-26        TRUE
-## 878  123.5794821  3 1.307502e-26        TRUE
-## 879  123.5794821  3 1.307502e-26        TRUE
-## 880  123.5794821  3 1.307502e-26        TRUE
-## 881  229.9829711  3 1.394750e-49        TRUE
-## 882  229.9829711  3 1.394750e-49        TRUE
-## 883  229.9829711  3 1.394750e-49        TRUE
-## 884  229.9829711  3 1.394750e-49        TRUE
-## 885  229.9829711  3 1.394750e-49        TRUE
-## 886  229.9829711  3 1.394750e-49        TRUE
-## 887  229.9829711  3 1.394750e-49        TRUE
-## 888  229.9829711  3 1.394750e-49        TRUE
-## 889  158.2378552  3 4.399472e-34        TRUE
-## 890  158.2378552  3 4.399472e-34        TRUE
-## 891  158.2378552  3 4.399472e-34        TRUE
-## 892  158.2378552  3 4.399472e-34        TRUE
-## 893  158.2378552  3 4.399472e-34        TRUE
-## 894  158.2378552  3 4.399472e-34        TRUE
-## 895  158.2378552  3 4.399472e-34        TRUE
-## 896  158.2378552  3 4.399472e-34        TRUE
-## 897  266.3386063  3 1.912428e-57        TRUE
-## 898  266.3386063  3 1.912428e-57        TRUE
-## 899  266.3386063  3 1.912428e-57        TRUE
-## 900  266.3386063  3 1.912428e-57        TRUE
-## 901  266.3386063  3 1.912428e-57        TRUE
-## 902  266.3386063  3 1.912428e-57        TRUE
-## 903  266.3386063  3 1.912428e-57        TRUE
-## 904  266.3386063  3 1.912428e-57        TRUE
-## 905  132.0148572  3 1.989952e-28        TRUE
-## 906  132.0148572  3 1.989952e-28        TRUE
-## 907  132.0148572  3 1.989952e-28        TRUE
-## 908  132.0148572  3 1.989952e-28        TRUE
-## 909  132.0148572  3 1.989952e-28        TRUE
-## 910  132.0148572  3 1.989952e-28        TRUE
-## 911  132.0148572  3 1.989952e-28        TRUE
-## 912  132.0148572  3 1.989952e-28        TRUE
-## 913  159.8472907  3 1.977363e-34        TRUE
-## 914  159.8472907  3 1.977363e-34        TRUE
-## 915  159.8472907  3 1.977363e-34        TRUE
-## 916  159.8472907  3 1.977363e-34        TRUE
-## 917  159.8472907  3 1.977363e-34        TRUE
-## 918  159.8472907  3 1.977363e-34        TRUE
-## 919  159.8472907  3 1.977363e-34        TRUE
-## 920  159.8472907  3 1.977363e-34        TRUE
-## 921  259.6457916  3 5.363231e-56        TRUE
-## 922  259.6457916  3 5.363231e-56        TRUE
-## 923  259.6457916  3 5.363231e-56        TRUE
-## 924  259.6457916  3 5.363231e-56        TRUE
-## 925  259.6457916  3 5.363231e-56        TRUE
-## 926  259.6457916  3 5.363231e-56        TRUE
-## 927  259.6457916  3 5.363231e-56        TRUE
-## 928  259.6457916  3 5.363231e-56        TRUE
-## 929   67.0912585  3 1.790299e-14        TRUE
-## 930   67.0912585  3 1.790299e-14        TRUE
-## 931   67.0912585  3 1.790299e-14        TRUE
-## 932   67.0912585  3 1.790299e-14        TRUE
-## 933   67.0912585  3 1.790299e-14        TRUE
-## 934   67.0912585  3 1.790299e-14        TRUE
-## 935   67.0912585  3 1.790299e-14        TRUE
-## 936   67.0912585  3 1.790299e-14        TRUE
-## 937  161.8094533  3 7.458048e-35        TRUE
-## 938  161.8094533  3 7.458048e-35        TRUE
-## 939  161.8094533  3 7.458048e-35        TRUE
-## 940  161.8094533  3 7.458048e-35        TRUE
-## 941  161.8094533  3 7.458048e-35        TRUE
-## 942  161.8094533  3 7.458048e-35        TRUE
-## 943  161.8094533  3 7.458048e-35        TRUE
-## 944  161.8094533  3 7.458048e-35        TRUE
-## 945  148.9476049  3 4.444085e-32        TRUE
-## 946  148.9476049  3 4.444085e-32        TRUE
-## 947  148.9476049  3 4.444085e-32        TRUE
-## 948  148.9476049  3 4.444085e-32        TRUE
-## 949  148.9476049  3 4.444085e-32        TRUE
-## 950  148.9476049  3 4.444085e-32        TRUE
-## 951  148.9476049  3 4.444085e-32        TRUE
-## 952  148.9476049  3 4.444085e-32        TRUE
-## 953  225.1881693  3 1.517536e-48        TRUE
-## 954  225.1881693  3 1.517536e-48        TRUE
-## 955  225.1881693  3 1.517536e-48        TRUE
-## 956  225.1881693  3 1.517536e-48        TRUE
-## 957  225.1881693  3 1.517536e-48        TRUE
-## 958  225.1881693  3 1.517536e-48        TRUE
-## 959  225.1881693  3 1.517536e-48        TRUE
-## 960  225.1881693  3 1.517536e-48        TRUE
-## 961  236.6022312  3 5.167159e-51        TRUE
-## 962  236.6022312  3 5.167159e-51        TRUE
-## 963  236.6022312  3 5.167159e-51        TRUE
-## 964  236.6022312  3 5.167159e-51        TRUE
-## 965  236.6022312  3 5.167159e-51        TRUE
-## 966  236.6022312  3 5.167159e-51        TRUE
-## 967  236.6022312  3 5.167159e-51        TRUE
-## 968  236.6022312  3 5.167159e-51        TRUE
-## 969   54.2398490  3 9.973834e-12        TRUE
-## 970   54.2398490  3 9.973834e-12        TRUE
-## 971   54.2398490  3 9.973834e-12        TRUE
-## 972   54.2398490  3 9.973834e-12        TRUE
-## 973   54.2398490  3 9.973834e-12        TRUE
-## 974   54.2398490  3 9.973834e-12        TRUE
-## 975   54.2398490  3 9.973834e-12        TRUE
-## 976   54.2398490  3 9.973834e-12        TRUE
-## 977   38.9257927  3 1.799642e-08        TRUE
-## 978   38.9257927  3 1.799642e-08        TRUE
-## 979   38.9257927  3 1.799642e-08        TRUE
-## 980   38.9257927  3 1.799642e-08        TRUE
-## 981   38.9257927  3 1.799642e-08        TRUE
-## 982   38.9257927  3 1.799642e-08        TRUE
-## 983   38.9257927  3 1.799642e-08        TRUE
-## 984   38.9257927  3 1.799642e-08        TRUE
-## 985   65.2383695  3 4.460361e-14        TRUE
-## 986   65.2383695  3 4.460361e-14        TRUE
-## 987   65.2383695  3 4.460361e-14        TRUE
-## 988   65.2383695  3 4.460361e-14        TRUE
-## 989   65.2383695  3 4.460361e-14        TRUE
-## 990   65.2383695  3 4.460361e-14        TRUE
-## 991   65.2383695  3 4.460361e-14        TRUE
-## 992   65.2383695  3 4.460361e-14        TRUE
-## 993  139.2833656  3 5.394812e-30        TRUE
-## 994  139.2833656  3 5.394812e-30        TRUE
-## 995  139.2833656  3 5.394812e-30        TRUE
-## 996  139.2833656  3 5.394812e-30        TRUE
-## 997  139.2833656  3 5.394812e-30        TRUE
-## 998  139.2833656  3 5.394812e-30        TRUE
-## 999  139.2833656  3 5.394812e-30        TRUE
-## 1000 139.2833656  3 5.394812e-30        TRUE
-## 1001  77.4065683  3 1.104617e-16        TRUE
-## 1002  77.4065683  3 1.104617e-16        TRUE
-## 1003  77.4065683  3 1.104617e-16        TRUE
-## 1004  77.4065683  3 1.104617e-16        TRUE
-## 1005  77.4065683  3 1.104617e-16        TRUE
-## 1006  77.4065683  3 1.104617e-16        TRUE
-## 1007  77.4065683  3 1.104617e-16        TRUE
-## 1008  77.4065683  3 1.104617e-16        TRUE
-## 1009 225.2633189  3 1.461815e-48        TRUE
-## 1010 225.2633189  3 1.461815e-48        TRUE
-## 1011 225.2633189  3 1.461815e-48        TRUE
-## 1012 225.2633189  3 1.461815e-48        TRUE
-## 1013 225.2633189  3 1.461815e-48        TRUE
-## 1014 225.2633189  3 1.461815e-48        TRUE
-## 1015 225.2633189  3 1.461815e-48        TRUE
-## 1016 225.2633189  3 1.461815e-48        TRUE
-## 1017  70.4534450  3 3.413171e-15        TRUE
-## 1018  70.4534450  3 3.413171e-15        TRUE
-## 1019  70.4534450  3 3.413171e-15        TRUE
-## 1020  70.4534450  3 3.413171e-15        TRUE
-## 1021  70.4534450  3 3.413171e-15        TRUE
-## 1022  70.4534450  3 3.413171e-15        TRUE
-## 1023  70.4534450  3 3.413171e-15        TRUE
-## 1024  70.4534450  3 3.413171e-15        TRUE
-## 1025  40.5536771  3 8.131573e-09        TRUE
-## 1026  40.5536771  3 8.131573e-09        TRUE
-## 1027  40.5536771  3 8.131573e-09        TRUE
-## 1028  40.5536771  3 8.131573e-09        TRUE
-## 1029  40.5536771  3 8.131573e-09        TRUE
-## 1030  40.5536771  3 8.131573e-09        TRUE
-## 1031  40.5536771  3 8.131573e-09        TRUE
-## 1032  40.5536771  3 8.131573e-09        TRUE
-## 1033 177.8763062  3 2.535545e-38        TRUE
-## 1034 177.8763062  3 2.535545e-38        TRUE
-## 1035 177.8763062  3 2.535545e-38        TRUE
-## 1036 177.8763062  3 2.535545e-38        TRUE</code></pre>
+str(combined_kruskal)</code></pre>
+<pre><code>## &#39;data.frame&#39;:    1036 obs. of  8 variables:
+##  $ Typology   : chr  &quot;Pooled Water&quot; &quot;Baseline Tributaries&quot; &quot;Developed Tributaries&quot; &quot;Main Stem&quot; ...
+##  $ dat[[v]]   : num  352.5 246.1 228.9 93.3 302 ...
+##  $ groups     : chr  &quot;a&quot; &quot;b&quot; &quot;b&quot; &quot;c&quot; ...
+##  $ Variable   : chr  &quot;Relative_elevation_m&quot; &quot;Relative_elevation_m&quot; &quot;Relative_elevation_m&quot; &quot;Relative_elevation_m&quot; ...
+##  $ Chi_sq     : num  186 186 186 186 134 ...
+##  $ df         : num  3 3 3 3 3 3 3 3 3 3 ...
+##  $ p_value    : num  4.72e-40 4.72e-40 4.72e-40 4.72e-40 6.39e-29 ...
+##  $ Significant: logi  TRUE TRUE TRUE TRUE TRUE TRUE ...</code></pre>
 <p>Export to excel</p>
 <pre class="r"><code>library(openxlsx)
 

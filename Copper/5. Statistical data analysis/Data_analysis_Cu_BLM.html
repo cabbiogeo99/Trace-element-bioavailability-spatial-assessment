@@ -792,138 +792,15 @@ determine their standardized beta coefficients using the formula:</p>
 log-transformed variables)</p>
 <div id="build-and-select-the-mlr" class="section level2">
 <h2>1. Build and select the MLR</h2>
+<p>Use log-transformed variables to build a large model, stepwise select
+a better model, calculate standardized beta coefficients, variance
+inflation factors (VIF), and relative importance on bioavailability</p>
 <pre class="r"><code>library(MASS)</code></pre>
 <pre><code>## 
 ## Attaching package: &#39;MASS&#39;</code></pre>
 <pre><code>## The following object is masked from &#39;package:dplyr&#39;:
 ## 
 ##     select</code></pre>
-<pre class="r"><code># BLM predictors
-vars_to_select &lt;- c(&quot;log_Cu_uM&quot;, &quot;log_Temp_C&quot;, &quot;pH&quot;, &quot;log_DOC_uM&quot;,
-                    &quot;log_DIC_uM&quot;, &quot;log_Cl_uM&quot;, &quot;log_Ca_uM&quot;, 
-                    &quot;log_Mg_uM&quot;, &quot;log_SO4_uM&quot;, &quot;log_Na_uM&quot;, 
-                    &quot;log_K_uM&quot;)
-
-# Scale these variables
-scaled_blm_predict &lt;- as.data.frame(
-  scale(dat[vars_to_select])
-)
-
-# Scale the response variable
-scaled_response &lt;- as.numeric(scale(dat$log_TBL_Cu_nmol_g))
-
-# Build the large model
-mod &lt;- lm(
-  scaled_response ~ .,
-  data = scaled_blm_predict
-)
-
-# Step-wise select the best model
-step.mod &lt;- stepAIC(mod, direction = &quot;both&quot;, trace = FALSE)
-mod_summary &lt;- summary(step.mod)
-
-# View summary of selected model
-mod_summary</code></pre>
-<pre><code>## 
-## Call:
-## lm(formula = scaled_response ~ log_Cu_uM + log_Temp_C + pH + 
-##     log_DOC_uM + log_Cl_uM + log_Ca_uM + log_Mg_uM + log_SO4_uM, 
-##     data = scaled_blm_predict)
-## 
-## Residuals:
-##      Min       1Q   Median       3Q      Max 
-## -0.53144 -0.03877 -0.00395  0.04071  0.97508 
-## 
-## Coefficients:
-##               Estimate Std. Error t value Pr(&gt;|t|)    
-## (Intercept) -6.594e-17  5.537e-03   0.000 1.000000    
-## log_Cu_uM    1.355e+00  8.722e-03 155.321  &lt; 2e-16 ***
-## log_Temp_C  -5.188e-02  6.027e-03  -8.608  &lt; 2e-16 ***
-## pH          -5.556e-01  6.468e-03 -85.898  &lt; 2e-16 ***
-## log_DOC_uM  -6.858e-01  8.368e-03 -81.954  &lt; 2e-16 ***
-## log_Cl_uM   -4.945e-02  8.176e-03  -6.048 3.53e-09 ***
-## log_Ca_uM   -3.321e-02  1.021e-02  -3.252 0.001250 ** 
-## log_Mg_uM   -1.998e-02  1.096e-02  -1.823 0.069102 .  
-## log_SO4_uM   3.405e-02  9.043e-03   3.766 0.000193 ***
-## ---
-## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
-## 
-## Residual standard error: 0.1088 on 377 degrees of freedom
-## Multiple R-squared:  0.9884, Adjusted R-squared:  0.9882 
-## F-statistic:  4020 on 8 and 377 DF,  p-value: &lt; 2.2e-16</code></pre>
-</div>
-<div id="quality-checks" class="section level2">
-<h2>2. Quality checks</h2>
-<div id="i.-multicollinearity-among-independent-variables" class="section level3">
-<h3>i. Multicollinearity among independent variables</h3>
-<pre class="r"><code>library(dplyr)
-library(corrplot)</code></pre>
-<pre><code>## corrplot 0.95 loaded</code></pre>
-<pre class="r"><code># Create correlation matrix from DATA, not names
-cor_matrix &lt;- cor(
-  scaled_blm_predict,
-  method = &quot;spearman&quot;
-)
-
-# Save as png inside the folder
-
-# Define output directory
-out_dir &lt;- &quot;Multiple linear regression plots&quot;
-# Create directory if it does not exist
-if (!dir.exists(out_dir)) {
-  dir.create(out_dir, recursive = TRUE)
-}
-
-png(
-  file.path(out_dir, &quot;Spearman_correlation_scaled_log_BLM_predictors.png&quot;),
-  width = 2000,
-  height = 2500,
-  res = 300
-)
-
-corrplot(
-  cor_matrix, 
-  method = &quot;color&quot;,
-  type = &quot;lower&quot;,
-  tl.cex = 0.7,
-  tl.col = &quot;black&quot;,
-  addCoef.col = &quot;black&quot;,
-  number.cex = 0.6
-)
-
-title(
-  main = &quot;Spearman Correlation Matrix of Scaled Log BLM Predictors&quot;,
-  line = 2
-)
-
-dev.off()</code></pre>
-<pre><code>## png 
-##   2</code></pre>
-</div>
-<div id="ii.-homoscedasticity-of-fitted-vs.-residual-plots-and-normality-of-residuals-on-the-dependent-variable" class="section level3">
-<h3>ii. Homoscedasticity of fitted vs. residual plots and Normality of
-residuals on the dependent variable</h3>
-<pre class="r"><code># Save as png inside the folder
-png(
-  file.path(out_dir, &quot;Quality_checks_MLR.png&quot;),
-  width = 2000,
-  height = 2000,
-  res = 300
-)
-
-# Build plot
-par(mfrow = c(2, 2))   # 2 rows, 2 columns
-step.mod_plots &lt;- plot(step.mod)
-
-# View
-step.mod_plots</code></pre>
-<pre><code>## NULL</code></pre>
-<pre class="r"><code>dev.off()</code></pre>
-<pre><code>## png 
-##   2</code></pre>
-</div>
-<div id="iii.-variance-inflation-factors" class="section level3">
-<h3>iii. Variance inflation factors</h3>
 <pre class="r"><code>library(car)</code></pre>
 <pre><code>## Loading required package: carData</code></pre>
 <pre><code>## 
@@ -934,23 +811,132 @@ step.mod_plots</code></pre>
 <pre><code>## The following object is masked from &#39;package:dplyr&#39;:
 ## 
 ##     recode</code></pre>
-<pre class="r"><code>vif_coeff &lt;- vif(step.mod)
-vif_coeff</code></pre>
-<pre><code>##  log_Cu_uM log_Temp_C         pH log_DOC_uM  log_Cl_uM  log_Ca_uM  log_Mg_uM 
-##   2.474989   1.181797   1.360956   2.278121   2.174771   3.393791   3.906541 
-## log_SO4_uM 
-##   2.660258</code></pre>
+<pre class="r"><code>library(lm.beta)
+library(relaimpo)</code></pre>
+<pre><code>## Loading required package: boot</code></pre>
+<pre><code>## 
+## Attaching package: &#39;boot&#39;</code></pre>
+<pre><code>## The following object is masked from &#39;package:car&#39;:
+## 
+##     logit</code></pre>
+<pre><code>## The following object is masked from &#39;package:psych&#39;:
+## 
+##     logit</code></pre>
+<pre><code>## Loading required package: survey</code></pre>
+<pre><code>## Loading required package: grid</code></pre>
+<pre><code>## Loading required package: Matrix</code></pre>
+<pre><code>## 
+## Attaching package: &#39;Matrix&#39;</code></pre>
+<pre><code>## The following objects are masked from &#39;package:tidyr&#39;:
+## 
+##     expand, pack, unpack</code></pre>
+<pre><code>## Loading required package: survival</code></pre>
+<pre><code>## 
+## Attaching package: &#39;survival&#39;</code></pre>
+<pre><code>## The following object is masked from &#39;package:boot&#39;:
+## 
+##     aml</code></pre>
+<pre><code>## 
+## Attaching package: &#39;survey&#39;</code></pre>
+<pre><code>## The following object is masked from &#39;package:graphics&#39;:
+## 
+##     dotchart</code></pre>
+<pre><code>## Loading required package: mitools</code></pre>
+<pre><code>## This is the global version of package relaimpo.</code></pre>
+<pre><code>## If you are a non-US user, a version with the interesting additional metric pmvd is available</code></pre>
+<pre><code>## from Ulrike Groempings web site at prof.beuth-hochschule.de/groemping.</code></pre>
+<pre class="r"><code>library(dplyr)
+
+vars_to_select &lt;- c(&quot;log_Cu_uM&quot;, &quot;log_Temp_C&quot;, &quot;pH&quot;, &quot;log_DOC_uM&quot;,
+                    &quot;log_DIC_uM&quot;, &quot;log_Cl_uM&quot;, &quot;log_Ca_uM&quot;, 
+                    &quot;log_Mg_uM&quot;, &quot;log_SO4_uM&quot;, &quot;log_Na_uM&quot;, 
+                    &quot;log_K_uM&quot;)
+
+form &lt;- reformulate(vars_to_select, response = &quot;log_TBL_Cu_nmol_g&quot;)
+
+# 1. Build long model
+full_mod &lt;- lm(form, data = dat)
+
+# 2. Stepwise selection (AIC) of long model
+step_mod &lt;- stepAIC(full_mod, direction = &quot;both&quot;, trace = FALSE)
+
+# 3. Standardized betas
+step_mod_beta &lt;- lm.beta(step_mod)
+
+coef_table &lt;- summary(step_mod_beta)$coefficients
+
+beta_df &lt;- data.frame(
+  Predictor = rownames(coef_table),
+  Std_Beta  = coef_table[, &quot;Standardized&quot;],
+  p_value   = coef_table[, &quot;Pr(&gt;|t|)&quot;]
+) %&gt;%
+  filter(Predictor != &quot;(Intercept)&quot;)
+
+# 4. VIF
+vif_vals &lt;- vif(step_mod)
+
+vif_df &lt;- data.frame(
+  Predictor = names(vif_vals),
+  VIF       = as.numeric(vif_vals)
+)
+
+# 5. Relative importance
+rel_imp &lt;- calc.relimp(step_mod, type = &quot;lmg&quot;, rela = TRUE)
+
+rel_df &lt;- data.frame(
+  Predictor = names(rel_imp$lmg),
+  Rel_Importance = rel_imp$lmg
+)
+
+# 7. Combine into a summary table
+final_table &lt;- beta_df %&gt;%
+  left_join(vif_df, by = &quot;Predictor&quot;) %&gt;%
+  left_join(rel_df, by = &quot;Predictor&quot;) %&gt;%
+  arrange(desc(Rel_Importance))
+
+final_table</code></pre>
+<pre><code>##    Predictor    Std_Beta       p_value      VIF Rel_Importance
+## 1  log_Cu_uM  1.35470508  0.000000e+00 2.474989    0.635696305
+## 2         pH -0.55555978 1.185828e-249 1.360956    0.153795770
+## 3 log_DOC_uM -0.68578156 2.392600e-242 2.278121    0.110651785
+## 4 log_SO4_uM  0.03404987  1.927264e-04 2.660258    0.039595703
+## 5  log_Cl_uM -0.04944852  3.531818e-09 2.174771    0.025234187
+## 6  log_Ca_uM -0.03321132  1.250305e-03 3.393791    0.018791148
+## 7  log_Mg_uM -0.01997555  6.910243e-02 3.906541    0.009090849
+## 8 log_Temp_C -0.05188183  2.039383e-16 1.181797    0.007144252</code></pre>
 </div>
+<div id="check-of-residuals" class="section level2">
+<h2>2. Check of residuals</h2>
+<p>Homoscedasticity of fitted vs. residual plots and Normality of
+residuals on the dependent variable</p>
+<pre class="r"><code># Save as png inside the folder
+png(
+  file.path(out_dir, &quot;Quality_checks_MLR.png&quot;),
+  width = 2000,
+  height = 2000,
+  res = 300
+)
+
+# Build plot
+par(mfrow = c(2, 2))   # 2 rows, 2 columns
+step.mod_plots &lt;- plot(step_mod)
+
+# View
+step.mod_plots</code></pre>
+<pre><code>## NULL</code></pre>
+<pre class="r"><code>dev.off()</code></pre>
+<pre><code>## png 
+##   2</code></pre>
 </div>
-<div id="partial-slopes" class="section level2">
-<h2>3. Partial slopes</h2>
+<div id="partial-slope-plots" class="section level2">
+<h2>3. Partial slope plots</h2>
 <p>Partial regression plots of log BLM parameters</p>
 <pre class="r"><code>library(dplyr)
 library(ggplot2)
 library(broom)
 
 # 1. Extract retained predictors from stepwise model
-retained_vars &lt;- names(coef(step.mod))[-1]  # drop intercept
+retained_vars &lt;- names(coef(step_mod))[-1]  # drop intercept
 
 # 2. Function to get partial residuals for each predictor
 get_partial_df &lt;- function(model, data, var) {
@@ -976,7 +962,7 @@ get_partial_df &lt;- function(model, data, var) {
 
 # 3. Build combined dataset for all retained predictors
 partial_df &lt;- do.call(rbind, lapply(retained_vars, get_partial_df, 
-                                    model = step.mod, data = dat))
+                                    model = step_mod, data = dat))
 
 # 4. Plot partial regression slopes
 step.mod_partial_slopes &lt;-
@@ -1003,104 +989,10 @@ ggsave(
 )</code></pre>
 <pre><code>## `geom_smooth()` using formula = &#39;y ~ x&#39;</code></pre>
 </div>
-<div id="summary-table" class="section level2">
-<h2>4. Summary table</h2>
-<pre class="r"><code># 1. Create a data frame with raw beta coefficients (partial slopes)
-summary_mlr &lt;- as.data.frame(summary(step.mod)$coefficients)
-
-# 2. Extract term names
-summary_mlr$Term &lt;- rownames(summary_mlr)
-
-# 3. Reorder columns to put Term first
-summary_mlr &lt;- summary_mlr[, c(&quot;Term&quot;, setdiff(names(summary_mlr), &quot;Term&quot;))]
-
-# 5. Convert VIF values to data.frame for merging
-vif &lt;- data.frame(
-  Term = names(vif_coeff),
-  VIF = as.numeric(vif_coeff),
-  row.names = NULL
-)
-
-# 6. Merge the result with vif
-summary &lt;- merge(summary_mlr, vif, by = &quot;Term&quot;, all.x = TRUE)
-
-# 7. Add model statistics
-mod_summary &lt;- summary(step.mod)
-
-rse &lt;- mod_summary$sigma
-r2 &lt;- mod_summary$r.squared
-adj_r2 &lt;- mod_summary$adj.r.squared
-fstat &lt;- mod_summary$fstatistic[1]
-fnum &lt;- mod_summary$fstatistic[2]
-fden &lt;- mod_summary$fstatistic[3]
-pval &lt;- pf(fstat, fnum, fden, lower.tail = FALSE)
-
-# 8. Create data frame with model statistics matching the structure of summary
-model_stats &lt;- data.frame(
-  Term = c(&quot;Residual standard error&quot;, &quot;Multiple R-squared&quot;, &quot;Adjusted R-squared&quot;, &quot;F-statistic&quot;, &quot;p-value&quot;),
-  Estimate = c(rse, r2, adj_r2, fstat, pval),
-  `Std. Error` = NA,
-  `t value` = NA,
-  `Pr(&gt;|t|)` = NA,
-  VIF = NA,
-  stringsAsFactors = FALSE
-)
-
-# 9. Check and fix column name mismatches before combining
-
-# 10. Scale both sets of column names
-names(summary) &lt;- c(
-  &quot;Term&quot;, &quot;Estimate&quot;, &quot;Std. Error&quot;, &quot;t value&quot;, &quot;Pr(&gt;|t|)&quot;, &quot;VIF&quot;)
-names(model_stats) &lt;- c(&quot;Term&quot;, &quot;Estimate&quot;, &quot;Std. Error&quot;, &quot;t value&quot;, &quot;Pr(&gt;|t|)&quot;, &quot;VIF&quot;)
-
-# 11. Combine coefficients and model stats
-summary_final &lt;- rbind(summary, model_stats)
-
-# View
-summary_final</code></pre>
-<pre><code>##                       Term      Estimate  Std. Error       t value
-## 1              (Intercept) -6.593983e-17 0.005536864 -1.190924e-14
-## 2                log_Ca_uM -3.321132e-02 0.010213385 -3.251745e+00
-## 3                log_Cl_uM -4.944852e-02 0.008175870 -6.048105e+00
-## 4                log_Cu_uM  1.354705e+00 0.008721955  1.553213e+02
-## 5               log_DOC_uM -6.857816e-01 0.008367883 -8.195401e+01
-## 6                log_Mg_uM -1.997555e-02 0.010957799 -1.822953e+00
-## 7               log_SO4_uM  3.404987e-02 0.009042511  3.765533e+00
-## 8               log_Temp_C -5.188183e-02 0.006026963 -8.608287e+00
-## 9                       pH -5.555598e-01 0.006467690 -8.589771e+01
-## 10 Residual standard error  1.087821e-01          NA            NA
-## 11      Multiple R-squared  9.884123e-01          NA            NA
-## 12      Adjusted R-squared  9.881664e-01          NA            NA
-## 13             F-statistic  4.019702e+03          NA            NA
-## 14                 p-value  0.000000e+00          NA            NA
-##         Pr(&gt;|t|)      VIF
-## 1   1.000000e+00       NA
-## 2   1.250305e-03 3.393791
-## 3   3.531818e-09 2.174771
-## 4   0.000000e+00 2.474989
-## 5  2.392600e-242 2.278121
-## 6   6.910243e-02 3.906541
-## 7   1.927264e-04 2.660258
-## 8   2.039383e-16 1.181797
-## 9  1.185828e-249 1.360956
-## 10            NA       NA
-## 11            NA       NA
-## 12            NA       NA
-## 13            NA       NA
-## 14            NA       NA</code></pre>
-<pre class="r"><code># Save
-library(openxlsx)
-
-write.xlsx(
-  summary_final,
-  file = file.path(out_dir, &quot;MLR_summary_table.xlsx&quot;),
-  overwrite = TRUE
-)</code></pre>
-</div>
 <div id="outlier-detection" class="section level2">
-<h2>5. Outlier detection</h2>
+<h2>4. Outlier detection</h2>
 <pre class="r"><code># 1. Get model diagnostics
-model_diag &lt;- influence.measures(step.mod)
+model_diag &lt;- influence.measures(step_mod)
 
 # 2. Extract indices of influential points flagged by diagnostics
 infl_points &lt;- which(apply(model_diag$is.inf, 1, any))
@@ -1108,39 +1000,39 @@ infl_points &lt;- which(apply(model_diag$is.inf, 1, any))
 # 3. Create a dataframe with their info
 flagged_obs &lt;- data.frame(
   Sample_ID = dat$Sample_ID[infl_points],
-  Fitted = fitted(step.mod)[infl_points],
-  Residual = residuals(step.mod)[infl_points],
-  Std_Residual = rstandard(step.mod)[infl_points],
-  Leverage = hatvalues(step.mod)[infl_points],
-  Cooks_D = cooks.distance(step.mod)[infl_points])
+  Fitted = fitted(step_mod)[infl_points],
+  Residual = residuals(step_mod)[infl_points],
+  Std_Residual = rstandard(step_mod)[infl_points],
+  Leverage = hatvalues(step_mod)[infl_points],
+  Cooks_D = cooks.distance(step_mod)[infl_points])
 
 # View flagged observations
 flagged_obs</code></pre>
-<pre><code>##     Sample_ID      Fitted    Residual Std_Residual   Leverage      Cooks_D
-## 4     WaDE_65 -0.71791595 -0.02978335   -0.2866311 0.08759991 0.0008764404
-## 6     WaDE_67 -0.02259178 -0.53143976   -5.2107779 0.12100198 0.4153050260
-## 27    WaDE_88  1.47205469  0.39851354    3.7446808 0.04293488 0.0698965728
-## 28   WaDE_108 -0.93369559  0.27123107    2.5433305 0.03892292 0.0291078611
-## 74   WaDE_187  0.28547355 -0.33734869   -3.2881338 0.11050394 0.1492417119
-## 82   WaDE_195 -0.64757516 -0.03999834   -0.3773729 0.05064772 0.0008441729
-## 120  WaDE_305 -0.61287316 -0.14234841   -1.3694152 0.08689674 0.0198294828
-## 158  WaDE_358  0.30773636  0.25809673    2.4222409 0.04056561 0.0275635340
-## 171  WaDE_390 -1.34886534 -0.05271422   -0.5070542 0.08666138 0.0027105660
-## 174  WaDE_393  2.43759651  0.22208303    2.0958845 0.05118617 0.0263307866
-## 178  WaDE_397 -0.43569265  0.47100121    4.4572523 0.05638564 0.1319064180
-## 179  WaDE_398 -1.00850743  0.97507623    9.6483150 0.13690395 1.6406551175
-## 199  WaDE_420  0.84992310 -0.20523805   -1.9583029 0.07180133 0.0329616382
-## 201  WaDE_422  0.09662295 -0.29122713   -2.7764147 0.07022053 0.0646860042
-## 203  WaDE_425 -0.02503097 -0.03824712   -0.3737537 0.11506485 0.0020181791
-## 211  WaDE_442 -0.50900616 -0.31868036   -3.0769561 0.09353105 0.1085432909
-## 230  WaDE_464  1.07344347 -0.40535782   -3.7778107 0.02706987 0.0441207074
-## 259  WaDE_520  3.21278321  0.32867493    3.0998119 0.04994788 0.0561303589
-## 267  WaDE_528  1.35086994 -0.32708415   -3.0684781 0.03980841 0.0433731025
-## 280  WaDE_556 -4.77971666  0.04461512    0.4265213 0.07537067 0.0016476828
-## 292  WaDE_569  0.29638602  0.25354505    2.3950068 0.05293076 0.0356202852
-## 320  WaDE_626  3.10327311  0.27692624    2.5898173 0.03378245 0.0260562545
-## 351  WaDE_696  0.67922112  0.24778876    2.3367170 0.04975432 0.0317661523
-## 380  WaDE_733  0.49184880 -0.40447994   -3.9594780 0.11813309 0.2333468202</code></pre>
+<pre><code>##     Sample_ID     Fitted    Residual Std_Residual   Leverage      Cooks_D
+## 4     WaDE_65  -8.172566 -0.01401206   -0.2866311 0.08759991 0.0008764404
+## 6     WaDE_67  -7.845439 -0.25002454   -5.2107779 0.12100198 0.4153050260
+## 27    WaDE_88  -7.142258  0.18748723    3.7446808 0.04293488 0.0698965728
+## 28   WaDE_108  -8.274083  0.12760510    2.5433305 0.03892292 0.0291078611
+## 74   WaDE_187  -7.700505 -0.15871122   -3.2881338 0.11050394 0.1492417119
+## 82   WaDE_195  -8.139473 -0.01881787   -0.3773729 0.05064772 0.0008441729
+## 120  WaDE_305  -8.123146 -0.06697014   -1.3694152 0.08689674 0.0198294828
+## 158  WaDE_358  -7.690031  0.12142584    2.4222409 0.04056561 0.0275635340
+## 171  WaDE_390  -8.469406 -0.02480027   -0.5070542 0.08666138 0.0027105660
+## 174  WaDE_393  -6.688003  0.10448260    2.0958845 0.05118617 0.0263307866
+## 178  WaDE_397  -8.039789  0.22159024    4.4572523 0.05638564 0.1319064180
+## 179  WaDE_398  -8.309279  0.45874059    9.6483150 0.13690395 1.6406551175
+## 199  WaDE_420  -7.434950 -0.09655760   -1.9583029 0.07180133 0.0329616382
+## 201  WaDE_422  -7.789352 -0.13701258   -2.7764147 0.07022053 0.0646860042
+## 203  WaDE_425  -7.846587 -0.01799398   -0.3737537 0.11506485 0.0020181791
+## 211  WaDE_442  -8.074281 -0.14992840   -3.0769561 0.09353105 0.1085432909
+## 230  WaDE_464  -7.329791 -0.19070723   -3.7778107 0.02706987 0.0441207074
+## 259  WaDE_520  -6.323304  0.15463051    3.0998119 0.04994788 0.0561303589
+## 267  WaDE_528  -7.199271 -0.15388210   -3.0684781 0.03980841 0.0433731025
+## 280  WaDE_556 -10.083506  0.02098991    0.4265213 0.07537067 0.0016476828
+## 292  WaDE_569  -7.695371  0.11928442    2.3950068 0.05293076 0.0356202852
+## 320  WaDE_626  -6.374825  0.13028449    2.5898173 0.03378245 0.0260562545
+## 351  WaDE_696  -7.515260  0.11657628    2.3367170 0.04975432 0.0317661523
+## 380  WaDE_733  -7.603412 -0.19029422   -3.9594780 0.11813309 0.2333468202</code></pre>
 <pre class="r"><code># Save
 library(openxlsx)
 
