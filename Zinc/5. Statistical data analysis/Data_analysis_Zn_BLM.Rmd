@@ -15,7 +15,7 @@ The objectives of this notebook will be to conduct data and statistical analyses
 First, set the working directory
 
 ```{r}
-setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Zinc/5. Statistical data analysis")
+setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/5. Statistical data analysis")
 ```
 
 # Identifying Stream Typologies
@@ -27,7 +27,7 @@ Import dataset
 ```{r}
 library(readxl)
 
-dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Zinc/4. Exploratory data analysis/Bioavailability_Master_Spreadsheet_Clean2.xlsx", 
+dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/4. Exploratory data analysis/Bioavailability_Master_Spreadsheet_Clean2.xlsx", 
     sheet = "HA 10% Closed System")
 
 head(dat)
@@ -311,13 +311,13 @@ ggsave(
 )
 ```
 
--   Cluster 1: Less developed sites
+-   Cluster 1: Mostly low developed tributary sites
 
--   Cluster 2: More developed sites
+-   Cluster 2: Mostly highly developed tributary sites
 
--   Cluster 3: Mostly main stem sites
+-   Cluster 3: Mostly main stem sites with varying development
 
--   Cluster 4: Non-perennial sites, far from the main stem, draining small areas, with low-medium development
+-   Cluster 4: Mostly non-perennial tributary sites
 
 ### iii. Rename clusters to typologies
 
@@ -371,36 +371,42 @@ total bioavailable element = sum of BLM predictors (as standardized log-transfor
 
 ## 1. Build and select the MLR
 
-Use log-transformed variables to build a large model, stepwise select a better model, calculate standardized beta coefficients, variance inflation factors (VIF), and relative importance on bioavailability
+Use log-transformed and standardized variables to build a large model, stepwise select a better model, calculate standardized beta coefficients, variance inflation factors (VIF), and relative importance on bioavailability
 
 ```{r}
 library(MASS)
 library(car)
-library(lm.beta)
 library(relaimpo)
 library(dplyr)
+library(openxlsx)
 
-vars_to_select <- c("log_Zn_uM", "log_Temp_C", "pH", "log_DOC_uM",
-                    "log_DIC_uM", "log_Cl_uM", "log_Ca_uM", 
-                    "log_Mg_uM", "log_SO4_uM", "log_Na_uM", 
-                    "log_K_uM")
+vars_to_select <- c("log_Zn_nM", "log_Temp_C", "pH", "log_DOC_nM",
+                    "log_DIC_nM", "log_Cl_nM", "log_Ca_nM",
+                    "log_Mg_nM", "log_SO4_nM", "log_Na_nM",
+                    "log_K_nM")
 
-form <- reformulate(vars_to_select, response = "log_TBL_Zn_nmol_g")
+# 0. Standardize variables
+model_df_std <- dat %>%
+  dplyr::select(log_TBL_Zn_nmol_g, all_of(vars_to_select)) %>%
+  mutate(across(everything(), as.numeric)) %>%
+  as.data.frame()
 
-# 1. Build long model
-full_mod <- lm(form, data = dat)
+model_df_std <- as.data.frame(scale(model_df_std))
 
-# 2. Stepwise selection (AIC) of long model
+form_std <- reformulate(vars_to_select, response = "log_TBL_Zn_nmol_g")
+
+# 1. Full MLR
+full_mod <- lm(form_std, data = model_df_std)
+
+# 2. Stepwise selection (AIC)
 step_mod <- stepAIC(full_mod, direction = "both", trace = FALSE)
 
-# 3. Standardized betas
-step_mod_beta <- lm.beta(step_mod)
+# 3. Estimates (standardized partial slopes) + p-values
+coef_table <- summary(step_mod)$coefficients
 
-coef_table <- summary(step_mod_beta)$coefficients
-
-beta_df <- data.frame(
+est_df <- data.frame(
   Predictor = rownames(coef_table),
-  Std_Beta  = coef_table[, "Standardized"],
+  Estimate  = coef_table[, "Estimate"],
   p_value   = coef_table[, "Pr(>|t|)"]
 ) %>%
   filter(Predictor != "(Intercept)")
@@ -413,21 +419,31 @@ vif_df <- data.frame(
   VIF       = as.numeric(vif_vals)
 )
 
-# 5. Relative importance
+# 5. Relative importance (lmg)
 rel_imp <- calc.relimp(step_mod, type = "lmg", rela = TRUE)
 
 rel_df <- data.frame(
   Predictor = names(rel_imp$lmg),
-  Rel_Importance = rel_imp$lmg
+  Rel_Importance = as.numeric(rel_imp$lmg)
 )
 
-# 7. Combine into a summary table
-final_table <- beta_df %>%
+# 6. Combine summary table
+final_table <- est_df %>%
   left_join(vif_df, by = "Predictor") %>%
   left_join(rel_df, by = "Predictor") %>%
   arrange(desc(Rel_Importance))
 
 final_table
+
+# 7. Save
+out_dir <- "Multiple linear regression"
+dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+
+write.xlsx(
+  final_table,
+  file = file.path(out_dir, "MLR.xlsx"),
+  overwrite = TRUE
+)
 ```
 
 Omitted Na since VIF \>15
@@ -487,6 +503,24 @@ final_table_2 <- beta_df_2 %>%
   arrange(desc(Rel_Importance))
 
 final_table_2
+
+# 8. Save
+library(openxlsx)
+
+out_dir <- "Multiple linear regression"
+file_path <- file.path(out_dir, "MLR.xlsx")
+
+# Load existing workbook
+wb <- loadWorkbook(file_path)
+
+# Add new worksheet
+addWorksheet(wb, "Omitting Na")
+
+# Write data to new sheet
+writeData(wb, sheet = "Omitting Na", final_table_2)
+
+# Save workbook
+saveWorkbook(wb, file_path, overwrite = TRUE)
 ```
 
 Better VIF, all \<5

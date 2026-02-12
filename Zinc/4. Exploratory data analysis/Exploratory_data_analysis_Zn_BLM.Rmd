@@ -12,7 +12,7 @@ The objectives of this notebook will be to conduct exploratory data analyses on 
 Set the working directory
 
 ```{r}
-setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Zinc/4. Exploratory data analysis")
+setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/4. Exploratory data analysis")
 ```
 
 Upload the Bioavailability Master Spreadsheet datasets
@@ -20,13 +20,13 @@ Upload the Bioavailability Master Spreadsheet datasets
 ```{r}
 library(readxl)
 
-ha10_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Zinc/3. Dataset cleaning/Bioavailability_Master_Spreadsheet_Clean.xlsx", 
+ha10_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/3. Dataset cleaning/Bioavailability_Master_Spreadsheet_Clean.xlsx", 
     sheet = "HA 10% Closed System")
 
-ha10_os <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Zinc/3. Dataset cleaning/Bioavailability_Master_Spreadsheet_Clean.xlsx", 
+ha10_os <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/3. Dataset cleaning/Bioavailability_Master_Spreadsheet_Clean.xlsx", 
     sheet = "HA 10% Open System")
 
-ha80_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Zinc/3. Dataset cleaning/Bioavailability_Master_Spreadsheet_Clean.xlsx", 
+ha80_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/3. Dataset cleaning/Bioavailability_Master_Spreadsheet_Clean.xlsx", 
     sheet = "HA 80% Closed System")
 ```
 
@@ -43,13 +43,13 @@ library(ggplot2)
 
 # Choose the variables you want to visualize
 vars_to_plot <- c(
-  "pH", "Temp_C", "DOC_uM", "Ca_uM", "Mg_uM", "Na_uM", "K_uM",
-  "SO4_uM", "Cl_uM", "DIC_uM", "Zn_uM", "Cu_uM"
+  "pH", "Temp_C", "DOC_uM", "DIC_uM", "Ca_uM", "Mg_uM", "Na_uM", "K_uM",
+  "SO4_uM", "Cl_uM","Zn_uM", "Cu_uM"
 )
 
 ha10_cs %>%
-  select(any_of(vars_to_plot)) %>%
-  select(where(is.numeric)) %>%              # keeps only numeric among those (extra-safe)
+  dplyr::select(any_of(vars_to_plot)) %>%
+  dplyr::select(where(is.numeric)) %>%
   pivot_longer(
     cols = everything(),
     names_to = "variable",
@@ -79,7 +79,7 @@ ggsave(
 )
 ```
 
-Now continuous variables must be checked for Normality by Shapiro-Wilk's method and skewness.
+Now continuous variables must be checked for Normality by Shapiro-Wilk's method and skewness. Normality checks are set at alpha = 0.05.
 
 ```{r}
 library(dplyr)
@@ -135,13 +135,9 @@ run_normality_tests <- function(dat) {
 
 # Run function
 normality_results_ha10_cs <- run_normality_tests(ha10_cs)
-normality_results_ha10_os <- run_normality_tests(ha10_os)
-normality_results_ha80_cs <- run_normality_tests(ha80_cs)
 
 # Inspect results
 head(normality_results_ha10_cs)
-head(normality_results_ha10_os)
-head(normality_results_ha80_cs)
 ```
 
 Save to excel
@@ -157,18 +153,8 @@ if(!"HA10_CS" %in% names(wb)) {
   addWorksheet(wb, "HA10_CS")
 }
 
-if(!"HA10_OS" %in% names(wb)) {
-  addWorksheet(wb, "HA10_OS")
-}
-
-if(!"HA80_CS" %in% names(wb)) {
-  addWorksheet(wb, "HA80_CS")
-}
-
 # Write results into each sheet
 writeData(wb, sheet = "HA10_CS", normality_results_ha10_cs)
-writeData(wb, sheet = "HA10_OS", normality_results_ha10_os)
-writeData(wb, sheet = "HA80_CS", normality_results_ha80_cs)
 
 # Save the workbook (overwrite)
 saveWorkbook(
@@ -189,8 +175,6 @@ library(dplyr)
 exclude_vars <- c(
   "pH",
   "Relative_elevation_m",
-  "Dist_from_EFPC_km",
-  "Drainage_area_km2",
   "Developed_lulc"
 )
 
@@ -251,13 +235,9 @@ run_log_normality_tests <- function(dat, exclude_vars) {
 
 # Run
 log_normality_results_ha10_cs <- run_log_normality_tests(ha10_cs, exclude_vars)
-log_normality_results_ha10_os <- run_log_normality_tests(ha10_os, exclude_vars)
-log_normality_results_ha80_cs <- run_log_normality_tests(ha80_cs, exclude_vars)
 
 # Check
 head(log_normality_results_ha10_cs)
-head(log_normality_results_ha10_os)
-head(log_normality_results_ha80_cs)
 ```
 
 Save to excel
@@ -273,18 +253,8 @@ if(!"HA10_CS" %in% names(wb)) {
   addWorksheet(wb, "HA10_CS")
 }
 
-if(!"HA10_OS" %in% names(wb)) {
-  addWorksheet(wb, "HA10_OS")
-}
-
-if(!"HA80_CS" %in% names(wb)) {
-  addWorksheet(wb, "HA80_CS")
-}
-
 # Write results into each sheet
 writeData(wb, sheet = "HA10_CS", log_normality_results_ha10_cs)
-writeData(wb, sheet = "HA10_OS", log_normality_results_ha10_os)
-writeData(wb, sheet = "HA80_CS", log_normality_results_ha80_cs)
 
 # Save the workbook (overwrite)
 saveWorkbook(
@@ -302,8 +272,8 @@ library(tidyr)
 library(ggplot2)
 
 log_long_ha10_cs <- ha10_cs %>%
-  select(any_of(vars_to_plot)) %>%
-  select(where(is.numeric)) %>%
+  dplyr::select(any_of(vars_to_plot)) %>%
+  dplyr::select(where(is.numeric)) %>%
   pivot_longer(
     cols = everything(),
     names_to = "variable",
@@ -354,7 +324,7 @@ add_log_variables <- function(dat, exclude_vars) {
       across(
         .cols = where(is.numeric) &
           !any_of(exclude_vars) &
-          !starts_with("log_"),      # <-- prevents re-logging
+          !starts_with("log_"),     
         .fns  = ~ ifelse(.x > 0, log10(.x), NA_real_),
         .names = "log_{.col}"
       )

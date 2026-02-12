@@ -1,5 +1,5 @@
 ---
-title: "Zn_dataset_merging"
+title: "Zn dataset merging"
 author: "Cecilia Albert-Black"
 date: "2025-11-13"
 output: html_document
@@ -108,31 +108,23 @@ bio_ms <- bio_ms %>%
     WaDE_Site_Info %>%
       rename(
         Relative_elevation_m = `Relative elevation from main stem (m)`,
-        Dist_from_EFPC_km    = `Upstream of EFK_KM`,
-        Drainage_area_km2    = `DrainageArea_SqKm`,
         Developed_lulc       = `lulc_developed_%`
       ) %>%
       dplyr::select(
         Site,
         Network,
         Relative_elevation_m,
-        Dist_from_EFPC_km,
-        Drainage_area_km2,
         Developed_lulc
       ),
     by = "Site"
   ) %>%
   mutate(
     Relative_elevation_m = as.numeric(Relative_elevation_m),
-    Dist_from_EFPC_km    = as.numeric(Dist_from_EFPC_km),
-    Drainage_area_km2    = as.numeric(Drainage_area_km2),
     Developed_lulc       = as.numeric(Developed_lulc)
   ) %>%
    relocate(
     Network,
     Relative_elevation_m,
-    Dist_from_EFPC_km,
-    Drainage_area_km2,
     Developed_lulc,
     .after = Flow_state
   )
@@ -250,7 +242,7 @@ bio_ms_ha10_cs <- bio_ms %>% # Merge variables from Zn_Speciation_ha10_cs_clean 
         TOrg_Na_M        = `TOrg.Na`,
         TOrg_K_M         = `TOrg.K`
       ) %>%
-      select(
+      dplyr::select(
         Sample_ID,
         Free_Zn_M,
         ZnOH_M,
@@ -560,7 +552,7 @@ bio_ms_ha10_os <- bio_ms %>% # Merge variables from Zn_Speciation_ha10_cs_clean 
         TOrg_Na_M        = `TOrg.Na`,
         TOrg_K_M         = `TOrg.K`
       ) %>%
-      select(
+      dplyr::select(
         Sample_ID,
         Free_Zn_M,
         ZnOH_M,
@@ -870,7 +862,7 @@ bio_ms_ha80_cs <- bio_ms %>% # Merge variables from Zn_Speciation_ha10_cs_clean 
         TOrg_Na_M        = `TOrg.Na`,
         TOrg_K_M         = `TOrg.K`
       ) %>%
-      select(
+      dplyr::select(
         Sample_ID,
         Free_Zn_M,
         ZnOH_M,

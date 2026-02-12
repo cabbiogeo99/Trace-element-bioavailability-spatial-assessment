@@ -26,7 +26,7 @@ Workflow overview
 Set the working directory to the repo
 
 ```{r}
-setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Zinc/3. Dataset cleaning")
+setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/3. Dataset cleaning")
 ```
 
 Upload Bioavailability_Master_Spreadsheet.xlsx
@@ -49,7 +49,7 @@ Perform the following unit conversions
 
 -   uM -\> M and nM
 
--   mol/kg -\> nmol/g
+-   mol/kg -\> nmol/g and umol/g
 
 That way, we have all variables in units of M, uM, and nM (for dissolved species) or mol/kg and nmol/kg (for biotic ligand-bound elements)
 
@@ -100,7 +100,7 @@ convert_units_no_dups <- function(dat) {
   }, .init = dat)
 
   # -------------------------
-  # 2) BL variables: *_mol_kg -> *_nmol_kg and *_nmol_g
+  # 2) BL variables: *_mol_kg -> *_nmol_kg, *_nmol_g, *_umol_g
   # -------------------------
   bl_molkg <- names(dat)[str_detect(names(dat), "_mol_kg$")]
 
@@ -110,24 +110,25 @@ convert_units_no_dups <- function(dat) {
 
     nm_nmol_kg <- paste0(base, "_nmol_kg")  # mol/kg -> nmol/kg (×1e9)
     nm_nmol_g  <- paste0(base, "_nmol_g")   # mol/kg -> nmol/g  (×1e6)
+    nm_umol_g  <- paste0(base, "_umol_g")   # mol/kg -> umol/g  (×1e3)
 
     vals <- df[[nm]]
 
     df %>%
       add_if_missing(nm_nmol_kg, vals * 1e9) %>%
-      add_if_missing(nm_nmol_g,  vals * 1e6)
+      add_if_missing(nm_nmol_g,  vals * 1e6) %>%
+      add_if_missing(nm_umol_g,  vals * 1e3)
 
   }, .init = dat)
 
   dat
 }
 
-# Asign it back if you want to keep using `dat$...`
+# Assign it back if you want to keep using `dat$...`
 dat <- convert_units_no_dups(dat)
 
 # quick proof they exist now
-names(dat)[str_detect(names(dat), "^BL_.*_nmol_g$")]
-
+names(dat)[str_detect(names(dat), "^BL_.*_(nmol_g|umol_g)$")]
 ```
 
 Checks
@@ -153,14 +154,18 @@ dat$TBL_Zn_nmol_g <- dat$BL_Zn_nmol_g + dat$BL_ZnOH_nmol_g
 # TBL-Zn in mol/kg
 dat$TBL_Zn_mol_kg <- dat$BL_Zn_mol_kg + dat$BL_ZnOH_mol_kg
 
+# TBL-Zn in umol/kg
+dat$TBL_Zn_umol_g <- dat$BL_Zn_umol_g + dat$BL_ZnOH_umol_g
+
 # Check
 hist(dat$TBL_Zn_nmol_g)
 hist(dat$TBL_Zn_mol_kg)
+hist(dat$TBL_Zn_umol_g)
 ```
 
 ### i. Relative Proportion of Bioavailable Element
 
-Relative proportion of element (rel_prop_Zn_nM) = TBL-element / measured element
+Relative proportion of element (rel_prop_Zn_nM) = free ion / total measured
 
 ```{r}
 # Zinc
@@ -196,45 +201,7 @@ Check for NAs
 sum(is.na(dat$Type))
 ```
 
-### ii. Orientation
-
-As a proxy for bedrock lithology:
-
--   North slope
-
-    -   Networks: BSL, WBK, MCA, MTN, NBO
-
--   South slope
-
-    -   Networks: S_TRIB
-
--   Main stem
-
-    -   Networks: EFK
-
-```{r}
-dat <- dat %>%
-  mutate(
-    Orientation = case_when(
-      Network %in% c("WBK", "MCA", "MTN", "NBO", "BSL") ~ "North slope",
-      Network %in% c("S_TRIB") ~ "South slope",
-      Network %in% c("EFK") ~ "Main stem",
-      TRUE ~ NA_character_
-    ) %>% 
-      factor(levels = c("North slope", "South slope", "Main stem"))
-  )
-
-# Check
-table(dat$Orientation)
-```
-
-Check for NAs
-
-```{r}
-sum(is.na(dat$Orientation))
-```
-
-### i. Development
+### ii. Development
 
 Categorizing developed land use and land cover (LULC) will be based on a modified version of the MRLC National Land Cover Database Class Legend and Description. Our categories will be as follows
 
@@ -265,123 +232,7 @@ Check for NAs
 sum(is.na(dat$Development))
 ```
 
-### ii. Distance from Main Stem
-
-Omitting the main stem, let's assess the distribution of distance from main stem values
-
-```{r}
-tribs <- dat %>%
-  filter(Type != "Main Stem")
-
-tribs
-```
-
-```{r}
-hist(tribs$Dist_from_EFPC_km, breaks = 386, xaxt = "n")   
-
-axis(
-  side = 1,
-  at = seq(
-    from = 0,
-    to = max(dat$Dist_from_EFPC_km, na.rm = TRUE),
-    by = 0.25                                           
-  )
-)
-```
-
-Check the quartiles
-
-```{r}
-summary(tribs$Dist_from_EFPC_km)
-```
-
-Dividing the variable by quartiles (1st and 3rd):
-
--   \<0.22 km
-
--   0.22-0.99
-
--   \>0.99 km
-
-```{r}
-dat <- dat %>%
-  mutate(
-    Distance_from_EFPC = case_when(
-      Type == "Main Stem" ~ "Main stem",
-      Dist_from_EFPC_km < 0.22 ~ "<0.22 km",
-      Dist_from_EFPC_km >= 0.22 & Dist_from_EFPC_km <= 0.99 ~ "0.22-0.99 km",
-      Dist_from_EFPC_km > 0.99 ~ ">0.99 km",
-      TRUE ~ NA_character_
-    ) %>% 
-      factor(levels = c("Main stem", "<0.22 km", "0.22-0.99 km", ">0.99 km"))
-  )
-
-# Check
-table(dat$Distance_from_EFPC)
-```
-
-Check for NAs
-
-```{r}
-sum(is.na(dat$Distance_from_EFPC))
-```
-
-### iii. Drainage Area
-
-To classify drainage area (km2) into categories, we'll first inspect its distribution
-
-```{r}
-hist(dat$Drainage_area_km2, breaks = 386, xaxt = "n")   # remove default axis
-
-axis(
-  side = 1,
-  at = seq(
-    from = 0,
-    to = max(dat$Drainage_area_km2, na.rm = TRUE),
-    by = 5                                           # tick every 5 km2
-  )
-)
-```
-
-Let's check to quartiles
-
-```{r}
-summary(dat$Drainage_area_km2)
-```
-
-We'll create categories on whole numbers based on the 1st and 3rd quartiles:
-
--   \<0.94 km2
-
--   0.94-11.81 km2
-
--   \>11.81 km2
-
-```{r}
-library(dplyr)
-
-dat <- dat %>%
-  mutate(
-    Drainage_area = case_when(
-      Drainage_area_km2 < 0.94 ~ "<0.94 km2",
-      Drainage_area_km2 >= 0.94 & Drainage_area_km2 <= 11.81 ~ "0.94-11.81 km2",
-      Drainage_area_km2 > 11.81 ~ ">11.81 km2",
-      TRUE ~ NA_character_
-    ) %>%
-      factor(levels = c("<0.94 km2", "0.94-11.81 km2", ">11.81 km2"))
-  )
-
-# Check
-table(dat$Drainage_area)
-```
-
-Check for NAs
-
-```{r}
-sum(is.na(dat$Drainage_area))
-```
-
-### iv. Relative Elevation
+### iii. Relative Elevation
 
 To classify relative elevation (m) into categories, we first have to omit 0 values which correspond to the Main Stem
 
@@ -453,9 +304,6 @@ library(dplyr)
 dat <- dat %>%
   relocate(Type,
            Development,
-           Distance_from_EFPC,
-           Drainage_area,
-           Orientation,
            Relative_elevation,
            .before = pH)
 
@@ -474,11 +322,11 @@ Save to excel as a clean version of the Bioavailability Master Spreadsheet
 ```{r}
 library(openxlsx)
 
-file_path <- "Bioavailability_Master_Spreadsheet_Clean.xlsx"
-sheet_name <- "HA 10% Closed System"
+file_path  <- "Bioavailability_Master_Spreadsheet_Clean.xlsx"
+sheet_name <- "HA 80% Closed System"
 
 # ---------------------------------------------------------
-# Create or load workbook
+# Create workbook if it doesn't exist, otherwise load it
 # ---------------------------------------------------------
 if (!file.exists(file_path)) {
   wb <- createWorkbook()
@@ -487,31 +335,32 @@ if (!file.exists(file_path)) {
 }
 
 # ---------------------------------------------------------
-# REMOVE sheet if it already exists  (CRITICAL STEP)
+# If sheet already exists → remove it
 # ---------------------------------------------------------
 if (sheet_name %in% names(wb)) {
   removeWorksheet(wb, sheet_name)
 }
 
 # ---------------------------------------------------------
-# Re-create sheet cleanly and write data
+# Create fresh sheet and write data
 # ---------------------------------------------------------
 addWorksheet(wb, sheet_name)
 
 writeData(
   wb,
-  sheet      = sheet_name,
-  x          = dat,
-  startRow  = 1,
-  startCol  = 1,
-  colNames  = TRUE
+  sheet = sheet_name,
+  x = dat,
+  colNames = TRUE
 )
 
 # ---------------------------------------------------------
-# Save
+# Save workbook
 # ---------------------------------------------------------
-saveWorkbook(wb, file_path, overwrite = TRUE)
-
+saveWorkbook(
+  wb,
+  file = file_path,
+  overwrite = TRUE
+)
 ```
 
 Now repeat this for

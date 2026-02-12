@@ -434,6 +434,22 @@ final_table <- beta_df %>%
   arrange(desc(Rel_Importance))
 
 final_table
+
+# 8. Save
+library(openxlsx)
+
+out_dir <- "Multiple linear regression"
+
+# Create folder if it doesn't exist
+if (!dir.exists(out_dir)) {
+  dir.create(out_dir)
+}
+
+write.xlsx(
+  final_table,
+  file = file.path(out_dir, "MLR.xlsx"),
+  overwrite = TRUE
+)
 ```
 
 ## 2. Check of residuals
