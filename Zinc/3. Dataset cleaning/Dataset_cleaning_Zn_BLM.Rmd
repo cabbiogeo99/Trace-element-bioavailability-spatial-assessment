@@ -5,21 +5,11 @@ date: "2025-11-13"
 output: html_document
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.show = "hide", fig.keep = "none")
+```
+
 Here I will walk through cleaning and feature engineering the Bioavailability Master Spreadsheet for each of the 3 tabs (BLM assumptions). To run this for each of the tabs, simply replace the file upload which becomes the object called "dat" and replace the tab name of the exported file to the Bioavailability Master Spreadsheet will be, then run the entire Rmd.
-
-Workflow overview
-
--   Standardize units of all concentration variables to uM
-
--   Create new numeric variables:
-
-    -   Total bioavailable element
-
-    -   Relative proportion of bioavailable element
-
--   Create new categorical variables
-
-    -   From numeric inherent stream characteristics (development, distance from main stem, drainage area, and relative elevation)
 
 ## I. Import Dataset
 
@@ -35,7 +25,7 @@ Upload Bioavailability_Master_Spreadsheet.xlsx
 #load package (must be installed first)
 library(readxl) 
 
-dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Zinc/2. Dataset merging/Bioavailability_Master_Spreadsheet.xlsx", 
+dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/2. Dataset merging/Bioavailability_Master_Spreadsheet.xlsx", 
     sheet = "HA 80% Closed System")
 
 str(dat)
@@ -151,16 +141,16 @@ Total biotic ligand (TBL)-bound trace elements = TBL-element+ TBL-element hydrox
 # TBL-Zn in nmol/g
 dat$TBL_Zn_nmol_g <- dat$BL_Zn_nmol_g + dat$BL_ZnOH_nmol_g
 
-# TBL-Zn in mol/kg
-dat$TBL_Zn_mol_kg <- dat$BL_Zn_mol_kg + dat$BL_ZnOH_mol_kg
-
 # TBL-Zn in umol/kg
 dat$TBL_Zn_umol_g <- dat$BL_Zn_umol_g + dat$BL_ZnOH_umol_g
 
+# TBL-Zn in mol/kg
+dat$TBL_Zn_mol_kg <- dat$BL_Zn_mol_kg + dat$BL_ZnOH_mol_kg
+
 # Check
 hist(dat$TBL_Zn_nmol_g)
-hist(dat$TBL_Zn_mol_kg)
 hist(dat$TBL_Zn_umol_g)
+hist(dat$TBL_Zn_mol_kg)
 ```
 
 ### i. Relative Proportion of Bioavailable Element
@@ -289,12 +279,6 @@ sum(is.na(dat$Relative_elevation))
 ```
 
 ## V. Save to Excel
-
-Double check before saving
-
-```{r}
-View(dat)
-```
 
 Bring new variables describing stream inherent characteristics to the front
 

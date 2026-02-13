@@ -373,8 +373,8 @@ developed land cover, BLM predictors.</p>
 <li><strong>WaDE Synoptic Survey dataset</strong>
 (WaDE_Synoptic_Summary.xlsx, “SITE INFO” tab)</li>
 </ol>
-<p>Variables selected: network, regime, elevation, upstream distance
-from main stem, drainage area, developed land cover by site</p>
+<p>Variables selected: network, regime, relative elevation, and
+developed land cover by site</p>
 <ol start="3" style="list-style-type: decimal">
 <li><strong>BLM Speciation Mode</strong> (Cu_Speciation.det.xlsx)</li>
 </ol>
@@ -397,7 +397,7 @@ promelas.det.xlsx)</li>
 toxicity to the given organism</p>
 <div id="set-the-working-directory" class="section level2">
 <h2>Set the working directory</h2>
-<pre class="r"><code>setwd(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Copper/1. Running BLM/Data inputs&quot;)</code></pre>
+<pre class="r"><code>setwd(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data inputs&quot;)</code></pre>
 </div>
 </div>
 <div id="ha-10-closed-system" class="section level1">
@@ -406,7 +406,7 @@ toxicity to the given organism</p>
 <h2>1. Clean WaDE Synoptic Survey</h2>
 <pre class="r"><code>library(readxl)
 
-WaDE_Synoptic_Summary_Clean &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/WaDE Dataset Cleaning/WaDE_Synoptic_Summary_Clean.xlsx&quot;)
+WaDE_Synoptic_Summary_Clean &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/WaDE Dataset Cleaning/WaDE_Synoptic_Summary_Clean.xlsx&quot;)
 
 head(WaDE_Synoptic_Summary_Clean)</code></pre>
 <pre><code>## # A tibble: 6 × 21
@@ -499,19 +499,19 @@ head(bio_ms)</code></pre>
 site.</p>
 <pre class="r"><code>library(readxl)
 
-WaDE_Site_Info &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/WaDE Dataset Cleaning/WaDE_Synoptic_Summary.xlsx&quot;, 
+WaDE_Site_Info &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/WaDE Dataset Cleaning/WaDE_Synoptic_Summary.xlsx&quot;, 
     sheet = &quot;SITE INFO&quot;)
 
 head(WaDE_Site_Info)</code></pre>
 <pre><code>## # A tibble: 6 × 19
 ##   Site   Network Regime    Theme elevation (m) (USGS 3D…¹ Relative elevation f…²
 ##   &lt;chr&gt;  &lt;chr&gt;   &lt;chr&gt;     &lt;dbl&gt;                    &lt;dbl&gt;                  &lt;dbl&gt;
-## 1 BSL1.1 BSL     Perennial     1                     257.                   1.41
-## 2 BSL1.2 BSL     Perennial     1                     259.                   3.14
-## 3 BSL1.3 BSL     Perennial     1                     259                    3.25
-## 4 BSL2.1 BSL     Perennial     1                     259.                   3.57
-## 5 BSL2.2 BSL     Perennial     1                     259.                   3.74
-## 6 BSL2.3 BSL     Perennial     1                     261.                   5.69
+## 1 BCK0.9 S_TRIB  Perennial     3                     230.                   3.67
+## 2 BSL1.1 BSL     Perennial     1                     257.                   1.41
+## 3 BSL1.2 BSL     Perennial     1                     259.                   3.14
+## 4 BSL1.3 BSL     Perennial     1                     259                    3.25
+## 5 BSL2.1 BSL     Perennial     1                     259.                   3.57
+## 6 BSL2.2 BSL     Perennial     1                     259.                   3.74
 ## # ℹ abbreviated names: ¹​`elevation (m) (USGS 3DEP)`,
 ## #   ²​`Relative elevation from main stem (m)`
 ## # ℹ 13 more variables: longitude &lt;dbl&gt;, latitude &lt;dbl&gt;,
@@ -522,28 +522,27 @@ head(WaDE_Site_Info)</code></pre>
 <p>Inspect the structure</p>
 <pre class="r"><code>str(WaDE_Site_Info)</code></pre>
 <pre><code>## tibble [54 × 19] (S3: tbl_df/tbl/data.frame)
-##  $ Site                                 : chr [1:54] &quot;BSL1.1&quot; &quot;BSL1.2&quot; &quot;BSL1.3&quot; &quot;BSL2.1&quot; ...
-##  $ Network                              : chr [1:54] &quot;BSL&quot; &quot;BSL&quot; &quot;BSL&quot; &quot;BSL&quot; ...
+##  $ Site                                 : chr [1:54] &quot;BCK0.9&quot; &quot;BSL1.1&quot; &quot;BSL1.2&quot; &quot;BSL1.3&quot; ...
+##  $ Network                              : chr [1:54] &quot;S_TRIB&quot; &quot;BSL&quot; &quot;BSL&quot; &quot;BSL&quot; ...
 ##  $ Regime                               : chr [1:54] &quot;Perennial&quot; &quot;Perennial&quot; &quot;Perennial&quot; &quot;Perennial&quot; ...
-##  $ Theme                                : num [1:54] 1 1 1 1 1 1 1 1 1 3 ...
-##  $ elevation (m) (USGS 3DEP)            : num [1:54] 257 259 259 259 259 ...
-##  $ Relative elevation from main stem (m): num [1:54] 1.41 3.14 3.25 3.57 3.74 ...
-##  $ longitude                            : num [1:54] -84.3 -84.3 -84.3 -84.3 -84.3 ...
-##  $ latitude                             : num [1:54] 36 36 36 36 36 ...
-##  $ Upstream of EFK_KM                   : num [1:54] 0.387 0.61 0.595 0.826 0.882 ...
-##  $ TWI                                  : num [1:54] 30.5 28.9 29.9 17.9 28.9 ...
-##  $ DrainageArea_SqKm                    : num [1:54] 4.87 1.03 3.72 2.95 1.5 1.45 1.43 0.06 0.94 4.95 ...
-##  $ lulc_water_%                         : num [1:54] 5.33 6.14 5.29 2.71 2.46 2.98 3.02 1.64 3.83 5.26 ...
-##  $ lulc_developed_%                     : num [1:54] 87.1 92.8 85.1 85.2 90 ...
-##  $ lulc_barren_%                        : num [1:54] 0 0 0 0 0 0 0 0 0 0 ...
-##  $ lulc_forest_%                        : num [1:54] 7.29 1.02 9.27 11.65 6.81 ...
-##  $ lulc_grass_%                         : num [1:54] 0.2 0 0.26 0.33 0.53 0.12 0.12 0 0.19 0.2 ...
-##  $ lulc_ag_%                            : num [1:54] 0.07 0 0.09 0.12 0.18 0.06 0.06 0 0 0.07 ...
-##  $ lulc_wetland_%                       : num [1:54] 0 0 0 0 0 0 0 0 0 0 ...
-##  $ lulc_impervious_%                    : num [1:54] 42.3 61.1 36.5 32.1 32.1 ...</code></pre>
-<p>From WaDE_Site_Info we’ll select network, regime, elevation, upstream
-distance from main stem, drainage area, developed land cover by site and
-apply it to all samples by site</p>
+##  $ Theme                                : num [1:54] 3 1 1 1 1 1 1 1 1 1 ...
+##  $ elevation (m) (USGS 3DEP)            : num [1:54] 230 257 259 259 259 ...
+##  $ Relative elevation from main stem (m): num [1:54] 3.67 1.41 3.14 3.25 3.57 ...
+##  $ longitude                            : num [1:54] -84.4 -84.3 -84.3 -84.3 -84.3 ...
+##  $ latitude                             : num [1:54] 35.9 36 36 36 36 ...
+##  $ Upstream of EFK_KM                   : num [1:54] 0.9 0.387 0.61 0.595 0.826 ...
+##  $ TWI                                  : num [1:54] 20.5 30.5 28.9 29.9 17.9 ...
+##  $ DrainageArea_SqKm                    : num [1:54] 19.3 4.87 1.03 3.72 2.95 1.5 1.45 1.43 0.06 0.94 ...
+##  $ lulc_water_%                         : num [1:54] 1.11 5.33 6.14 5.29 2.71 2.46 2.98 3.02 1.64 3.83 ...
+##  $ lulc_developed_%                     : num [1:54] 15.9 87.1 92.8 85.1 85.2 ...
+##  $ lulc_barren_%                        : num [1:54] 0.2 0 0 0 0 0 0 0 0 0 ...
+##  $ lulc_forest_%                        : num [1:54] 73.56 7.29 1.02 9.27 11.65 ...
+##  $ lulc_grass_%                         : num [1:54] 1.04 0.2 0 0.26 0.33 0.53 0.12 0.12 0 0.19 ...
+##  $ lulc_ag_%                            : num [1:54] 3.73 0.07 0 0.09 0.12 0.18 0.06 0.06 0 0 ...
+##  $ lulc_wetland_%                       : num [1:54] 4.47 0 0 0 0 0 0 0 0 0 ...
+##  $ lulc_impervious_%                    : num [1:54] 40.1 42.3 61.1 36.5 32.1 ...</code></pre>
+<p>From WaDE_Site_Info we’ll select network, regime, elevation,
+developed land cover by site and apply it to all samples by site</p>
 <pre class="r"><code>library(dplyr)
 
 bio_ms &lt;- bio_ms %&gt;%
@@ -551,38 +550,30 @@ bio_ms &lt;- bio_ms %&gt;%
     WaDE_Site_Info %&gt;%
       rename(
         Relative_elevation_m = `Relative elevation from main stem (m)`,
-        Dist_from_EFPC_km    = `Upstream of EFK_KM`,
-        Drainage_area_km2    = `DrainageArea_SqKm`,
         Developed_lulc       = `lulc_developed_%`
       ) %&gt;%
       dplyr::select(
         Site,
         Network,
         Relative_elevation_m,
-        Dist_from_EFPC_km,
-        Drainage_area_km2,
         Developed_lulc
       ),
     by = &quot;Site&quot;
   ) %&gt;%
   mutate(
     Relative_elevation_m = as.numeric(Relative_elevation_m),
-    Dist_from_EFPC_km    = as.numeric(Dist_from_EFPC_km),
-    Drainage_area_km2    = as.numeric(Drainage_area_km2),
     Developed_lulc       = as.numeric(Developed_lulc)
   ) %&gt;%
    relocate(
     Network,
     Relative_elevation_m,
-    Dist_from_EFPC_km,
-    Drainage_area_km2,
     Developed_lulc,
     .after = Flow_state
   )
 
 # check
 head(bio_ms)</code></pre>
-<pre><code>## # A tibble: 6 × 22
+<pre><code>## # A tibble: 6 × 20
 ##   Sample_ID Site    Date                Regime       Flow_state Network
 ##   &lt;chr&gt;     &lt;chr&gt;   &lt;dttm&gt;              &lt;chr&gt;        &lt;chr&gt;      &lt;chr&gt;  
 ## 1 WaDE_62   MTN1.1  2023-06-23 00:00:00 NonPerennial Flowing    MTN    
@@ -591,13 +582,13 @@ head(bio_ms)</code></pre>
 ## 4 WaDE_65   MTN2    2023-06-23 00:00:00 NonPerennial Pooled     MTN    
 ## 5 WaDE_66   MCA3.3  2023-06-23 00:00:00 NonPerennial Flowing    MCA    
 ## 6 WaDE_67   MCA3.2  2023-06-23 00:00:00 NonPerennial Flowing    MCA    
-## # ℹ 16 more variables: Relative_elevation_m &lt;dbl&gt;, Dist_from_EFPC_km &lt;dbl&gt;,
-## #   Drainage_area_km2 &lt;dbl&gt;, Developed_lulc &lt;dbl&gt;, pH &lt;dbl&gt;, Temp_C &lt;dbl&gt;,
-## #   DOC_uM &lt;dbl&gt;, Ca_uM &lt;dbl&gt;, Mg_uM &lt;dbl&gt;, Na_uM &lt;dbl&gt;, K_uM &lt;dbl&gt;,
-## #   SO4_uM &lt;dbl&gt;, Cl_uM &lt;dbl&gt;, DIC_uM &lt;dbl&gt;, Zn_uM &lt;dbl&gt;, Cu_uM &lt;dbl&gt;</code></pre>
+## # ℹ 14 more variables: Relative_elevation_m &lt;dbl&gt;, Developed_lulc &lt;dbl&gt;,
+## #   pH &lt;dbl&gt;, Temp_C &lt;dbl&gt;, DOC_uM &lt;dbl&gt;, Ca_uM &lt;dbl&gt;, Mg_uM &lt;dbl&gt;,
+## #   Na_uM &lt;dbl&gt;, K_uM &lt;dbl&gt;, SO4_uM &lt;dbl&gt;, Cl_uM &lt;dbl&gt;, DIC_uM &lt;dbl&gt;,
+## #   Zn_uM &lt;dbl&gt;, Cu_uM &lt;dbl&gt;</code></pre>
 <p>Inspect the structure again</p>
 <pre class="r"><code>str(bio_ms)</code></pre>
-<pre><code>## tibble [386 × 22] (S3: tbl_df/tbl/data.frame)
+<pre><code>## tibble [386 × 20] (S3: tbl_df/tbl/data.frame)
 ##  $ Sample_ID           : chr [1:386] &quot;WaDE_62&quot; &quot;WaDE_63&quot; &quot;WaDE_64&quot; &quot;WaDE_65&quot; ...
 ##  $ Site                : chr [1:386] &quot;MTN1.1&quot; &quot;EFK13.8&quot; &quot;MTN4&quot; &quot;MTN2&quot; ...
 ##  $ Date                : POSIXct[1:386], format: &quot;2023-06-23&quot; &quot;2023-06-23&quot; ...
@@ -605,8 +596,6 @@ head(bio_ms)</code></pre>
 ##  $ Flow_state          : chr [1:386] &quot;Flowing&quot; &quot;Flowing&quot; &quot;Flowing&quot; &quot;Pooled&quot; ...
 ##  $ Network             : chr [1:386] &quot;MTN&quot; &quot;EFK&quot; &quot;MTN&quot; &quot;MTN&quot; ...
 ##  $ Relative_elevation_m: num [1:386] 3.83 0 33.18 12.87 30.45 ...
-##  $ Dist_from_EFPC_km   : num [1:386] 0.205 0 1.255 0.673 0.995 ...
-##  $ Drainage_area_km2   : num [1:386] 1.42 30.18 0.3 0.74 0.16 ...
 ##  $ Developed_lulc      : num [1:386] 63.6 64.7 41.2 54.4 58.5 ...
 ##  $ pH                  : num [1:386] 7.21 8.28 8.29 8.32 7.67 7.49 7.62 7.55 8.13 8.17 ...
 ##  $ Temp_C              : num [1:386] 16.5 18.6 15.8 18.7 16.2 16.5 17.3 16.8 17.3 19 ...
@@ -628,7 +617,7 @@ the newest Excel Workbook version before importing them.</p>
 <p>Import dataset</p>
 <pre class="r"><code>library(readxl)
 
-Cu_Speciation_ha10_cs &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Copper/1. Running BLM/Data outputs/Speciation Mode/Cu_speciation_ha10_cs.det.xlsx&quot;)</code></pre>
+Cu_Speciation_ha10_cs &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Speciation Mode/Cu_speciation_ha10_cs.det.xlsx&quot;)</code></pre>
 <pre><code>## New names:
 ## • `` -&gt; `...2`
 ## • `` -&gt; `...3`
@@ -810,7 +799,7 @@ bio_ms_ha10_cs &lt;- bio_ms %&gt;%
         TOrg_Na_M         = `TOrg.Na`,
         TOrg_K_M          = `TOrg.K`
       ) %&gt;%
-      select(
+      dplyr::select(
         Sample_ID,
         Free_Cu_M,
         CuOH_M,
@@ -885,7 +874,7 @@ bio_ms_ha10_cs &lt;- bio_ms_ha10_cs %&gt;%
 
 # Check
 str(bio_ms_ha10_cs)</code></pre>
-<pre><code>## tibble [386 × 52] (S3: tbl_df/tbl/data.frame)
+<pre><code>## tibble [386 × 50] (S3: tbl_df/tbl/data.frame)
 ##  $ Sample_ID           : chr [1:386] &quot;WaDE_62&quot; &quot;WaDE_63&quot; &quot;WaDE_64&quot; &quot;WaDE_65&quot; ...
 ##  $ Site                : chr [1:386] &quot;MTN1.1&quot; &quot;EFK13.8&quot; &quot;MTN4&quot; &quot;MTN2&quot; ...
 ##  $ Date                : POSIXct[1:386], format: &quot;2023-06-23&quot; &quot;2023-06-23&quot; ...
@@ -893,8 +882,6 @@ str(bio_ms_ha10_cs)</code></pre>
 ##  $ Flow_state          : chr [1:386] &quot;Flowing&quot; &quot;Flowing&quot; &quot;Flowing&quot; &quot;Pooled&quot; ...
 ##  $ Network             : chr [1:386] &quot;MTN&quot; &quot;EFK&quot; &quot;MTN&quot; &quot;MTN&quot; ...
 ##  $ Relative_elevation_m: num [1:386] 3.83 0 33.18 12.87 30.45 ...
-##  $ Dist_from_EFPC_km   : num [1:386] 0.205 0 1.255 0.673 0.995 ...
-##  $ Drainage_area_km2   : num [1:386] 1.42 30.18 0.3 0.74 0.16 ...
 ##  $ Developed_lulc      : num [1:386] 63.6 64.7 41.2 54.4 58.5 ...
 ##  $ pH                  : num [1:386] 7.21 8.28 8.29 8.32 7.67 7.49 7.62 7.55 8.13 8.17 ...
 ##  $ Temp_C              : num [1:386] 16.5 18.6 15.8 18.7 16.2 16.5 17.3 16.8 17.3 19 ...
@@ -955,7 +942,7 @@ promelas.det.xlsx)</li>
 </ul>
 <pre class="r"><code>library(readxl)
 
-Cu_acute_tox_daph &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha10_cs/Cu Acute Toxicity on C. dubia.det.xlsx&quot;)</code></pre>
+Cu_acute_tox_daph &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha10_cs/Cu Acute Toxicity on C. dubia.det.xlsx&quot;)</code></pre>
 <pre><code>## New names:
 ## • `` -&gt; `...2`
 ## • `` -&gt; `...3`
@@ -1017,7 +1004,7 @@ Cu_acute_tox_daph &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge Natio
 ## • `` -&gt; `...59`
 ## • `` -&gt; `...60`
 ## • `` -&gt; `...61`</code></pre>
-<pre class="r"><code>Cu_acute_tox_minn &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha10_cs/Cu Acute Toxicity on P. promelas.det.xlsx&quot;)</code></pre>
+<pre class="r"><code>Cu_acute_tox_minn &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha10_cs/Cu Acute Toxicity on P. promelas.det.xlsx&quot;)</code></pre>
 <pre><code>## New names:
 ## • `` -&gt; `...2`
 ## • `` -&gt; `...3`
@@ -1079,7 +1066,7 @@ Cu_acute_tox_daph &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge Natio
 ## • `` -&gt; `...59`
 ## • `` -&gt; `...60`
 ## • `` -&gt; `...61`</code></pre>
-<pre class="r"><code>Cu_chronic_tox_daph &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha10_cs/Cu Chronic Toxicity on C. dubia.det.xlsx&quot;)</code></pre>
+<pre class="r"><code>Cu_chronic_tox_daph &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha10_cs/Cu Chronic Toxicity on C. dubia.det.xlsx&quot;)</code></pre>
 <pre><code>## New names:
 ## • `` -&gt; `...2`
 ## • `` -&gt; `...3`
@@ -1141,7 +1128,7 @@ Cu_acute_tox_daph &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge Natio
 ## • `` -&gt; `...59`
 ## • `` -&gt; `...60`
 ## • `` -&gt; `...61`</code></pre>
-<pre class="r"><code>Cu_chronic_tox_minn &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha10_cs/Cu Chronic Toxicity on P. promelas.det.xlsx&quot;)</code></pre>
+<pre class="r"><code>Cu_chronic_tox_minn &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha10_cs/Cu Chronic Toxicity on P. promelas.det.xlsx&quot;)</code></pre>
 <pre><code>## New names:
 ## • `` -&gt; `...2`
 ## • `` -&gt; `...3`
@@ -1378,7 +1365,7 @@ for (var_name in names(cu_tox_clean)) {
     left_join(
       cu_tox_clean[[var_name]] %&gt;%
         rename(!!var_name := T.Cu) %&gt;%   # rename T.Cu to the correct toxicity name
-        select(Sample_ID, all_of(var_name)),
+        dplyr::select(Sample_ID, all_of(var_name)),
       by = &quot;Sample_ID&quot;
     )
 
@@ -1396,7 +1383,7 @@ bio_ms_ha10_cs &lt;- bio_ms_ha10_cs %&gt;%
 # 4) Check
 # ----------------------------------------------------
 str(bio_ms_ha10_cs)</code></pre>
-<pre><code>## tibble [386 × 56] (S3: tbl_df/tbl/data.frame)
+<pre><code>## tibble [386 × 54] (S3: tbl_df/tbl/data.frame)
 ##  $ Sample_ID               : chr [1:386] &quot;WaDE_62&quot; &quot;WaDE_63&quot; &quot;WaDE_64&quot; &quot;WaDE_65&quot; ...
 ##  $ Site                    : chr [1:386] &quot;MTN1.1&quot; &quot;EFK13.8&quot; &quot;MTN4&quot; &quot;MTN2&quot; ...
 ##  $ Date                    : POSIXct[1:386], format: &quot;2023-06-23&quot; &quot;2023-06-23&quot; ...
@@ -1404,8 +1391,6 @@ str(bio_ms_ha10_cs)</code></pre>
 ##  $ Flow_state              : chr [1:386] &quot;Flowing&quot; &quot;Flowing&quot; &quot;Flowing&quot; &quot;Pooled&quot; ...
 ##  $ Network                 : chr [1:386] &quot;MTN&quot; &quot;EFK&quot; &quot;MTN&quot; &quot;MTN&quot; ...
 ##  $ Relative_elevation_m    : num [1:386] 3.83 0 33.18 12.87 30.45 ...
-##  $ Dist_from_EFPC_km       : num [1:386] 0.205 0 1.255 0.673 0.995 ...
-##  $ Drainage_area_km2       : num [1:386] 1.42 30.18 0.3 0.74 0.16 ...
 ##  $ Developed_lulc          : num [1:386] 63.6 64.7 41.2 54.4 58.5 ...
 ##  $ pH                      : num [1:386] 7.21 8.28 8.29 8.32 7.67 7.49 7.62 7.55 8.13 8.17 ...
 ##  $ Temp_C                  : num [1:386] 16.5 18.6 15.8 18.7 16.2 16.5 17.3 16.8 17.3 19 ...
@@ -1502,7 +1487,7 @@ the newest Excel Workbook version before importing them.</p>
 <p>Import dataset</p>
 <pre class="r"><code>library(readxl)
 
-Cu_Speciation_ha10_os &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Copper/1. Running BLM/Data outputs/Speciation Mode/Cu_speciation_ha10_os.det.xlsx&quot;)</code></pre>
+Cu_Speciation_ha10_os &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Speciation Mode/Cu_speciation_ha10_os.det.xlsx&quot;)</code></pre>
 <pre><code>## New names:
 ## • `` -&gt; `...2`
 ## • `` -&gt; `...3`
@@ -1684,7 +1669,7 @@ bio_ms_ha10_os &lt;- bio_ms %&gt;%
         TOrg_Na_M         = `TOrg.Na`,
         TOrg_K_M          = `TOrg.K`
       ) %&gt;%
-      select(
+      dplyr::select(
         Sample_ID,
         Free_Cu_M,
         CuOH_M,
@@ -1759,7 +1744,7 @@ bio_ms_ha10_os &lt;- bio_ms_ha10_os %&gt;%
 
 # Check
 str(bio_ms_ha10_os)</code></pre>
-<pre><code>## tibble [386 × 52] (S3: tbl_df/tbl/data.frame)
+<pre><code>## tibble [386 × 50] (S3: tbl_df/tbl/data.frame)
 ##  $ Sample_ID           : chr [1:386] &quot;WaDE_62&quot; &quot;WaDE_63&quot; &quot;WaDE_64&quot; &quot;WaDE_65&quot; ...
 ##  $ Site                : chr [1:386] &quot;MTN1.1&quot; &quot;EFK13.8&quot; &quot;MTN4&quot; &quot;MTN2&quot; ...
 ##  $ Date                : POSIXct[1:386], format: &quot;2023-06-23&quot; &quot;2023-06-23&quot; ...
@@ -1767,8 +1752,6 @@ str(bio_ms_ha10_os)</code></pre>
 ##  $ Flow_state          : chr [1:386] &quot;Flowing&quot; &quot;Flowing&quot; &quot;Flowing&quot; &quot;Pooled&quot; ...
 ##  $ Network             : chr [1:386] &quot;MTN&quot; &quot;EFK&quot; &quot;MTN&quot; &quot;MTN&quot; ...
 ##  $ Relative_elevation_m: num [1:386] 3.83 0 33.18 12.87 30.45 ...
-##  $ Dist_from_EFPC_km   : num [1:386] 0.205 0 1.255 0.673 0.995 ...
-##  $ Drainage_area_km2   : num [1:386] 1.42 30.18 0.3 0.74 0.16 ...
 ##  $ Developed_lulc      : num [1:386] 63.6 64.7 41.2 54.4 58.5 ...
 ##  $ pH                  : num [1:386] 7.21 8.28 8.29 8.32 7.67 7.49 7.62 7.55 8.13 8.17 ...
 ##  $ Temp_C              : num [1:386] 16.5 18.6 15.8 18.7 16.2 16.5 17.3 16.8 17.3 19 ...
@@ -1829,7 +1812,7 @@ promelas.det.xlsx)</li>
 </ul>
 <pre class="r"><code>library(readxl)
 
-Cu_acute_tox_daph &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha10_os/Cu Acute Toxicity on C. dubia.det.xlsx&quot;)</code></pre>
+Cu_acute_tox_daph &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha10_os/Cu Acute Toxicity on C. dubia.det.xlsx&quot;)</code></pre>
 <pre><code>## New names:
 ## • `` -&gt; `...2`
 ## • `` -&gt; `...3`
@@ -1891,7 +1874,7 @@ Cu_acute_tox_daph &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge Natio
 ## • `` -&gt; `...59`
 ## • `` -&gt; `...60`
 ## • `` -&gt; `...61`</code></pre>
-<pre class="r"><code>Cu_acute_tox_minn &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha10_os/Cu Acute Toxicity on P. promelas.det.xlsx&quot;)</code></pre>
+<pre class="r"><code>Cu_acute_tox_minn &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha10_os/Cu Acute Toxicity on P. promelas.det.xlsx&quot;)</code></pre>
 <pre><code>## New names:
 ## • `` -&gt; `...2`
 ## • `` -&gt; `...3`
@@ -1953,7 +1936,7 @@ Cu_acute_tox_daph &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge Natio
 ## • `` -&gt; `...59`
 ## • `` -&gt; `...60`
 ## • `` -&gt; `...61`</code></pre>
-<pre class="r"><code>Cu_chronic_tox_daph &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha10_os/Cu Chronic Toxicity on C. dubia.det.xlsx&quot;)</code></pre>
+<pre class="r"><code>Cu_chronic_tox_daph &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha10_os/Cu Chronic Toxicity on C. dubia.det.xlsx&quot;)</code></pre>
 <pre><code>## New names:
 ## • `` -&gt; `...2`
 ## • `` -&gt; `...3`
@@ -2015,7 +1998,7 @@ Cu_acute_tox_daph &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge Natio
 ## • `` -&gt; `...59`
 ## • `` -&gt; `...60`
 ## • `` -&gt; `...61`</code></pre>
-<pre class="r"><code>Cu_chronic_tox_minn &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha10_os/Cu Chronic Toxicity on P. promelas.det.xlsx&quot;)</code></pre>
+<pre class="r"><code>Cu_chronic_tox_minn &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha10_os/Cu Chronic Toxicity on P. promelas.det.xlsx&quot;)</code></pre>
 <pre><code>## New names:
 ## • `` -&gt; `...2`
 ## • `` -&gt; `...3`
@@ -2252,7 +2235,7 @@ for (var_name in names(cu_tox_clean)) {
     left_join(
       cu_tox_clean[[var_name]] %&gt;%
         rename(!!var_name := T.Cu) %&gt;%   # rename T.Cu to the correct toxicity name
-        select(Sample_ID, all_of(var_name)),
+        dplyr::select(Sample_ID, all_of(var_name)),
       by = &quot;Sample_ID&quot;
     )
 
@@ -2270,7 +2253,7 @@ bio_ms_ha10_os &lt;- bio_ms_ha10_os %&gt;%
 # 4) Check
 # ----------------------------------------------------
 str(bio_ms_ha10_os)</code></pre>
-<pre><code>## tibble [386 × 56] (S3: tbl_df/tbl/data.frame)
+<pre><code>## tibble [386 × 54] (S3: tbl_df/tbl/data.frame)
 ##  $ Sample_ID               : chr [1:386] &quot;WaDE_62&quot; &quot;WaDE_63&quot; &quot;WaDE_64&quot; &quot;WaDE_65&quot; ...
 ##  $ Site                    : chr [1:386] &quot;MTN1.1&quot; &quot;EFK13.8&quot; &quot;MTN4&quot; &quot;MTN2&quot; ...
 ##  $ Date                    : POSIXct[1:386], format: &quot;2023-06-23&quot; &quot;2023-06-23&quot; ...
@@ -2278,8 +2261,6 @@ str(bio_ms_ha10_os)</code></pre>
 ##  $ Flow_state              : chr [1:386] &quot;Flowing&quot; &quot;Flowing&quot; &quot;Flowing&quot; &quot;Pooled&quot; ...
 ##  $ Network                 : chr [1:386] &quot;MTN&quot; &quot;EFK&quot; &quot;MTN&quot; &quot;MTN&quot; ...
 ##  $ Relative_elevation_m    : num [1:386] 3.83 0 33.18 12.87 30.45 ...
-##  $ Dist_from_EFPC_km       : num [1:386] 0.205 0 1.255 0.673 0.995 ...
-##  $ Drainage_area_km2       : num [1:386] 1.42 30.18 0.3 0.74 0.16 ...
 ##  $ Developed_lulc          : num [1:386] 63.6 64.7 41.2 54.4 58.5 ...
 ##  $ pH                      : num [1:386] 7.21 8.28 8.29 8.32 7.67 7.49 7.62 7.55 8.13 8.17 ...
 ##  $ Temp_C                  : num [1:386] 16.5 18.6 15.8 18.7 16.2 16.5 17.3 16.8 17.3 19 ...
@@ -2376,7 +2357,7 @@ the newest Excel Workbook version before importing them.</p>
 <p>Import dataset</p>
 <pre class="r"><code>library(readxl)
 
-Cu_Speciation_ha80_cs &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Copper/1. Running BLM/Data outputs/Speciation Mode/Cu_speciation_ha80_cs.det.xlsx&quot;)</code></pre>
+Cu_Speciation_ha80_cs &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Speciation Mode/Cu_speciation_ha80_cs.det.xlsx&quot;)</code></pre>
 <pre><code>## New names:
 ## • `` -&gt; `...2`
 ## • `` -&gt; `...3`
@@ -2558,7 +2539,7 @@ bio_ms_ha80_cs &lt;- bio_ms %&gt;%
         TOrg_Na_M         = `TOrg.Na`,
         TOrg_K_M          = `TOrg.K`
       ) %&gt;%
-      select(
+      dplyr::select(
         Sample_ID,
         Free_Cu_M,
         CuOH_M,
@@ -2633,7 +2614,7 @@ bio_ms_ha80_cs &lt;- bio_ms_ha80_cs %&gt;%
 
 # Check
 str(bio_ms_ha80_cs)</code></pre>
-<pre><code>## tibble [386 × 52] (S3: tbl_df/tbl/data.frame)
+<pre><code>## tibble [386 × 50] (S3: tbl_df/tbl/data.frame)
 ##  $ Sample_ID           : chr [1:386] &quot;WaDE_62&quot; &quot;WaDE_63&quot; &quot;WaDE_64&quot; &quot;WaDE_65&quot; ...
 ##  $ Site                : chr [1:386] &quot;MTN1.1&quot; &quot;EFK13.8&quot; &quot;MTN4&quot; &quot;MTN2&quot; ...
 ##  $ Date                : POSIXct[1:386], format: &quot;2023-06-23&quot; &quot;2023-06-23&quot; ...
@@ -2641,8 +2622,6 @@ str(bio_ms_ha80_cs)</code></pre>
 ##  $ Flow_state          : chr [1:386] &quot;Flowing&quot; &quot;Flowing&quot; &quot;Flowing&quot; &quot;Pooled&quot; ...
 ##  $ Network             : chr [1:386] &quot;MTN&quot; &quot;EFK&quot; &quot;MTN&quot; &quot;MTN&quot; ...
 ##  $ Relative_elevation_m: num [1:386] 3.83 0 33.18 12.87 30.45 ...
-##  $ Dist_from_EFPC_km   : num [1:386] 0.205 0 1.255 0.673 0.995 ...
-##  $ Drainage_area_km2   : num [1:386] 1.42 30.18 0.3 0.74 0.16 ...
 ##  $ Developed_lulc      : num [1:386] 63.6 64.7 41.2 54.4 58.5 ...
 ##  $ pH                  : num [1:386] 7.21 8.28 8.29 8.32 7.67 7.49 7.62 7.55 8.13 8.17 ...
 ##  $ Temp_C              : num [1:386] 16.5 18.6 15.8 18.7 16.2 16.5 17.3 16.8 17.3 19 ...
@@ -2703,7 +2682,7 @@ promelas.det.xlsx)</li>
 </ol>
 <pre class="r"><code>library(readxl)
 
-Cu_acute_tox_daph &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha80_cs/Cu Acute Toxicity on C. dubia.det.xlsx&quot;)</code></pre>
+Cu_acute_tox_daph &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha80_cs/Cu Acute Toxicity on C. dubia.det.xlsx&quot;)</code></pre>
 <pre><code>## New names:
 ## • `` -&gt; `...2`
 ## • `` -&gt; `...3`
@@ -2765,7 +2744,7 @@ Cu_acute_tox_daph &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge Natio
 ## • `` -&gt; `...59`
 ## • `` -&gt; `...60`
 ## • `` -&gt; `...61`</code></pre>
-<pre class="r"><code>Cu_acute_tox_minn &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha80_cs/Cu Acute Toxicity on P. promelas.det.xlsx&quot;)</code></pre>
+<pre class="r"><code>Cu_acute_tox_minn &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha80_cs/Cu Acute Toxicity on P. promelas.det.xlsx&quot;)</code></pre>
 <pre><code>## New names:
 ## • `` -&gt; `...2`
 ## • `` -&gt; `...3`
@@ -2827,7 +2806,7 @@ Cu_acute_tox_daph &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge Natio
 ## • `` -&gt; `...59`
 ## • `` -&gt; `...60`
 ## • `` -&gt; `...61`</code></pre>
-<pre class="r"><code>Cu_chronic_tox_daph &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha80_cs/Cu Chronic Toxicity on C. dubia.det.xlsx&quot;)</code></pre>
+<pre class="r"><code>Cu_chronic_tox_daph &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha80_cs/Cu Chronic Toxicity on C. dubia.det.xlsx&quot;)</code></pre>
 <pre><code>## New names:
 ## • `` -&gt; `...2`
 ## • `` -&gt; `...3`
@@ -2889,7 +2868,7 @@ Cu_acute_tox_daph &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge Natio
 ## • `` -&gt; `...59`
 ## • `` -&gt; `...60`
 ## • `` -&gt; `...61`</code></pre>
-<pre class="r"><code>Cu_chronic_tox_minn &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha80_cs/Cu Chronic Toxicity on P. promelas.det.xlsx&quot;)</code></pre>
+<pre class="r"><code>Cu_chronic_tox_minn &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha80_cs/Cu Chronic Toxicity on P. promelas.det.xlsx&quot;)</code></pre>
 <pre><code>## New names:
 ## • `` -&gt; `...2`
 ## • `` -&gt; `...3`
@@ -3131,7 +3110,7 @@ for (var_name in names(cu_tox_clean)) {
     left_join(
       cu_tox_clean[[var_name]] %&gt;%
         rename(!!var_name := T.Cu) %&gt;%   # rename T.Cu to the correct toxicity name
-        select(Sample_ID, all_of(var_name)),
+        dplyr::select(Sample_ID, all_of(var_name)),
       by = &quot;Sample_ID&quot;
     )
 
@@ -3149,7 +3128,7 @@ bio_ms_ha80_cs &lt;- bio_ms_ha80_cs %&gt;%
 # 4) Check
 # ----------------------------------------------------
 str(bio_ms_ha80_cs)</code></pre>
-<pre><code>## tibble [386 × 56] (S3: tbl_df/tbl/data.frame)
+<pre><code>## tibble [386 × 54] (S3: tbl_df/tbl/data.frame)
 ##  $ Sample_ID               : chr [1:386] &quot;WaDE_62&quot; &quot;WaDE_63&quot; &quot;WaDE_64&quot; &quot;WaDE_65&quot; ...
 ##  $ Site                    : chr [1:386] &quot;MTN1.1&quot; &quot;EFK13.8&quot; &quot;MTN4&quot; &quot;MTN2&quot; ...
 ##  $ Date                    : POSIXct[1:386], format: &quot;2023-06-23&quot; &quot;2023-06-23&quot; ...
@@ -3157,8 +3136,6 @@ str(bio_ms_ha80_cs)</code></pre>
 ##  $ Flow_state              : chr [1:386] &quot;Flowing&quot; &quot;Flowing&quot; &quot;Flowing&quot; &quot;Pooled&quot; ...
 ##  $ Network                 : chr [1:386] &quot;MTN&quot; &quot;EFK&quot; &quot;MTN&quot; &quot;MTN&quot; ...
 ##  $ Relative_elevation_m    : num [1:386] 3.83 0 33.18 12.87 30.45 ...
-##  $ Dist_from_EFPC_km       : num [1:386] 0.205 0 1.255 0.673 0.995 ...
-##  $ Drainage_area_km2       : num [1:386] 1.42 30.18 0.3 0.74 0.16 ...
 ##  $ Developed_lulc          : num [1:386] 63.6 64.7 41.2 54.4 58.5 ...
 ##  $ pH                      : num [1:386] 7.21 8.28 8.29 8.32 7.67 7.49 7.62 7.55 8.13 8.17 ...
 ##  $ Temp_C                  : num [1:386] 16.5 18.6 15.8 18.7 16.2 16.5 17.3 16.8 17.3 19 ...

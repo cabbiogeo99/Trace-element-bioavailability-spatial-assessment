@@ -16,7 +16,7 @@ The objectives of this notebook will be to conduct exploratory data analyses on 
 Set the working directory
 
 ```{r}
-setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Copper/4. Exploratory data analysis")
+setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/4. Exploratory data analysis")
 ```
 
 Upload the Bioavailability Master Spreadsheet datasets
@@ -24,122 +24,19 @@ Upload the Bioavailability Master Spreadsheet datasets
 ```{r}
 library(readxl)
 
-ha10_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Copper/3. Dataset cleaning/Bioavailability_Master_Spreadsheet_Clean.xlsx", 
+ha10_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/3. Dataset cleaning/Bioavailability_Master_Spreadsheet_Clean.xlsx", 
     sheet = "HA 10% Closed System")
 
-ha10_os <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Copper/3. Dataset cleaning/Bioavailability_Master_Spreadsheet_Clean.xlsx", 
+ha10_os <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/3. Dataset cleaning/Bioavailability_Master_Spreadsheet_Clean.xlsx", 
     sheet = "HA 10% Open System")
 
-ha80_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Copper/3. Dataset cleaning/Bioavailability_Master_Spreadsheet_Clean.xlsx", 
+ha80_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/3. Dataset cleaning/Bioavailability_Master_Spreadsheet_Clean.xlsx", 
     sheet = "HA 80% Closed System")
 ```
 
-# 2. Normality Check of Variables
+# 2. Log-Transform Variables
 
-## i. Raw Variables
-
-Now continuous variables must be checked for Normality by Shapiro-Wilk's method and skewness.
-
-```{r}
-library(dplyr)
-library(fBasics)
-
-# Create loop function
-run_normality_tests <- function(dat) {
-
-  # Identify numeric variables
-  numeric_vars <- dat %>%
-    dplyr::select(where(is.numeric)) %>%
-    names()
-
-  # Initialize results data frame
-  normality_results <- data.frame(
-    Variable  = numeric_vars,
-    Normality = NA_character_,
-    Skewness  = NA_real_,
-    stringsAsFactors = FALSE
-  )
-
-  # Loop over numeric variables
-  for (i in seq_along(numeric_vars)) {
-
-    var_data <- dat[[numeric_vars[i]]]
-
-    # Skip non-numeric just in case
-    if (!is.numeric(var_data)) {
-      normality_results$Normality[i] <- "Not numeric"
-      normality_results$Skewness[i]  <- NA
-      next
-    }
-
-    # Shapiro–Wilk test (with error handling)
-    test_result <- tryCatch(
-      normalTest(var_data, method = "sw"),
-      error = function(e) NULL
-    )
-
-    if (!is.null(test_result)) {
-      normality_results$Normality[i] <-
-        ifelse(test_result@test$p.value > 0.05, "Pass", "Fail")
-    } else {
-      normality_results$Normality[i] <- "Error"
-    }
-
-    # Skewness
-    normality_results$Skewness[i] <- skewness(var_data)
-  }
-
-  return(normality_results)
-}
-
-# Run function
-normality_results_ha10_cs <- run_normality_tests(ha10_cs)
-normality_results_ha10_os <- run_normality_tests(ha10_os)
-normality_results_ha80_cs <- run_normality_tests(ha80_cs)
-
-# Inspect results
-head(normality_results_ha10_cs)
-head(normality_results_ha10_os)
-head(normality_results_ha80_cs)
-```
-
-Save to excel
-
-```{r}
-library(openxlsx)
-
-# Create a blank workbook
-wb <- createWorkbook()
-
-# Add worksheets for each scnario
-if(!"HA10_CS" %in% names(wb)) {
-  addWorksheet(wb, "HA10_CS")
-}
-
-if(!"HA10_OS" %in% names(wb)) {
-  addWorksheet(wb, "HA10_OS")
-}
-
-if(!"HA80_CS" %in% names(wb)) {
-  addWorksheet(wb, "HA80_CS")
-}
-
-# Write results into each sheet
-writeData(wb, sheet = "HA10_CS", normality_results_ha10_cs)
-writeData(wb, sheet = "HA10_OS", normality_results_ha10_os)
-writeData(wb, sheet = "HA80_CS", normality_results_ha80_cs)
-
-# Save the workbook (overwrite)
-saveWorkbook(
-  wb,
-  file = "Normality_checks.xlsx",
-  overwrite = TRUE
-)
-```
-
-## ii. Log-Transformed Variables
-
-Now we'll perform the same functions on the log-transformed variables (except pH since it's already log-transformed). We'll add a +1 constant to variables since log-transformations cannot be performed on 0 values.
+Since we already determined variables were not normally distributed, we just need to log-transform them.
 
 ```{r}
 library(dplyr)
@@ -148,114 +45,9 @@ library(dplyr)
 exclude_vars <- c(
   "pH",
   "Relative_elevation_m",
-  "Dist_from_EFPC_km",
-  "Drainage_area_km2",
   "Developed_lulc"
 )
 
-# Helper function for Normality and skewness checks
-run_log_normality_tests <- function(dat, exclude_vars) {
-
-  # Identify numeric variables eligible for log transform
-  log_vars <- dat %>%
-    select(where(is.numeric)) %>%
-    select(-any_of(exclude_vars)) %>%
-    names()
-
-  # Initialize results data frame
-  normality_results <- data.frame(
-    Variable  = log_vars,
-    Normality = NA_character_,
-    Skewness  = NA_real_,
-    stringsAsFactors = FALSE
-  )
-
-  # Loop over variables
-  for (i in seq_along(log_vars)) {
-
-    var_data <- dat[[log_vars[i]]]
-
-    # Log10 transform safely
-    log_data <- ifelse(var_data > 0, log10(var_data), NA_real_)
-
-    # Remove NAs before testing
-    log_data <- log_data[!is.na(log_data)]
-
-    # If too few observations, skip
-    if (length(log_data) < 3) {
-      normality_results$Normality[i] <- "Too few values"
-      normality_results$Skewness[i]  <- NA
-      next
-    }
-
-    # Shapiro–Wilk test
-    test_result <- tryCatch(
-      normalTest(log_data, method = "sw"),
-      error = function(e) NULL
-    )
-
-    if (!is.null(test_result)) {
-      normality_results$Normality[i] <-
-        ifelse(test_result@test$p.value > 0.05, "Pass", "Fail")
-    } else {
-      normality_results$Normality[i] <- "Error"
-    }
-
-    # Skewness on log-transformed data
-    normality_results$Skewness[i] <- skewness(log_data)
-  }
-
-  return(normality_results)
-}
-
-# Run
-log_normality_results_ha10_cs <- run_log_normality_tests(ha10_cs, exclude_vars)
-log_normality_results_ha10_os <- run_log_normality_tests(ha10_os, exclude_vars)
-log_normality_results_ha80_cs <- run_log_normality_tests(ha80_cs, exclude_vars)
-
-# Check
-head(log_normality_results_ha10_cs)
-head(log_normality_results_ha10_os)
-head(log_normality_results_ha80_cs)
-```
-
-Save to excel
-
-```{r}
-library(openxlsx)
-
-# Create a blank workbook
-wb <- createWorkbook()
-
-# Add worksheets for each scnario
-if(!"HA10_CS" %in% names(wb)) {
-  addWorksheet(wb, "HA10_CS")
-}
-
-if(!"HA10_OS" %in% names(wb)) {
-  addWorksheet(wb, "HA10_OS")
-}
-
-if(!"HA80_CS" %in% names(wb)) {
-  addWorksheet(wb, "HA80_CS")
-}
-
-# Write results into each sheet
-writeData(wb, sheet = "HA10_CS", log_normality_results_ha10_cs)
-writeData(wb, sheet = "HA10_OS", log_normality_results_ha10_os)
-writeData(wb, sheet = "HA80_CS", log_normality_results_ha80_cs)
-
-# Save the workbook (overwrite)
-saveWorkbook(
-  wb,
-  file = "Normality_checks_log_vars.xlsx",
-  overwrite = TRUE
-)
-```
-
-Save log-transformed variables into dataset objects
-
-```{r}
 # Helper function
 add_log_variables <- function(dat, exclude_vars) {
 
@@ -264,7 +56,7 @@ add_log_variables <- function(dat, exclude_vars) {
       across(
         .cols = where(is.numeric) &
           !any_of(exclude_vars) &
-          !starts_with("log_"),      # <-- prevents re-logging
+          !starts_with("log_"),     
         .fns  = ~ ifelse(.x > 0, log10(.x), NA_real_),
         .names = "log_{.col}"
       )
@@ -302,88 +94,6 @@ writeData(wb, sheet = "HA 80% Closed System", ha80_cs)
 saveWorkbook(
   wb,
   file = "Bioavailability_Master_Spreadsheet_Clean2.xlsx",
-  overwrite = TRUE
-)
-```
-
-# 3. Summary Statistics
-
-We'll calculate summary statistics for all numeric variables across all sites.
-
-```{r}
-library(purrr)
-library(tidyr)
-library(dplyr)
-
-# Mode function
-get_mode <- function(x) {
-  x <- x[!is.na(x)]
-  if (length(x) == 0) return(NA)
-  ux <- unique(x)
-  ux[which.max(tabulate(match(x, ux)))]
-}
-
-# Summary function for ONE dataset
-summarize_numeric <- function(dat) {
-
-  numeric_vars <- names(dat)[sapply(dat, is.numeric)]
-
-  map_dfr(numeric_vars, function(colname) {
-    vec <- dat[[colname]]
-    n_non_na <- sum(!is.na(vec))
-
-    tibble(
-      variable = colname,
-      mean     = mean(vec, na.rm = TRUE),
-      median   = median(vec, na.rm = TRUE),
-      mode     = get_mode(vec),
-      variance = var(vec, na.rm = TRUE),
-      se       = sd(vec, na.rm = TRUE) / sqrt(n_non_na)
-    )
-  }) %>%
-    arrange(variable)
-}
-
-# ---- Run on your 3 datasets ----
-summary_ha10_cs <- summarize_numeric(ha10_cs)
-summary_ha10_os <- summarize_numeric(ha10_os)
-summary_ha80_cs <- summarize_numeric(ha80_cs)
-
-# View one
-summary_ha10_cs
-
-```
-
-Save to excel
-
-```{r}
-library(openxlsx)
-
-# Create a blank workbook
-wb <- createWorkbook()
-
-# Add worksheets for each scnario
-if(!"HA10_CS" %in% names(wb)) {
-  addWorksheet(wb, "HA10_CS")
-}
-
-if(!"HA10_OS" %in% names(wb)) {
-  addWorksheet(wb, "HA10_OS")
-}
-
-if(!"HA80_CS" %in% names(wb)) {
-  addWorksheet(wb, "HA80_CS")
-}
-
-# Write results into each sheet
-writeData(wb, sheet = "HA10_CS", summary_ha10_cs)
-writeData(wb, sheet = "HA10_OS", summary_ha10_os)
-writeData(wb, sheet = "HA80_CS", summary_ha80_cs)
-
-# Save the workbook (overwrite)
-saveWorkbook(
-  wb,
-  file = "Summary_stats.xlsx",
   overwrite = TRUE
 )
 ```

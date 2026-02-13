@@ -76,7 +76,7 @@ WaDE_Synoptic_Summary <-
   WaDE_Synoptic_Summary %>%
   
   # 1) Keep only variables of interest
-  select(
+  dplyr::select(
     Sample_ID,
     Site,
     Date,

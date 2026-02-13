@@ -5,6 +5,10 @@ output:
     df_print: paged
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.show = "hide", fig.keep = "none")
+```
+
 The objectives of this notebook will be to conduct exploratory data analyses on the Bioavailability Master Spreadsheet Clean version under the 3 BLM system assumptions.
 
 # 1. Preparing the Variables

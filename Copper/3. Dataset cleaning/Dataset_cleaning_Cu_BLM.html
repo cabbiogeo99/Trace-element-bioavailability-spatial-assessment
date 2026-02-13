@@ -361,33 +361,19 @@ assumptions). To run this for each of the tabs, simply replace the file
 upload which becomes the object called “dat” and replace the tab name of
 the exported file to the Bioavailability Master Spreadsheet will be,
 then run the entire Rmd.</p>
-<p>Workflow overview</p>
-<ul>
-<li><p>Standardize units of all concentration variables to uM</p></li>
-<li><p>Create new numeric variables:</p>
-<ul>
-<li><p>Total bioavailable element</p></li>
-<li><p>Relative proportion of bioavailable element</p></li>
-</ul></li>
-<li><p>Create new categorical variables</p>
-<ul>
-<li>From numeric inherent stream characteristics (development, distance
-from main stem, drainage area, and relative elevation)</li>
-</ul></li>
-</ul>
 <div id="i.-import-dataset" class="section level2">
 <h2>I. Import Dataset</h2>
 <p>Set the working directory to the repo</p>
-<pre class="r"><code>setwd(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Copper/3. Dataset cleaning&quot;)</code></pre>
+<pre class="r"><code>setwd(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/3. Dataset cleaning&quot;)</code></pre>
 <p>Upload Bioavailability_Master_Spreadsheet.xlsx</p>
 <pre class="r"><code>#load package (must be installed first)
 library(readxl) 
 
-dat &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Copper/2. Dataset merging/Bioavailability_Master_Spreadsheet.xlsx&quot;, 
+dat &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/2. Dataset merging/Bioavailability_Master_Spreadsheet.xlsx&quot;, 
     sheet = &quot;HA 10% Closed System&quot;)
 
 str(dat)</code></pre>
-<pre><code>## tibble [386 × 56] (S3: tbl_df/tbl/data.frame)
+<pre><code>## tibble [386 × 54] (S3: tbl_df/tbl/data.frame)
 ##  $ Sample_ID               : chr [1:386] &quot;WaDE_62&quot; &quot;WaDE_63&quot; &quot;WaDE_64&quot; &quot;WaDE_65&quot; ...
 ##  $ Site                    : chr [1:386] &quot;MTN1.1&quot; &quot;EFK13.8&quot; &quot;MTN4&quot; &quot;MTN2&quot; ...
 ##  $ Date                    : POSIXct[1:386], format: &quot;2023-06-23&quot; &quot;2023-06-23&quot; ...
@@ -395,8 +381,6 @@ str(dat)</code></pre>
 ##  $ Flow_state              : chr [1:386] &quot;Flowing&quot; &quot;Flowing&quot; &quot;Flowing&quot; &quot;Pooled&quot; ...
 ##  $ Network                 : chr [1:386] &quot;MTN&quot; &quot;EFK&quot; &quot;MTN&quot; &quot;MTN&quot; ...
 ##  $ Relative_elevation_m    : num [1:386] 3.83 0 33.18 12.87 30.45 ...
-##  $ Dist_from_EFPC_km       : num [1:386] 0.205 0 1.255 0.673 0.995 ...
-##  $ Drainage_area_km2       : num [1:386] 1.42 30.18 0.3 0.74 0.16 ...
 ##  $ Developed_lulc          : num [1:386] 63.6 64.7 41.2 54.4 58.5 ...
 ##  $ pH                      : num [1:386] 7.21 8.28 8.29 8.32 7.67 7.49 7.62 7.55 8.13 8.17 ...
 ##  $ Temp_C                  : num [1:386] 16.5 18.6 15.8 18.7 16.2 16.5 17.3 16.8 17.3 19 ...
@@ -451,7 +435,7 @@ str(dat)</code></pre>
 <ul>
 <li><p>M -&gt; uM and nM</p></li>
 <li><p>uM -&gt; M and nM</p></li>
-<li><p>mol/kg -&gt; nmol/g</p></li>
+<li><p>mol/kg -&gt; nmol/g and umol/g</p></li>
 </ul>
 <p>That way, we have all variables in units of M, uM, and nM (for
 dissolved species) or mol/kg and nmol/kg (for biotic ligand-bound
@@ -511,7 +495,7 @@ convert_units_no_dups &lt;- function(dat) {
   }, .init = dat)
 
   # -------------------------
-  # 2) BL variables: *_mol_kg -&gt; *_nmol_kg and *_nmol_g
+  # 2) BL variables: *_mol_kg -&gt; *_nmol_kg, *_nmol_g, *_umol_g
   # -------------------------
   bl_molkg &lt;- names(dat)[str_detect(names(dat), &quot;_mol_kg$&quot;)]
 
@@ -521,25 +505,28 @@ convert_units_no_dups &lt;- function(dat) {
 
     nm_nmol_kg &lt;- paste0(base, &quot;_nmol_kg&quot;)  # mol/kg -&gt; nmol/kg (×1e9)
     nm_nmol_g  &lt;- paste0(base, &quot;_nmol_g&quot;)   # mol/kg -&gt; nmol/g  (×1e6)
+    nm_umol_g  &lt;- paste0(base, &quot;_umol_g&quot;)   # mol/kg -&gt; umol/g  (×1e3)
 
     vals &lt;- df[[nm]]
 
     df %&gt;%
       add_if_missing(nm_nmol_kg, vals * 1e9) %&gt;%
-      add_if_missing(nm_nmol_g,  vals * 1e6)
+      add_if_missing(nm_nmol_g,  vals * 1e6) %&gt;%
+      add_if_missing(nm_umol_g,  vals * 1e3)
 
   }, .init = dat)
 
   dat
 }
 
-# Asign it back if you want to keep using `dat$...`
+# Assign it back if you want to keep using `dat$...`
 dat &lt;- convert_units_no_dups(dat)
 
 # quick proof they exist now
-names(dat)[str_detect(names(dat), &quot;^BL_.*_nmol_g$&quot;)]</code></pre>
-<pre><code>## [1] &quot;BL_Cu_nmol_g&quot;   &quot;BL_CuOH_nmol_g&quot; &quot;BL_Ca_nmol_g&quot;   &quot;BL_H_nmol_g&quot;   
-## [5] &quot;BL_Mg_nmol_g&quot;   &quot;BL_Na_nmol_g&quot;</code></pre>
+names(dat)[str_detect(names(dat), &quot;^BL_.*_(nmol_g|umol_g)$&quot;)]</code></pre>
+<pre><code>##  [1] &quot;BL_Cu_nmol_g&quot;   &quot;BL_Cu_umol_g&quot;   &quot;BL_CuOH_nmol_g&quot; &quot;BL_CuOH_umol_g&quot;
+##  [5] &quot;BL_Ca_nmol_g&quot;   &quot;BL_Ca_umol_g&quot;   &quot;BL_H_nmol_g&quot;    &quot;BL_H_umol_g&quot;   
+##  [9] &quot;BL_Mg_nmol_g&quot;   &quot;BL_Mg_umol_g&quot;   &quot;BL_Na_nmol_g&quot;   &quot;BL_Na_umol_g&quot;</code></pre>
 <p>Checks</p>
 <pre class="r"><code># No duplicate column names
 anyDuplicated(names(dat))</code></pre>
@@ -557,11 +544,15 @@ TBL-element hydroxide</p>
 <pre class="r"><code># TBL-Zn in nmol/g
 dat$TBL_Cu_nmol_g &lt;- dat$BL_Cu_nmol_g + dat$BL_CuOH_nmol_g
 
+# TBL-Zn in umol/kg
+dat$TBL_Cu_umol_g &lt;- dat$BL_Cu_umol_g + dat$BL_CuOH_umol_g
+
 # TBL-Zn in mol/kg
 dat$TBL_Cu_mol_kg &lt;- dat$BL_Cu_mol_kg + dat$BL_CuOH_mol_kg
 
 # Check
 hist(dat$TBL_Cu_nmol_g)
+hist(dat$TBL_Cu_umol_g)
 hist(dat$TBL_Cu_mol_kg)</code></pre>
 </div>
 <div id="i.-relative-proportion-of-bioavailable-element" class="section level3">
@@ -599,45 +590,8 @@ table(dat$Type)</code></pre>
 <pre class="r"><code>sum(is.na(dat$Type))</code></pre>
 <pre><code>## [1] 0</code></pre>
 </div>
-<div id="ii.-orientation" class="section level3">
-<h3>ii. Orientation</h3>
-<p>As a proxy for bedrock lithology:</p>
-<ul>
-<li><p>North slope</p>
-<ul>
-<li>Networks: BSL, WBK, MCA, MTN, NBO</li>
-</ul></li>
-<li><p>South slope</p>
-<ul>
-<li>Networks: S_TRIB</li>
-</ul></li>
-<li><p>Main stem</p>
-<ul>
-<li>Networks: EFK</li>
-</ul></li>
-</ul>
-<pre class="r"><code>dat &lt;- dat %&gt;%
-  mutate(
-    Orientation = case_when(
-      Network %in% c(&quot;WBK&quot;, &quot;MCA&quot;, &quot;MTN&quot;, &quot;NBO&quot;, &quot;BSL&quot;) ~ &quot;North slope&quot;,
-      Network %in% c(&quot;S_TRIB&quot;) ~ &quot;South slope&quot;,
-      Network %in% c(&quot;EFK&quot;) ~ &quot;Main stem&quot;,
-      TRUE ~ NA_character_
-    ) %&gt;% 
-      factor(levels = c(&quot;North slope&quot;, &quot;South slope&quot;, &quot;Main stem&quot;))
-  )
-
-# Check
-table(dat$Orientation)</code></pre>
-<pre><code>## 
-## North slope South slope   Main stem 
-##         237          43         106</code></pre>
-<p>Check for NAs</p>
-<pre class="r"><code>sum(is.na(dat$Orientation))</code></pre>
-<pre><code>## [1] 0</code></pre>
-</div>
-<div id="i.-development" class="section level3">
-<h3>i. Development</h3>
+<div id="ii.-development" class="section level3">
+<h3>ii. Development</h3>
 <p>Categorizing developed land use and land cover (LULC) will be based
 on a modified version of the MRLC National Land Cover Database Class
 Legend and Description. Our categories will be as follows</p>
@@ -665,124 +619,8 @@ table(dat$Development)</code></pre>
 <pre class="r"><code>sum(is.na(dat$Development))</code></pre>
 <pre><code>## [1] 0</code></pre>
 </div>
-<div id="ii.-distance-from-main-stem" class="section level3">
-<h3>ii. Distance from Main Stem</h3>
-<p>Omitting the main stem, let’s assess the distribution of distance
-from main stem values</p>
-<pre class="r"><code>tribs &lt;- dat %&gt;%
-  filter(Type != &quot;Main Stem&quot;)
-
-tribs</code></pre>
-<pre><code>## # A tibble: 280 × 150
-##    Sample_ID Site   Date                Regime       Flow_state Network
-##    &lt;chr&gt;     &lt;chr&gt;  &lt;dttm&gt;              &lt;chr&gt;        &lt;chr&gt;      &lt;chr&gt;  
-##  1 WaDE_62   MTN1.1 2023-06-23 00:00:00 NonPerennial Flowing    MTN    
-##  2 WaDE_64   MTN4   2023-06-23 00:00:00 Perennial    Flowing    MTN    
-##  3 WaDE_65   MTN2   2023-06-23 00:00:00 NonPerennial Pooled     MTN    
-##  4 WaDE_66   MCA3.3 2023-06-23 00:00:00 NonPerennial Flowing    MCA    
-##  5 WaDE_67   MCA3.2 2023-06-23 00:00:00 NonPerennial Flowing    MCA    
-##  6 WaDE_68   MCA4   2023-06-23 00:00:00 Perennial    Flowing    MCA    
-##  7 WaDE_69   MCA1   2023-06-23 00:00:00 Perennial    Flowing    MCA    
-##  8 WaDE_70   MCA2   2023-06-23 00:00:00 NonPerennial Flowing    MCA    
-##  9 WaDE_72   MCA3.1 2023-06-23 00:00:00 NonPerennial Flowing    MCA    
-## 10 WaDE_73   WBK1   2023-06-23 00:00:00 Perennial    Flowing    WBK    
-## # ℹ 270 more rows
-## # ℹ 144 more variables: Relative_elevation_m &lt;dbl&gt;, Dist_from_EFPC_km &lt;dbl&gt;,
-## #   Drainage_area_km2 &lt;dbl&gt;, Developed_lulc &lt;dbl&gt;, pH &lt;dbl&gt;, Temp_C &lt;dbl&gt;,
-## #   DOC_uM &lt;dbl&gt;, Ca_uM &lt;dbl&gt;, Mg_uM &lt;dbl&gt;, Na_uM &lt;dbl&gt;, K_uM &lt;dbl&gt;,
-## #   SO4_uM &lt;dbl&gt;, Cl_uM &lt;dbl&gt;, DIC_uM &lt;dbl&gt;, Zn_uM &lt;dbl&gt;, Cu_uM &lt;dbl&gt;,
-## #   Free_Cu_M &lt;dbl&gt;, CuOH_M &lt;dbl&gt;, Cu_OH_2_M &lt;dbl&gt;, CuSO4_M &lt;dbl&gt;,
-## #   CuCO3_M &lt;dbl&gt;, Cu_CO3_2_M &lt;dbl&gt;, CuCl_M &lt;dbl&gt;, CuHCO3_M &lt;dbl&gt;, …</code></pre>
-<pre class="r"><code>hist(tribs$Dist_from_EFPC_km, breaks = 386, xaxt = &quot;n&quot;)   
-
-axis(
-  side = 1,
-  at = seq(
-    from = 0,
-    to = max(dat$Dist_from_EFPC_km, na.rm = TRUE),
-    by = 0.25                                           
-  )
-)</code></pre>
-<p>Check the quartiles</p>
-<pre class="r"><code>summary(tribs$Dist_from_EFPC_km)</code></pre>
-<pre><code>##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-##  0.0230  0.2190  0.6100  0.6498  0.9880  2.4920</code></pre>
-<p>Dividing the variable by quartiles (1st and 3rd):</p>
-<ul>
-<li><p>&lt;0.22 km</p></li>
-<li><p>0.22-0.99</p></li>
-<li><p>&gt;0.99 km</p></li>
-</ul>
-<pre class="r"><code>dat &lt;- dat %&gt;%
-  mutate(
-    Distance_from_EFPC = case_when(
-      Type == &quot;Main Stem&quot; ~ &quot;Main stem&quot;,
-      Dist_from_EFPC_km &lt; 0.22 ~ &quot;&lt;0.22 km&quot;,
-      Dist_from_EFPC_km &gt;= 0.22 &amp; Dist_from_EFPC_km &lt;= 0.99 ~ &quot;0.22-0.99 km&quot;,
-      Dist_from_EFPC_km &gt; 0.99 ~ &quot;&gt;0.99 km&quot;,
-      TRUE ~ NA_character_
-    ) %&gt;% 
-      factor(levels = c(&quot;Main stem&quot;, &quot;&lt;0.22 km&quot;, &quot;0.22-0.99 km&quot;, &quot;&gt;0.99 km&quot;))
-  )
-
-# Check
-table(dat$Distance_from_EFPC)</code></pre>
-<pre><code>## 
-##    Main stem     &lt;0.22 km 0.22-0.99 km     &gt;0.99 km 
-##          106           73          141           66</code></pre>
-<p>Check for NAs</p>
-<pre class="r"><code>sum(is.na(dat$Distance_from_EFPC))</code></pre>
-<pre><code>## [1] 0</code></pre>
-</div>
-<div id="iii.-drainage-area" class="section level3">
-<h3>iii. Drainage Area</h3>
-<p>To classify drainage area (km2) into categories, we’ll first inspect
-its distribution</p>
-<pre class="r"><code>hist(dat$Drainage_area_km2, breaks = 386, xaxt = &quot;n&quot;)   # remove default axis
-
-axis(
-  side = 1,
-  at = seq(
-    from = 0,
-    to = max(dat$Drainage_area_km2, na.rm = TRUE),
-    by = 5                                           # tick every 5 km2
-  )
-)</code></pre>
-<p>Let’s check to quartiles</p>
-<pre class="r"><code>summary(dat$Drainage_area_km2)</code></pre>
-<pre><code>##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-##    0.01    0.94    1.51   10.76   11.81   74.22</code></pre>
-<p>We’ll create categories on whole numbers based on the 1st and 3rd
-quartiles:</p>
-<ul>
-<li><p>&lt;0.94 km2</p></li>
-<li><p>0.94-11.81 km2</p></li>
-<li><p>&gt;11.81 km2</p></li>
-</ul>
-<pre class="r"><code>library(dplyr)
-
-dat &lt;- dat %&gt;%
-  mutate(
-    Drainage_area = case_when(
-      Drainage_area_km2 &lt; 0.94 ~ &quot;&lt;0.94 km2&quot;,
-      Drainage_area_km2 &gt;= 0.94 &amp; Drainage_area_km2 &lt;= 11.81 ~ &quot;0.94-11.81 km2&quot;,
-      Drainage_area_km2 &gt; 11.81 ~ &quot;&gt;11.81 km2&quot;,
-      TRUE ~ NA_character_
-    ) %&gt;%
-      factor(levels = c(&quot;&lt;0.94 km2&quot;, &quot;0.94-11.81 km2&quot;, &quot;&gt;11.81 km2&quot;))
-  )
-
-# Check
-table(dat$Drainage_area)</code></pre>
-<pre><code>## 
-##      &lt;0.94 km2 0.94-11.81 km2     &gt;11.81 km2 
-##             94            196             96</code></pre>
-<p>Check for NAs</p>
-<pre class="r"><code>sum(is.na(dat$Drainage_area))</code></pre>
-<pre><code>## [1] 0</code></pre>
-</div>
-<div id="iv.-relative-elevation" class="section level3">
-<h3>iv. Relative Elevation</h3>
+<div id="iii.-relative-elevation" class="section level3">
+<h3>iii. Relative Elevation</h3>
 <p>To classify relative elevation (m) into categories, we first have to
 omit 0 values which correspond to the Main Stem</p>
 <pre class="r"><code>tribs &lt;- dat %&gt;%
@@ -828,8 +666,6 @@ summary(dat$Relative_elevation)</code></pre>
 </div>
 <div id="v.-save-to-excel" class="section level2">
 <h2>V. Save to Excel</h2>
-<p>Double check before saving</p>
-<pre class="r"><code>View(dat)</code></pre>
 <p>Bring new variables describing stream inherent characteristics to the
 front</p>
 <pre class="r"><code>library(dplyr)
@@ -837,15 +673,12 @@ front</p>
 dat &lt;- dat %&gt;%
   relocate(Type,
            Development,
-           Distance_from_EFPC,
-           Drainage_area,
-           Orientation,
            Relative_elevation,
            .before = pH)
 
 # Check
 head(dat)</code></pre>
-<pre><code>## # A tibble: 6 × 153
+<pre><code>## # A tibble: 6 × 155
 ##   Sample_ID Site    Date                Regime       Flow_state Network
 ##   &lt;chr&gt;     &lt;chr&gt;   &lt;dttm&gt;              &lt;chr&gt;        &lt;chr&gt;      &lt;chr&gt;  
 ## 1 WaDE_62   MTN1.1  2023-06-23 00:00:00 NonPerennial Flowing    MTN    
@@ -854,16 +687,16 @@ head(dat)</code></pre>
 ## 4 WaDE_65   MTN2    2023-06-23 00:00:00 NonPerennial Pooled     MTN    
 ## 5 WaDE_66   MCA3.3  2023-06-23 00:00:00 NonPerennial Flowing    MCA    
 ## 6 WaDE_67   MCA3.2  2023-06-23 00:00:00 NonPerennial Flowing    MCA    
-## # ℹ 147 more variables: Relative_elevation_m &lt;dbl&gt;, Dist_from_EFPC_km &lt;dbl&gt;,
-## #   Drainage_area_km2 &lt;dbl&gt;, Developed_lulc &lt;dbl&gt;, Type &lt;fct&gt;,
-## #   Development &lt;fct&gt;, Distance_from_EFPC &lt;fct&gt;, Drainage_area &lt;fct&gt;,
-## #   Orientation &lt;fct&gt;, Relative_elevation &lt;fct&gt;, pH &lt;dbl&gt;, Temp_C &lt;dbl&gt;,
-## #   DOC_uM &lt;dbl&gt;, Ca_uM &lt;dbl&gt;, Mg_uM &lt;dbl&gt;, Na_uM &lt;dbl&gt;, K_uM &lt;dbl&gt;,
-## #   SO4_uM &lt;dbl&gt;, Cl_uM &lt;dbl&gt;, DIC_uM &lt;dbl&gt;, Zn_uM &lt;dbl&gt;, Cu_uM &lt;dbl&gt;,
-## #   Free_Cu_M &lt;dbl&gt;, CuOH_M &lt;dbl&gt;, Cu_OH_2_M &lt;dbl&gt;, CuSO4_M &lt;dbl&gt;, …</code></pre>
+## # ℹ 149 more variables: Relative_elevation_m &lt;dbl&gt;, Developed_lulc &lt;dbl&gt;,
+## #   Type &lt;fct&gt;, Development &lt;fct&gt;, Relative_elevation &lt;fct&gt;, pH &lt;dbl&gt;,
+## #   Temp_C &lt;dbl&gt;, DOC_uM &lt;dbl&gt;, Ca_uM &lt;dbl&gt;, Mg_uM &lt;dbl&gt;, Na_uM &lt;dbl&gt;,
+## #   K_uM &lt;dbl&gt;, SO4_uM &lt;dbl&gt;, Cl_uM &lt;dbl&gt;, DIC_uM &lt;dbl&gt;, Zn_uM &lt;dbl&gt;,
+## #   Cu_uM &lt;dbl&gt;, Free_Cu_M &lt;dbl&gt;, CuOH_M &lt;dbl&gt;, Cu_OH_2_M &lt;dbl&gt;, CuSO4_M &lt;dbl&gt;,
+## #   CuCO3_M &lt;dbl&gt;, Cu_CO3_2_M &lt;dbl&gt;, CuCl_M &lt;dbl&gt;, CuHCO3_M &lt;dbl&gt;,
+## #   TOrg_Cu_M &lt;dbl&gt;, BL_Cu_mol_kg &lt;dbl&gt;, BL_CuOH_mol_kg &lt;dbl&gt;, …</code></pre>
 <p>Check the structure one last time before saving</p>
 <pre class="r"><code>str(dat)</code></pre>
-<pre><code>## tibble [386 × 153] (S3: tbl_df/tbl/data.frame)
+<pre><code>## tibble [386 × 155] (S3: tbl_df/tbl/data.frame)
 ##  $ Sample_ID                : chr [1:386] &quot;WaDE_62&quot; &quot;WaDE_63&quot; &quot;WaDE_64&quot; &quot;WaDE_65&quot; ...
 ##  $ Site                     : chr [1:386] &quot;MTN1.1&quot; &quot;EFK13.8&quot; &quot;MTN4&quot; &quot;MTN2&quot; ...
 ##  $ Date                     : POSIXct[1:386], format: &quot;2023-06-23&quot; &quot;2023-06-23&quot; ...
@@ -871,14 +704,9 @@ head(dat)</code></pre>
 ##  $ Flow_state               : chr [1:386] &quot;Flowing&quot; &quot;Flowing&quot; &quot;Flowing&quot; &quot;Pooled&quot; ...
 ##  $ Network                  : chr [1:386] &quot;MTN&quot; &quot;EFK&quot; &quot;MTN&quot; &quot;MTN&quot; ...
 ##  $ Relative_elevation_m     : num [1:386] 3.83 0 33.18 12.87 30.45 ...
-##  $ Dist_from_EFPC_km        : num [1:386] 0.205 0 1.255 0.673 0.995 ...
-##  $ Drainage_area_km2        : num [1:386] 1.42 30.18 0.3 0.74 0.16 ...
 ##  $ Developed_lulc           : num [1:386] 63.6 64.7 41.2 54.4 58.5 ...
 ##  $ Type                     : Factor w/ 2 levels &quot;Main Stem&quot;,&quot;Tributaries&quot;: 2 1 2 2 2 2 2 2 2 1 ...
 ##  $ Development              : Factor w/ 3 levels &quot;Low&quot;,&quot;Medium&quot;,..: 2 2 1 2 2 2 1 2 2 2 ...
-##  $ Distance_from_EFPC       : Factor w/ 4 levels &quot;Main stem&quot;,&quot;&lt;0.22 km&quot;,..: 2 1 4 3 4 3 3 2 3 1 ...
-##  $ Drainage_area            : Factor w/ 3 levels &quot;&lt;0.94 km2&quot;,&quot;0.94-11.81 km2&quot;,..: 2 3 1 1 1 1 1 2 1 3 ...
-##  $ Orientation              : Factor w/ 3 levels &quot;North slope&quot;,..: 1 3 1 1 1 1 1 1 1 3 ...
 ##  $ Relative_elevation       : Factor w/ 4 levels &quot;&lt;2.1 m&quot;,&quot;2.1-10.5 m&quot;,..: 2 4 3 3 3 3 3 1 2 4 ...
 ##  $ pH                       : num [1:386] 7.21 8.28 8.29 8.32 7.67 7.49 7.62 7.55 8.13 8.17 ...
 ##  $ Temp_C                   : num [1:386] 16.5 18.6 15.8 18.7 16.2 16.5 17.3 16.8 17.3 19 ...
@@ -963,16 +791,21 @@ head(dat)</code></pre>
 ##  $ CuHCO3_uM                : num [1:386] 3.46e-04 4.89e-05 9.74e-06 1.25e-05 1.83e-06 ...
 ##  $ CuHCO3_nM                : num [1:386] 0.34638 0.04886 0.00974 0.01246 0.00183 ...
 ##  $ TOrg_Cu_uM               : num [1:386] 0.002174 0.017215 0.000452 0.035152 0.000831 ...
+##  $ TOrg_Cu_nM               : num [1:386] 2.174 17.215 0.452 35.152 0.831 ...
+##  $ HCO3_uM                  : num [1:386] 3751 912 3134 865 539 ...
+##  $ HCO3_nM                  : num [1:386] 3750750 912040 3133888 864722 539447 ...
+##  $ H2_CO3_uM                : num [1:386] 534.77 10.9 38.51 9.72 28.1 ...
+##  $ H2_CO3_nM                : num [1:386] 534766 10900 38512 9718 28100 ...
 ##   [list output truncated]</code></pre>
 <p>Save to excel as a clean version of the Bioavailability Master
 Spreadsheet</p>
 <pre class="r"><code>library(openxlsx)
 
-file_path &lt;- &quot;Bioavailability_Master_Spreadsheet_Clean.xlsx&quot;
+file_path  &lt;- &quot;Bioavailability_Master_Spreadsheet_Clean.xlsx&quot;
 sheet_name &lt;- &quot;HA 10% Closed System&quot;
 
 # ---------------------------------------------------------
-# Create or load workbook
+# Create workbook if it doesn&#39;t exist, otherwise load it
 # ---------------------------------------------------------
 if (!file.exists(file_path)) {
   wb &lt;- createWorkbook()
@@ -981,30 +814,32 @@ if (!file.exists(file_path)) {
 }
 
 # ---------------------------------------------------------
-# REMOVE sheet if it already exists  (CRITICAL STEP)
+# If sheet already exists → remove it
 # ---------------------------------------------------------
 if (sheet_name %in% names(wb)) {
   removeWorksheet(wb, sheet_name)
 }
 
 # ---------------------------------------------------------
-# Re-create sheet cleanly and write data
+# Create fresh sheet and write data
 # ---------------------------------------------------------
 addWorksheet(wb, sheet_name)
 
 writeData(
   wb,
-  sheet      = sheet_name,
-  x          = dat,
-  startRow  = 1,
-  startCol  = 1,
-  colNames  = TRUE
+  sheet = sheet_name,
+  x = dat,
+  colNames = TRUE
 )
 
 # ---------------------------------------------------------
-# Save
+# Save workbook
 # ---------------------------------------------------------
-saveWorkbook(wb, file_path, overwrite = TRUE)</code></pre>
+saveWorkbook(
+  wb,
+  file = file_path,
+  overwrite = TRUE
+)</code></pre>
 <p>Now repeat this for</p>
 <ul>
 <li><p>HA 80% Closed System</p></li>

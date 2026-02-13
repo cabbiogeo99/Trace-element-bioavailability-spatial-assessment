@@ -359,25 +359,23 @@ the 3 BLM system assumptions.</p>
 <div id="preparing-the-variables" class="section level1">
 <h1>1. Preparing the Variables</h1>
 <p>Set the working directory</p>
-<pre class="r"><code>setwd(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Copper/4. Exploratory data analysis&quot;)</code></pre>
+<pre class="r"><code>setwd(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/4. Exploratory data analysis&quot;)</code></pre>
 <p>Upload the Bioavailability Master Spreadsheet datasets</p>
 <pre class="r"><code>library(readxl)
 
-ha10_cs &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Copper/3. Dataset cleaning/Bioavailability_Master_Spreadsheet_Clean.xlsx&quot;, 
+ha10_cs &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/3. Dataset cleaning/Bioavailability_Master_Spreadsheet_Clean.xlsx&quot;, 
     sheet = &quot;HA 10% Closed System&quot;)
 
-ha10_os &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Copper/3. Dataset cleaning/Bioavailability_Master_Spreadsheet_Clean.xlsx&quot;, 
+ha10_os &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/3. Dataset cleaning/Bioavailability_Master_Spreadsheet_Clean.xlsx&quot;, 
     sheet = &quot;HA 10% Open System&quot;)
 
-ha80_cs &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Copper/3. Dataset cleaning/Bioavailability_Master_Spreadsheet_Clean.xlsx&quot;, 
+ha80_cs &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/3. Dataset cleaning/Bioavailability_Master_Spreadsheet_Clean.xlsx&quot;, 
     sheet = &quot;HA 80% Closed System&quot;)</code></pre>
 </div>
-<div id="normality-check-of-variables" class="section level1">
-<h1>2. Normality Check of Variables</h1>
-<div id="i.-raw-variables" class="section level2">
-<h2>i. Raw Variables</h2>
-<p>Now continuous variables must be checked for Normality by
-Shapiro-Wilk’s method and skewness.</p>
+<div id="log-transform-variables" class="section level1">
+<h1>2. Log-Transform Variables</h1>
+<p>Since we already determined variables were not normally distributed,
+we just need to log-transform them.</p>
 <pre class="r"><code>library(dplyr)</code></pre>
 <pre><code>## Warning: package &#39;dplyr&#39; was built under R version 4.5.2</code></pre>
 <pre><code>## 
@@ -388,251 +386,14 @@ Shapiro-Wilk’s method and skewness.</p>
 <pre><code>## The following objects are masked from &#39;package:base&#39;:
 ## 
 ##     intersect, setdiff, setequal, union</code></pre>
-<pre class="r"><code>library(fBasics)
-
-# Create loop function
-run_normality_tests &lt;- function(dat) {
-
-  # Identify numeric variables
-  numeric_vars &lt;- dat %&gt;%
-    dplyr::select(where(is.numeric)) %&gt;%
-    names()
-
-  # Initialize results data frame
-  normality_results &lt;- data.frame(
-    Variable  = numeric_vars,
-    Normality = NA_character_,
-    Skewness  = NA_real_,
-    stringsAsFactors = FALSE
-  )
-
-  # Loop over numeric variables
-  for (i in seq_along(numeric_vars)) {
-
-    var_data &lt;- dat[[numeric_vars[i]]]
-
-    # Skip non-numeric just in case
-    if (!is.numeric(var_data)) {
-      normality_results$Normality[i] &lt;- &quot;Not numeric&quot;
-      normality_results$Skewness[i]  &lt;- NA
-      next
-    }
-
-    # Shapiro–Wilk test (with error handling)
-    test_result &lt;- tryCatch(
-      normalTest(var_data, method = &quot;sw&quot;),
-      error = function(e) NULL
-    )
-
-    if (!is.null(test_result)) {
-      normality_results$Normality[i] &lt;-
-        ifelse(test_result@test$p.value &gt; 0.05, &quot;Pass&quot;, &quot;Fail&quot;)
-    } else {
-      normality_results$Normality[i] &lt;- &quot;Error&quot;
-    }
-
-    # Skewness
-    normality_results$Skewness[i] &lt;- skewness(var_data)
-  }
-
-  return(normality_results)
-}
-
-# Run function
-normality_results_ha10_cs &lt;- run_normality_tests(ha10_cs)
-normality_results_ha10_os &lt;- run_normality_tests(ha10_os)
-normality_results_ha80_cs &lt;- run_normality_tests(ha80_cs)
-
-# Inspect results
-head(normality_results_ha10_cs)</code></pre>
-<pre><code>##               Variable Normality   Skewness
-## 1 Relative_elevation_m      Fail  2.1730186
-## 2    Dist_from_EFPC_km      Fail  0.7817387
-## 3    Drainage_area_km2      Fail  2.0068634
-## 4       Developed_lulc      Fail -0.8661630
-## 5                   pH      Fail  0.2621128
-## 6               Temp_C      Fail  0.1893894</code></pre>
-<pre class="r"><code>head(normality_results_ha10_os)</code></pre>
-<pre><code>##               Variable Normality   Skewness
-## 1 Relative_elevation_m      Fail  2.1730186
-## 2    Dist_from_EFPC_km      Fail  0.7817387
-## 3    Drainage_area_km2      Fail  2.0068634
-## 4       Developed_lulc      Fail -0.8661630
-## 5                   pH      Fail  0.2621128
-## 6               Temp_C      Fail  0.1893894</code></pre>
-<pre class="r"><code>head(normality_results_ha80_cs)</code></pre>
-<pre><code>##               Variable Normality   Skewness
-## 1 Relative_elevation_m      Fail  2.1730186
-## 2    Dist_from_EFPC_km      Fail  0.7817387
-## 3    Drainage_area_km2      Fail  2.0068634
-## 4       Developed_lulc      Fail -0.8661630
-## 5                   pH      Fail  0.2621128
-## 6               Temp_C      Fail  0.1893894</code></pre>
-<p>Save to excel</p>
-<pre class="r"><code>library(openxlsx)
-
-# Create a blank workbook
-wb &lt;- createWorkbook()
-
-# Add worksheets for each scnario
-if(!&quot;HA10_CS&quot; %in% names(wb)) {
-  addWorksheet(wb, &quot;HA10_CS&quot;)
-}
-
-if(!&quot;HA10_OS&quot; %in% names(wb)) {
-  addWorksheet(wb, &quot;HA10_OS&quot;)
-}
-
-if(!&quot;HA80_CS&quot; %in% names(wb)) {
-  addWorksheet(wb, &quot;HA80_CS&quot;)
-}
-
-# Write results into each sheet
-writeData(wb, sheet = &quot;HA10_CS&quot;, normality_results_ha10_cs)
-writeData(wb, sheet = &quot;HA10_OS&quot;, normality_results_ha10_os)
-writeData(wb, sheet = &quot;HA80_CS&quot;, normality_results_ha80_cs)
-
-# Save the workbook (overwrite)
-saveWorkbook(
-  wb,
-  file = &quot;Normality_checks.xlsx&quot;,
-  overwrite = TRUE
-)</code></pre>
-</div>
-<div id="ii.-log-transformed-variables" class="section level2">
-<h2>ii. Log-Transformed Variables</h2>
-<p>Now we’ll perform the same functions on the log-transformed variables
-(except pH since it’s already log-transformed). We’ll add a +1 constant
-to variables since log-transformations cannot be performed on 0
-values.</p>
-<pre class="r"><code>library(dplyr)
-
-# Exclude the following variables from being log-transformed
+<pre class="r"><code># Exclude the following variables from being log-transformed
 exclude_vars &lt;- c(
   &quot;pH&quot;,
   &quot;Relative_elevation_m&quot;,
-  &quot;Dist_from_EFPC_km&quot;,
-  &quot;Drainage_area_km2&quot;,
   &quot;Developed_lulc&quot;
 )
 
-# Helper function for Normality and skewness checks
-run_log_normality_tests &lt;- function(dat, exclude_vars) {
-
-  # Identify numeric variables eligible for log transform
-  log_vars &lt;- dat %&gt;%
-    select(where(is.numeric)) %&gt;%
-    select(-any_of(exclude_vars)) %&gt;%
-    names()
-
-  # Initialize results data frame
-  normality_results &lt;- data.frame(
-    Variable  = log_vars,
-    Normality = NA_character_,
-    Skewness  = NA_real_,
-    stringsAsFactors = FALSE
-  )
-
-  # Loop over variables
-  for (i in seq_along(log_vars)) {
-
-    var_data &lt;- dat[[log_vars[i]]]
-
-    # Log10 transform safely
-    log_data &lt;- ifelse(var_data &gt; 0, log10(var_data), NA_real_)
-
-    # Remove NAs before testing
-    log_data &lt;- log_data[!is.na(log_data)]
-
-    # If too few observations, skip
-    if (length(log_data) &lt; 3) {
-      normality_results$Normality[i] &lt;- &quot;Too few values&quot;
-      normality_results$Skewness[i]  &lt;- NA
-      next
-    }
-
-    # Shapiro–Wilk test
-    test_result &lt;- tryCatch(
-      normalTest(log_data, method = &quot;sw&quot;),
-      error = function(e) NULL
-    )
-
-    if (!is.null(test_result)) {
-      normality_results$Normality[i] &lt;-
-        ifelse(test_result@test$p.value &gt; 0.05, &quot;Pass&quot;, &quot;Fail&quot;)
-    } else {
-      normality_results$Normality[i] &lt;- &quot;Error&quot;
-    }
-
-    # Skewness on log-transformed data
-    normality_results$Skewness[i] &lt;- skewness(log_data)
-  }
-
-  return(normality_results)
-}
-
-# Run
-log_normality_results_ha10_cs &lt;- run_log_normality_tests(ha10_cs, exclude_vars)
-log_normality_results_ha10_os &lt;- run_log_normality_tests(ha10_os, exclude_vars)
-log_normality_results_ha80_cs &lt;- run_log_normality_tests(ha80_cs, exclude_vars)
-
-# Check
-head(log_normality_results_ha10_cs)</code></pre>
-<pre><code>##   Variable Normality    Skewness
-## 1   Temp_C      Fail -1.17156888
-## 2   DOC_uM      Pass  0.02027031
-## 3    Ca_uM      Fail -2.60628413
-## 4    Mg_uM      Fail -2.14837758
-## 5    Na_uM      Fail -0.31477730
-## 6     K_uM      Fail  0.49854727</code></pre>
-<pre class="r"><code>head(log_normality_results_ha10_os)</code></pre>
-<pre><code>##   Variable Normality    Skewness
-## 1   Temp_C      Fail -1.17156888
-## 2   DOC_uM      Pass  0.02027031
-## 3    Ca_uM      Fail -2.60628413
-## 4    Mg_uM      Fail -2.14837758
-## 5    Na_uM      Fail -0.31477730
-## 6     K_uM      Fail  0.49854727</code></pre>
-<pre class="r"><code>head(log_normality_results_ha80_cs)</code></pre>
-<pre><code>##   Variable Normality    Skewness
-## 1   Temp_C      Fail -1.17156888
-## 2   DOC_uM      Pass  0.02027031
-## 3    Ca_uM      Fail -2.60628413
-## 4    Mg_uM      Fail -2.14837758
-## 5    Na_uM      Fail -0.31477730
-## 6     K_uM      Fail  0.49854727</code></pre>
-<p>Save to excel</p>
-<pre class="r"><code>library(openxlsx)
-
-# Create a blank workbook
-wb &lt;- createWorkbook()
-
-# Add worksheets for each scnario
-if(!&quot;HA10_CS&quot; %in% names(wb)) {
-  addWorksheet(wb, &quot;HA10_CS&quot;)
-}
-
-if(!&quot;HA10_OS&quot; %in% names(wb)) {
-  addWorksheet(wb, &quot;HA10_OS&quot;)
-}
-
-if(!&quot;HA80_CS&quot; %in% names(wb)) {
-  addWorksheet(wb, &quot;HA80_CS&quot;)
-}
-
-# Write results into each sheet
-writeData(wb, sheet = &quot;HA10_CS&quot;, log_normality_results_ha10_cs)
-writeData(wb, sheet = &quot;HA10_OS&quot;, log_normality_results_ha10_os)
-writeData(wb, sheet = &quot;HA80_CS&quot;, log_normality_results_ha80_cs)
-
-# Save the workbook (overwrite)
-saveWorkbook(
-  wb,
-  file = &quot;Normality_checks_log_vars.xlsx&quot;,
-  overwrite = TRUE
-)</code></pre>
-<p>Save log-transformed variables into dataset objects</p>
-<pre class="r"><code># Helper function
+# Helper function
 add_log_variables &lt;- function(dat, exclude_vars) {
 
   dat %&gt;%
@@ -640,7 +401,7 @@ add_log_variables &lt;- function(dat, exclude_vars) {
       across(
         .cols = where(is.numeric) &amp;
           !any_of(exclude_vars) &amp;
-          !starts_with(&quot;log_&quot;),      # &lt;-- prevents re-logging
+          !starts_with(&quot;log_&quot;),     
         .fns  = ~ ifelse(.x &gt; 0, log10(.x), NA_real_),
         .names = &quot;log_{.col}&quot;
       )
@@ -715,13 +476,17 @@ names(ha10_cs)[grepl(&quot;^log_&quot;, names(ha10_cs))]</code></pre>
 ## [117] &quot;log_Cu_Acute_Tox_Minnow_nM&quot;    &quot;log_Cu_Chronic_Tox_Daphnia_uM&quot;
 ## [119] &quot;log_Cu_Chronic_Tox_Daphnia_nM&quot; &quot;log_Cu_Chronic_Tox_Minnow_uM&quot; 
 ## [121] &quot;log_Cu_Chronic_Tox_Minnow_nM&quot;  &quot;log_BL_Cu_nmol_kg&quot;            
-## [123] &quot;log_BL_Cu_nmol_g&quot;              &quot;log_BL_CuOH_nmol_kg&quot;          
-## [125] &quot;log_BL_CuOH_nmol_g&quot;            &quot;log_BL_Ca_nmol_kg&quot;            
-## [127] &quot;log_BL_Ca_nmol_g&quot;              &quot;log_BL_H_nmol_kg&quot;             
-## [129] &quot;log_BL_H_nmol_g&quot;               &quot;log_BL_Mg_nmol_kg&quot;            
-## [131] &quot;log_BL_Mg_nmol_g&quot;              &quot;log_BL_Na_nmol_kg&quot;            
-## [133] &quot;log_BL_Na_nmol_g&quot;              &quot;log_TBL_Cu_nmol_g&quot;            
-## [135] &quot;log_TBL_Cu_mol_kg&quot;             &quot;log_rel_prop_Cu&quot;</code></pre>
+## [123] &quot;log_BL_Cu_nmol_g&quot;              &quot;log_BL_Cu_umol_g&quot;             
+## [125] &quot;log_BL_CuOH_nmol_kg&quot;           &quot;log_BL_CuOH_nmol_g&quot;           
+## [127] &quot;log_BL_CuOH_umol_g&quot;            &quot;log_BL_Ca_nmol_kg&quot;            
+## [129] &quot;log_BL_Ca_nmol_g&quot;              &quot;log_BL_Ca_umol_g&quot;             
+## [131] &quot;log_BL_H_nmol_kg&quot;              &quot;log_BL_H_nmol_g&quot;              
+## [133] &quot;log_BL_H_umol_g&quot;               &quot;log_BL_Mg_nmol_kg&quot;            
+## [135] &quot;log_BL_Mg_nmol_g&quot;              &quot;log_BL_Mg_umol_g&quot;             
+## [137] &quot;log_BL_Na_nmol_kg&quot;             &quot;log_BL_Na_nmol_g&quot;             
+## [139] &quot;log_BL_Na_umol_g&quot;              &quot;log_TBL_Cu_nmol_g&quot;            
+## [141] &quot;log_TBL_Cu_umol_g&quot;             &quot;log_TBL_Cu_mol_kg&quot;            
+## [143] &quot;log_rel_prop_Cu&quot;</code></pre>
 <p>Export transformed variables to excel by creating a second version of
 the clean Bioavailability Master Spreadsheet</p>
 <pre class="r"><code>library(openxlsx)
@@ -743,96 +508,6 @@ writeData(wb, sheet = &quot;HA 80% Closed System&quot;, ha80_cs)
 saveWorkbook(
   wb,
   file = &quot;Bioavailability_Master_Spreadsheet_Clean2.xlsx&quot;,
-  overwrite = TRUE
-)</code></pre>
-</div>
-</div>
-<div id="summary-statistics" class="section level1">
-<h1>3. Summary Statistics</h1>
-<p>We’ll calculate summary statistics for all numeric variables across
-all sites.</p>
-<pre class="r"><code>library(purrr)
-library(tidyr)
-library(dplyr)
-
-# Mode function
-get_mode &lt;- function(x) {
-  x &lt;- x[!is.na(x)]
-  if (length(x) == 0) return(NA)
-  ux &lt;- unique(x)
-  ux[which.max(tabulate(match(x, ux)))]
-}
-
-# Summary function for ONE dataset
-summarize_numeric &lt;- function(dat) {
-
-  numeric_vars &lt;- names(dat)[sapply(dat, is.numeric)]
-
-  map_dfr(numeric_vars, function(colname) {
-    vec &lt;- dat[[colname]]
-    n_non_na &lt;- sum(!is.na(vec))
-
-    tibble(
-      variable = colname,
-      mean     = mean(vec, na.rm = TRUE),
-      median   = median(vec, na.rm = TRUE),
-      mode     = get_mode(vec),
-      variance = var(vec, na.rm = TRUE),
-      se       = sd(vec, na.rm = TRUE) / sqrt(n_non_na)
-    )
-  }) %&gt;%
-    arrange(variable)
-}
-
-# ---- Run on your 3 datasets ----
-summary_ha10_cs &lt;- summarize_numeric(ha10_cs)
-summary_ha10_os &lt;- summarize_numeric(ha10_os)
-summary_ha80_cs &lt;- summarize_numeric(ha80_cs)
-
-# View one
-summary_ha10_cs</code></pre>
-<pre><code>## # A tibble: 277 × 6
-##    variable            mean   median     mode variance       se
-##    &lt;chr&gt;              &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;
-##  1 BL_Ca_mol_kg    2.84e-10 2.89e-10 3.29e-10 2.71e-21 2.65e-12
-##  2 BL_Ca_nmol_g    2.84e- 4 2.89e- 4 3.29e- 4 2.71e- 9 2.65e- 6
-##  3 BL_Ca_nmol_kg   2.84e- 1 2.89e- 1 3.29e- 1 2.71e- 3 2.65e- 3
-##  4 BL_CuOH_mol_kg  2.61e-15 1.07e-15 3.66e-16 3.15e-29 2.86e-16
-##  5 BL_CuOH_nmol_g  2.61e- 9 1.07e- 9 3.66e-10 3.15e-17 2.86e-10
-##  6 BL_CuOH_nmol_kg 2.61e- 6 1.07e- 6 3.66e- 7 3.15e-11 2.86e- 7
-##  7 BL_Cu_mol_kg    2.65e-14 1.31e-14 1.11e-14 3.40e-27 2.97e-15
-##  8 BL_Cu_nmol_g    2.65e- 8 1.31e- 8 1.11e- 8 3.40e-15 2.97e- 9
-##  9 BL_Cu_nmol_kg   2.65e- 5 1.31e- 5 1.11e- 5 3.40e- 9 2.97e- 6
-## 10 BL_H_mol_kg     1.32e-12 5.69e-13 1.31e-12 2.21e-23 2.39e-13
-## # ℹ 267 more rows</code></pre>
-<p>Save to excel</p>
-<pre class="r"><code>library(openxlsx)
-
-# Create a blank workbook
-wb &lt;- createWorkbook()
-
-# Add worksheets for each scnario
-if(!&quot;HA10_CS&quot; %in% names(wb)) {
-  addWorksheet(wb, &quot;HA10_CS&quot;)
-}
-
-if(!&quot;HA10_OS&quot; %in% names(wb)) {
-  addWorksheet(wb, &quot;HA10_OS&quot;)
-}
-
-if(!&quot;HA80_CS&quot; %in% names(wb)) {
-  addWorksheet(wb, &quot;HA80_CS&quot;)
-}
-
-# Write results into each sheet
-writeData(wb, sheet = &quot;HA10_CS&quot;, summary_ha10_cs)
-writeData(wb, sheet = &quot;HA10_OS&quot;, summary_ha10_os)
-writeData(wb, sheet = &quot;HA80_CS&quot;, summary_ha80_cs)
-
-# Save the workbook (overwrite)
-saveWorkbook(
-  wb,
-  file = &quot;Summary_stats.xlsx&quot;,
   overwrite = TRUE
 )</code></pre>
 </div>

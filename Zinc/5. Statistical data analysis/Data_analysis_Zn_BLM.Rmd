@@ -1,5 +1,6 @@
 ---
 title: "Data analysis Zn BLM"
+author: "Cecilia Albert-Black"
 output:
   html_document:
     self_contained: true
@@ -15,7 +16,7 @@ The objectives of this notebook will be to conduct data and statistical analyses
 First, set the working directory
 
 ```{r}
-setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt(1)")
+setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt")
 ```
 
 # Identifying Stream Typologies
@@ -80,26 +81,7 @@ ggplot(dr_long, aes(sample = value)) +
 
 ```
 
-## 3. Adequacy test
-
-```{r}
-library(psych)  
-
-# Scaled predictors
-KMO(scaled_blm_predict)
-```
-
-## 4. Run PCA
-
-```{r}
-pca_result <- prcomp(scaled_blm_predict, center = TRUE, scale. = TRUE)
-pca_result
-
-pca_summary <- summary(pca_result)
-pca_summary
-```
-
-## 5. K-means clustering
+## 3. K-means clustering
 
 ### i. Identifying the number of clusters
 
@@ -149,13 +131,18 @@ dat <- dat %>%
 str(dat$cluster)
 ```
 
-## 6. Plot of clusters on PCA
+## 4. Plot of clusters on PCA
 
 Overlay clusters on PCA
 
 ```{r}
 library(factoextra)
 library(ggplot2)
+
+pca_result <- prcomp(scaled_blm_predict, center = TRUE, scale. = TRUE)
+pca_result
+
+pca_summary <- summary(pca_result)
 
 # PCA biplot
 pca_cluster <- fviz_pca_biplot(
@@ -188,7 +175,7 @@ ggsave(
 )
 ```
 
-## 7. Characterizing clusters
+## 5. Characterizing clusters
 
 ### i. Frequency table
 
@@ -1496,7 +1483,396 @@ ggsave(
 )
 ```
 
-### e. Toxicity
+### c. Zn-complexes
+
+```{r}
+# keep Typology order consistent
+typology_levels <- names(typology_colors)
+
+
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# ------------------------------------------------------------------
+# 1) Zn species variables you want in the panel
+# ------------------------------------------------------------------
+vars_spec <- c(
+  "ZnOH_M",
+  "Zn_OH_2_M",
+  "ZnCO3_M",
+  "ZnHCO3_M",
+  "ZnSO4_M",
+  "ZnCl_M",
+  "ZnS_M",
+  "TOrg_Zn_M"
+)
+
+# Facet titles (edit if you want different formatting)
+title_lookup <- c(
+  "ZnOH_M"     = "ZnOH",
+  "Zn_OH_2_M"  = "Zn(OH)2",
+  "ZnCO3_M"    = "ZnCO3",
+  "ZnHCO3_M"   = "ZnHCO3",
+  "ZnSO4_M"    = "ZnSO4",
+  "ZnCl_M"     = "ZnCl",
+  "ZnS_M"      = "ZnS",
+  "TOrg_Zn_M"  = "TOrg Zn"
+)
+
+facet_labels <- as_labeller(title_lookup)
+
+# ------------------------------------------------------------------
+# 2) Long data (one row = 1 observation of 1 variable)
+# ------------------------------------------------------------------
+dat_long_spec <- dat %>%
+  mutate(Typology = factor(Typology, levels = typology_levels)) %>%
+  dplyr::select(Typology, all_of(vars_spec)) %>%
+  pivot_longer(
+    cols      = -Typology,
+    names_to  = "Variable",
+    values_to = "Value"
+  ) %>%
+  filter(!is.na(Value)) %>%
+  mutate(
+    Variable = factor(Variable, levels = vars_spec)
+  )
+
+# ------------------------------------------------------------------
+# 3) Letters (Kruskal groups) + y positions
+#     letters_df must have: Variable, Typology, Letters
+# ------------------------------------------------------------------
+y_pos_df_spec <- dat_long_spec %>%
+  group_by(Variable, Typology) %>%
+  summarise(y_max = max(Value, na.rm = TRUE), .groups = "drop")
+
+letters_long_spec <- letters_df %>%
+  filter(Variable %in% vars_spec) %>%
+  mutate(Typology = factor(Typology, levels = typology_levels)) %>%
+  left_join(y_pos_df_spec, by = c("Variable", "Typology")) %>%
+  mutate(
+    y_pos = y_max + 0.05 * (abs(y_max) + 1)
+  )
+
+# ------------------------------------------------------------------
+# 4) Faceted panel (boxplot + jitter), colored by Typology
+# ------------------------------------------------------------------
+spec_panel <- ggplot(dat_long_spec, aes(
+  x = Typology,
+  y = Value
+)) +
+  geom_boxplot(
+    aes(color = Typology, fill = Typology),
+    width = 0.6,
+    alpha = 0.35,
+    outlier.shape = NA
+  ) +
+  geom_jitter(
+    aes(color = Typology),
+    width = 0.15,
+    size  = 1.3,
+    alpha = 0.6
+  ) +
+  geom_text(
+    data = letters_long_spec,
+    aes(x = Typology, y = y_pos, label = Letters),
+    inherit.aes = FALSE,
+    size = 3
+  ) +
+  scale_fill_manual(values = typology_colors) +
+  scale_color_manual(values = typology_colors) +
+  facet_wrap(
+    ~ Variable,
+    scales   = "free_y",
+    ncol     = 3,
+    labeller = facet_labels
+  ) +
+  labs(
+    title = "Zn Species by Stream Typology",
+    x     = "Stream Typology",
+    y     = "Concentration (M)"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "none",
+    axis.text.x  = element_text(size = 9, angle = 30, hjust = 1),
+    strip.text   = element_text(size = 11),
+    plot.title   = element_text(size = 14)
+  )
+
+spec_panel
+
+# Save
+ggsave(
+  filename = file.path(out_dir, "Inorganic_Cu_complexes.png"),
+  plot     = spec_panel,
+  width    = 9,
+  height   = 9,
+  dpi      = 300
+)
+```
+
+### d. Organic complexes
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# ------------------------------------------------------------------
+# 1) Variables you want in the panel
+# ------------------------------------------------------------------
+vars_spec <- c(
+  "log_TOrg_Zn_nM",
+  "log_TOrg_H_nM",
+  "log_TOrg_Ca_nM",
+  "log_TOrg_Mg_nM",
+  "log_TOrg_Na_nM",
+  "log_TOrg_K_nM")
+
+
+title_lookup <- c(
+  "log_TOrg_Zn_nM" = "TOrg Zn",
+  "log_TOrg_H_nM" = "TOrg H",
+  "log_TOrg_Ca_nM" = "TOrg Ca",
+  "log_TOrg_Mg_nM" = "TOrg Mg",
+  "log_TOrg_Na_nM" = "TOrg Na",
+  "log_TOrg_K_nM" = "TOrg K"
+)
+
+facet_labels <- as_labeller(title_lookup)
+
+# ------------------------------------------------------------------
+# 2) Long data (one row = 1 observation of 1 variable)
+# ------------------------------------------------------------------
+dat_long_spec <- dat %>%
+  mutate(Typology = factor(Typology, levels = typology_levels)) %>%
+  dplyr::select(Typology, all_of(vars_spec)) %>%
+  pivot_longer(
+    cols      = -Typology,
+    names_to  = "Variable",
+    values_to = "Value"
+  ) %>%
+  filter(!is.na(Value)) %>%
+  mutate(
+    Variable = factor(Variable, levels = vars_spec)
+  )
+
+# ------------------------------------------------------------------
+# 4) Letters (Kruskal groups) + y positions
+#     letters_df must have: Variable, Typology, Letters
+# ------------------------------------------------------------------
+y_pos_df_spec <- dat_long_spec %>%
+  group_by(Variable, Typology) %>%
+  summarise(y_max = max(Value, na.rm = TRUE), .groups = "drop")
+
+letters_long_spec <- letters_df %>%
+  filter(Variable %in% vars_spec) %>%
+  mutate(Typology = factor(Typology, levels = typology_levels)) %>%
+  left_join(y_pos_df_spec, by = c("Variable", "Typology")) %>%
+  mutate(
+    # works well for log-scale-ish values; tweak if needed
+    y_pos = y_max + 0.05 * (abs(y_max) + 1)
+  )
+
+# ------------------------------------------------------------------
+# 5) Faceted panel (boxplot + jitter), colored by Typology
+# ------------------------------------------------------------------
+spec_panel2 <- ggplot(dat_long_spec, aes(
+  x = Typology,
+  y = Value
+)) +
+  # Boxplots: outline + fill BOTH by Typology
+  geom_boxplot(
+    aes(color = Typology, fill = Typology),
+    width = 0.6,
+    alpha = 0.35,
+    outlier.shape = NA
+  ) +
+  
+  # Jittered points
+  geom_jitter(
+    aes(color = Typology),
+    width = 0.15,
+    size  = 1.3,
+    alpha = 0.6
+  ) +
+  
+  # Letters
+  geom_text(
+    data = letters_long_spec,
+    aes(x = Typology, y = y_pos, label = Letters),
+    inherit.aes = FALSE,
+    size = 3
+  ) +
+  
+  # Typology colors
+  scale_fill_manual(values = typology_colors) +
+  scale_color_manual(values = typology_colors) +
+  
+  # Facets
+  facet_wrap(
+    ~ Variable,
+    scales   = "free_y",
+    ncol     = 3,
+    labeller = facet_labels
+  ) +
+  
+  labs(
+    title = "Organic Complexes by Stream Typology",
+    x     = "Stream Typology",
+    y     = "Log Concentration (nM)"
+  ) +
+  
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "none",
+    axis.text.x  = element_text(size = 9, angle = 30, hjust = 1),
+    strip.text   = element_text(size = 11),
+    plot.title   = element_text(size = 14)
+  )
+
+spec_panel2
+
+# Save
+ggsave(
+  filename = file.path(out_dir, "Organic_Complexes.png"),
+  plot     = spec_panel2,
+  width    = 9,
+  height   = 6,
+  dpi      = 300
+)
+```
+
+### e. BL-bound cations
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# ------------------------------------------------------------------
+# 1) Variables you want in the panel
+# ------------------------------------------------------------------
+vars_spec <- c(
+  "log_BL_Ca_nmol_g",
+  "log_BL_H_nmol_g",
+  "log_BL_Mg_nmol_g",
+  "log_BL_Na_nmol_g")
+
+
+title_lookup <- c(
+  "log_BL_Ca_nmol_g" = "BL-Ca",
+  "log_BL_H_nmol_g" = "BL-H",
+  "log_BL_Mg_nmol_g" = "BL-Mg",
+  "log_BL_Na_nmol_g" = "BL-Na"
+)
+
+facet_labels <- as_labeller(title_lookup)
+
+# ------------------------------------------------------------------
+# 2) Long data (one row = 1 observation of 1 variable)
+# ------------------------------------------------------------------
+dat_long_spec <- dat %>%
+  mutate(Typology = factor(Typology, levels = typology_levels)) %>%
+  dplyr::select(Typology, all_of(vars_spec)) %>%
+  pivot_longer(
+    cols      = -Typology,
+    names_to  = "Variable",
+    values_to = "Value"
+  ) %>%
+  filter(!is.na(Value)) %>%
+  mutate(
+    Variable = factor(Variable, levels = vars_spec)
+  )
+
+# ------------------------------------------------------------------
+# 4) Letters (Kruskal groups) + y positions
+#     letters_df must have: Variable, Typology, Letters
+# ------------------------------------------------------------------
+y_pos_df_spec <- dat_long_spec %>%
+  group_by(Variable, Typology) %>%
+  summarise(y_max = max(Value, na.rm = TRUE), .groups = "drop")
+
+letters_long_spec <- letters_df %>%
+  filter(Variable %in% vars_spec) %>%
+  mutate(Typology = factor(Typology, levels = typology_levels)) %>%
+  left_join(y_pos_df_spec, by = c("Variable", "Typology")) %>%
+  mutate(
+    # works well for log-scale-ish values; tweak if needed
+    y_pos = y_max + 0.05 * (abs(y_max) + 1)
+  )
+
+# ------------------------------------------------------------------
+# 5) Faceted panel (boxplot + jitter), colored by Typology
+# ------------------------------------------------------------------
+spec_panel3 <- ggplot(dat_long_spec, aes(
+  x = Typology,
+  y = Value
+)) +
+  # Boxplots: outline + fill BOTH by Typology
+  geom_boxplot(
+    aes(color = Typology, fill = Typology),
+    width = 0.6,
+    alpha = 0.35,
+    outlier.shape = NA
+  ) +
+  
+  # Jittered points
+  geom_jitter(
+    aes(color = Typology),
+    width = 0.15,
+    size  = 1.3,
+    alpha = 0.6
+  ) +
+  
+  # Letters
+  geom_text(
+    data = letters_long_spec,
+    aes(x = Typology, y = y_pos, label = Letters),
+    inherit.aes = FALSE,
+    size = 3
+  ) +
+  
+  # Typology colors
+  scale_fill_manual(values = typology_colors) +
+  scale_color_manual(values = typology_colors) +
+  
+  # Facets
+  facet_wrap(
+  ~ Variable,
+  scales   = "free_y",
+  ncol     = 2,         
+  labeller = facet_labels
+) +
+  
+  labs(
+    title = "Biotic Ligand-Bound Cations by Stream Typology",
+    x     = "Stream Typology",
+    y     = "Log Concentration (nmol/g)"
+  ) +
+  
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "none",
+    axis.text.x  = element_text(size = 9, angle = 30, hjust = 1),
+    strip.text   = element_text(size = 11),
+    plot.title   = element_text(size = 14)
+  )
+
+spec_panel3
+
+# Save
+ggsave(
+  filename = file.path(out_dir, "BL_cations.png"),
+  plot     = spec_panel3,
+  width    = 9,
+  height   = 6,
+  dpi      = 300
+)
+```
+
+### f. Toxicity
 
 Zinc toxicity to daphnia
 
@@ -1621,6 +1997,8 @@ write.xlsx(
 ```
 
 # Variables by Site within Typology
+
+Need Dist_from_EFPC_km variable to plot
 
 ## **1. Main Stem**
 
