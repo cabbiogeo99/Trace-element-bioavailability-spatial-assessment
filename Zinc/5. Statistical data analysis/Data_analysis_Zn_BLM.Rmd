@@ -15,7 +15,7 @@ The objectives of this notebook will be to conduct data and statistical analyses
 First, set the working directory
 
 ```{r}
-setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/5. Statistical data analysis")
+setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt(1)")
 ```
 
 # Identifying Stream Typologies
