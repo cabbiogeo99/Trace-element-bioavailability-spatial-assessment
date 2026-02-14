@@ -63,9 +63,9 @@ To determine the relative importance of each BLM predictor on trace element bioa
 
 total bioavailable element = sum of BLM predictors (as standardized log-transformed variables)
 
-## 1. Build and select the MLR
+## 1. Select and Inspect Variables
 
-Use log-transformed variables to build a large model, stepwise select a better model, calculate standardized beta coefficients, variance inflation factors (VIF), and relative importance on bioavailability
+Use log-transformed and standardized variables, we'll first check for correlated variables by building a Spearman correlation matrix.
 
 ```{r}
 library(MASS)
@@ -83,20 +83,56 @@ vars_to_select <- c("log_Cu_nM", "log_Temp_C", "pH", "log_DOC_nM",
 model_df_std <- dat %>%
   dplyr::select(log_TBL_Cu_nmol_g, all_of(vars_to_select)) %>%
   mutate(across(everything(), as.numeric)) %>%
+  mutate(across(everything(), ~ as.numeric(scale(.x)), .names = "{.col}_std")) %>%
+  dplyr::select(ends_with("_std")) %>%
   as.data.frame()
 
-model_df_std <- as.data.frame(scale(model_df_std))
+# Define the standardized predictor names + standardized response
+vars_to_select_std <- paste0(vars_to_select, "_std")
+response_std <- "log_TBL_Cu_nmol_g_std"
 
-form_std <- reformulate(vars_to_select, response = "log_TBL_Cu_nmol_g")
+# Model formula using standardized columns
+form_std <- reformulate(vars_to_select_std, response = response_std)
 
+# Spearman correlation matrix
+cor_mat <- cor(
+  model_df_std,
+  method = "spearman",
+  use    = "pairwise.complete.obs"
+)
+
+# Correlation plot with values
+corrplot(
+  cor_mat,
+  method        = "color",
+  type          = "upper",
+  order         = "hclust",
+  tl.col        = "black",
+  tl.cex        = 0.8,
+  addCoef.col   = "black",   # show correlation values
+  number.cex    = 0.7,       
+  diag          = FALSE
+)
+```
+
+The most correlated values:
+
+-   0.92 Cl & Na
+
+-   0.78 Na & SO4
+
+-   0.78 DIC & Ca
+
+-   0.72 Cu & K
+
+## 2. Build and the MLR
+
+```{r}
 # 1. Full MLR
 full_mod <- lm(form_std, data = model_df_std)
 
-# 2. Stepwise selection (AIC)
-step_mod <- stepAIC(full_mod, direction = "both", trace = FALSE)
-
-# 3. Estimates (standardized partial slopes) + p-values
-coef_table <- summary(step_mod)$coefficients
+# 2. Estimates (standardized partial slopes) + p-values
+coef_table <- summary(full_mod)$coefficients
 
 est_df <- data.frame(
   Predictor = rownames(coef_table),
@@ -105,23 +141,23 @@ est_df <- data.frame(
 ) %>%
   filter(Predictor != "(Intercept)")
 
-# 4. VIF
-vif_vals <- vif(step_mod)
+# 3. VIF
+vif_vals <- vif(full_mod)
 
 vif_df <- data.frame(
   Predictor = names(vif_vals),
   VIF       = as.numeric(vif_vals)
 )
 
-# 5. Relative importance (lmg)
-rel_imp <- calc.relimp(step_mod, type = "lmg", rela = TRUE)
+# 4. Relative importance (lmg)
+rel_imp <- calc.relimp(full_mod, type = "lmg", rela = TRUE)
 
 rel_df <- data.frame(
   Predictor = names(rel_imp$lmg),
   Rel_Importance = as.numeric(rel_imp$lmg)
 )
 
-# 6. Combine summary table
+# 5. Combine summary table
 final_table <- est_df %>%
   left_join(vif_df, by = "Predictor") %>%
   left_join(rel_df, by = "Predictor") %>%
@@ -129,7 +165,7 @@ final_table <- est_df %>%
 
 final_table
 
-# 7. Save
+# 6. Save
 out_dir <- "Multiple linear regression"
 dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
 
@@ -155,10 +191,10 @@ png(
 
 # Build plot
 par(mfrow = c(2, 2))   # 2 rows, 2 columns
-step.mod_plots <- plot(step_mod)
+full_mod_plots <- plot(full_mod)
 
 # View
-step.mod_plots
+full_mod_plots
 
 dev.off()
 ```
@@ -173,7 +209,7 @@ library(ggplot2)
 library(broom)
 
 # 1. Extract retained predictors from stepwise model
-retained_vars <- names(coef(step_mod))[-1]  # drop intercept
+retained_vars <- names(coef(full_mod))[-1]  # drop intercept
 
 # 2. Function to get partial residuals for each predictor
 get_partial_df <- function(model, data, var) {
@@ -199,7 +235,7 @@ get_partial_df <- function(model, data, var) {
 
 # 3. Build combined dataset for all retained predictors
 partial_df <- do.call(rbind, lapply(retained_vars, get_partial_df, 
-                                    model = step_mod, data = dat))
+                                    model = full_mod, data = std_vars))
 
 # 4. Plot partial regression slopes
 step.mod_partial_slopes <-
@@ -210,7 +246,7 @@ step.mod_partial_slopes <-
   labs(
     x = "Predictor (residuals)",
     y = "Response (residuals)",
-    title = "Partial Regression Plots for Retained Predictors"
+    title = "Standardized Partial Regression Plots of Predictors"
   ) +
   theme_minimal(base_size = 12)
 
@@ -230,7 +266,7 @@ ggsave(
 
 ```{r}
 # 1. Get model diagnostics
-model_diag <- influence.measures(step_mod)
+model_diag <- influence.measures(full_mod)
 
 # 2. Extract indices of influential points flagged by diagnostics
 infl_points <- which(apply(model_diag$is.inf, 1, any))
@@ -238,11 +274,11 @@ infl_points <- which(apply(model_diag$is.inf, 1, any))
 # 3. Create a dataframe with their info
 flagged_obs <- data.frame(
   Sample_ID = dat$Sample_ID[infl_points],
-  Fitted = fitted(step_mod)[infl_points],
-  Residual = residuals(step_mod)[infl_points],
-  Std_Residual = rstandard(step_mod)[infl_points],
-  Leverage = hatvalues(step_mod)[infl_points],
-  Cooks_D = cooks.distance(step_mod)[infl_points])
+  Fitted = fitted(full_mod)[infl_points],
+  Residual = residuals(full_mod)[infl_points],
+  Std_Residual = rstandard(full_mod)[infl_points],
+  Leverage = hatvalues(full_mod)[infl_points],
+  Cooks_D = cooks.distance(full_mod)[infl_points])
 
 # View flagged observations
 flagged_obs
@@ -766,22 +802,22 @@ dat_long_trace <- dat %>%
   pivot_longer(
     cols      = -Typology,
     names_to  = "Variable",
-    values_to = "Value"
+    values_to = "Log10(Value)"
   ) %>%
-  filter(!is.na(Value)) %>%
-  mutate(
+  dplyr::filter(!is.na(`Log10(Value)`)) %>%   # <-- backticks + no quotes
+  dplyr::mutate(
     Response = response_lookup[Variable],
     Response = factor(Response, levels = names(response_colors))
   )
 
 #-------------------------------------------------
-# 5. Letters (from letters_df) for all 6 variables
+# 5. Letters (from letters_df) for all variables
 #-------------------------------------------------
 
 # 5a. Max y per Variable x Typology
 y_pos_df <- dat_long_trace %>%
   group_by(Variable, Typology) %>%
-  summarise(y_max = max(Value, na.rm = TRUE), .groups = "drop")
+  summarise(y_max = max(`Log10(Value)`, na.rm = TRUE), .groups = "drop")  # <-- backticks
 
 # 5b. Attach Response + y positions + nudges to letters_df
 #     letters_df must have: Variable, Typology, Letters
@@ -796,29 +832,22 @@ letters_long_trace <- letters_df %>%
     by = c("Variable", "Typology")
   ) %>%
   mutate(
-    # add different nudge per facet
     y_pos = y_max + letter_nudge[as.character(Response)]
   )
 
 #-------------------------------------------------
 # 6. One faceted trace element panel (x = Typology)
 #-------------------------------------------------
-bioavail_panel <- ggplot(dat_long_trace, aes(
+bioavail_panel <- ggplot(
+  dat_long_trace,
+  aes(
     x     = Typology,
-    y     = Value,
+    y     = `Log10(Value)`,   # <-- backticks + no quotes
     color = Response
-  )) +
-  # Boxplots
+  )
+) +
   geom_boxplot(fill = NA, width = 0.6) +
-  
-  # Jittered points
-  geom_jitter(
-    width = 0.15,
-    size  = 1,
-    alpha = 0.7
-  ) +
-  
-  # Letters from Kruskal groups
+  geom_jitter(width = 0.15, size = 1, alpha = 0.7) +
   geom_text(
     data = letters_long_trace,
     aes(
@@ -829,22 +858,13 @@ bioavail_panel <- ggplot(dat_long_trace, aes(
     inherit.aes = FALSE,
     size = 3.5
   ) +
-  
-  # Colors by response (your palette)
   scale_color_manual(values = response_colors) +
-  
-  # One facet per response variable
-  facet_wrap(
-    ~ Response,
-    scales = "free_y",
-    ncol   = 3
-  ) +
-  
+  facet_wrap(~ Response, scales = "free_y", ncol = 3) +
   labs(
     title = "Trace Elements by Stream Typology",
-    x     = "Stream Typology"
+    x     = "Stream Typology",
+    y     = "Log10(Value)"    
   ) +
-  
   theme_minimal(base_size = 12) +
   theme(
     legend.position = "none",
@@ -858,16 +878,12 @@ bioavail_panel <- ggplot(dat_long_trace, aes(
 bioavail_panel
 
 # Save
-
-out_dir <- "Plots by typology"
-
 ggsave(
   filename = file.path("Plots by typology", "Trace_elements_panel_square.png"),
   plot     = bioavail_panel,
-  width    = 9,
+  width    = 10,
   height   = 4,
-  dpi      = 300
-)
+  dpi      = 300)
 ```
 
 ### b. Cu-complexes
