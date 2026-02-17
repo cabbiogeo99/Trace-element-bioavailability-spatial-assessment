@@ -298,11 +298,11 @@ ggsave(
 )
 ```
 
--   Cluster 1: Mostly low developed tributary sites
+-   Cluster 1: Mostly perennial less developed tributary sites
 
--   Cluster 2: Mostly highly developed tributary sites
+-   Cluster 2: Mostly perennial highly developed tributary sites
 
--   Cluster 3: Mostly main stem sites with varying development
+-   Cluster 3: Mostly main stem sites
 
 -   Cluster 4: Mostly non-perennial tributary sites
 
@@ -315,17 +315,17 @@ dat <- dat %>%
   mutate(cluster = as.character(cluster)) %>%
   mutate(cluster = dplyr::recode(
     cluster,
-    `1` = "Baseline Tributaries",
-    `2` = "Developed Tributaries",
+    `1` = "Perennial Tribs",
+    `2` = "Perennial Developed Tribs",
     `3` = "Main Stem",
-    `4` = "Pooled Water"
+    `4` = "Non-Perennial Tribs"
   )) %>%
   dplyr::rename(Typology = cluster) %>%
   dplyr::mutate(Typology = as.factor(Typology)) %>%
   dplyr::mutate(Typology = factor(Typology, 
-                          levels = c("Pooled Water",
-                                     "Baseline Tributaries",
-                                     "Developed Tributaries",
+                          levels = c("Non-Perennial Tribs",
+                                     "Perennial Tribs",
+                                     "Perennial Developed Tribs",
                                      "Main Stem")))
 
 # check
@@ -356,7 +356,59 @@ To determine the relative importance of each BLM predictor on trace element bioa
 
 total bioavailable element = sum of BLM predictors (as standardized log-transformed variables)
 
-## 1. Select and Inspect Variables
+## 1. Assess correlation
+
+```{r}
+# Spearman correlation matrix of all BLM predictors
+BLM_predict <- c("log_Zn_nM", "log_Cu_nM", "log_Temp_C", 
+                    "pH", "log_DOC_nM", "log_DIC_nM", "log_Cl_nM", 
+                    "log_Ca_nM", "log_Mg_nM", "log_SO4_nM", 
+                    "log_Na_nM", "log_K_nM")
+
+library(dplyr)
+
+cor_df_std <- dat %>%
+  dplyr::select(all_of(BLM_predict)) %>%
+  mutate(across(everything(), as.numeric)) %>%
+  mutate(across(everything(), scale)) %>%
+  as.data.frame()
+
+cor_mat <- cor(
+  cor_df_std,
+  method = "spearman",
+  use    = "pairwise.complete.obs"
+)
+
+# Plot & save
+library(corrplot)
+
+out_dir <- "Multiple linear regression"
+if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+
+png(
+  filename = file.path(out_dir, "Spearman_correlation_BLM_predictors.png"),
+  width    = 2400,
+  height   = 2000,
+  res      = 300
+)
+
+corrplot(
+  cor_mat,
+  method      = "color",
+  type        = "upper",
+  order       = "hclust",
+  tl.col      = "black",
+  tl.cex      = 0.8,
+  addCoef.col = "black",
+  number.cex  = 0.7,
+  diag        = FALSE
+)
+
+dev.off()
+
+```
+
+## 2. Build MLR
 
 Use log-transformed and standardized variables to build a large model, stepwise select a better model, calculate standardized beta coefficients, variance inflation factors (VIF), and relative importance on bioavailability
 
@@ -366,11 +418,12 @@ library(car)
 library(relaimpo)
 library(dplyr)
 library(openxlsx)
+library(corrplot)
 
-vars_to_select <- c("log_Zn_nM", "log_Temp_C", "pH", "log_DOC_nM",
-                    "log_DIC_nM", "log_Cl_nM", "log_Ca_nM",
-                    "log_Mg_nM", "log_SO4_nM", "log_Na_nM",
-                    "log_K_nM")
+vars_to_select <- c("log_Zn_nM", "log_Temp_C", 
+                    "pH", "log_DOC_nM", "log_DIC_nM", "log_Cl_nM", 
+                    "log_Ca_nM", "log_Mg_nM", "log_SO4_nM", 
+                    "log_Na_nM", "log_K_nM")
 
 # 0. Standardize variables
 std_vars <- dat %>%
@@ -387,40 +440,6 @@ response_std <- "log_TBL_Zn_nmol_g_std"
 # Model formula using standardized columns
 form_std <- reformulate(vars_to_select_std, response = response_std)
 
-# Spearman correlation matrix
-cor_mat <- cor(
-  std_vars,
-  method = "spearman",
-  use    = "pairwise.complete.obs"
-)
-
-# Correlation plot with values
-corrplot(
-  cor_mat,
-  method        = "color",
-  type          = "upper",
-  order         = "hclust",
-  tl.col        = "black",
-  tl.cex        = 0.8,
-  addCoef.col   = "black",   # show correlation values
-  number.cex    = 0.7,       
-  diag          = FALSE
-)
-```
-
-The most correlated values
-
--   0.92 Cl & Na
-
--   0.78 DIC & Ca
-
--   0.79 Na & SO4
-
--   0.73 SO4 & K
-
-## 2. Built the MLR
-
-```{r}
 # 1. Full MLR
 full_mod <- lm(form_std, data = std_vars)
 
@@ -459,6 +478,8 @@ final_table <- est_df %>%
 final_table
 
 # 6. Save
+library(openxlsx)
+
 out_dir <- "Multiple linear regression"
 dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
 
@@ -692,21 +713,6 @@ saveWorkbook(wb, file_path, overwrite = TRUE)
 ```
 
 # Assessing Variables by Typology
-
-Set order of Typologies
-
-```{r}
-# Rearrange order
-dat$Typology <- as.factor(dat$Typology)
-dat$Typology <- factor(dat$Typology, 
-                          levels = c("Pooled Water",
-                                     "Baseline Tributaries",
-                                     "Developed Tributaries",
-                                     "Main Stem"))
-
-# Check
-levels(dat$Typology)
-```
 
 ## 1. Summary Statistics
 
@@ -1039,7 +1045,7 @@ saveWorkbook(wb, "Statistical_analyses_by_typology.xlsx", overwrite = TRUE)
 
 ## 4. Boxplots by Typology
 
-We first need to create an object with the pair-wise comparison letters
+We first need to create an object with the pair-wise comparison letters and set the order of Typology
 
 ```{r}
 # Create letters_df from combined_kruskal
@@ -1048,6 +1054,20 @@ letters_df <- combined_kruskal %>%
   dplyr::distinct() %>%
   dplyr::rename(Letters = groups)
 
+dat$Typology <- as.factor(dat$Typology)
+
+dat$Typology <- factor(dat$Typology, levels = c("Non-Perennial Tribs",
+                                     "Perennial Tribs",
+                                     "Perennial Developed Tribs",
+                                     "Main Stem"))
+
+# 3. Colors for each Typology
+typology_colors <- c(
+  "Perennial Tribs"                  = "#56B4E9",
+  "Perennial Developed Tribs"        = "#D55E00",
+  "Non-Perennial Tribs"              = "#009E73",
+  "Main Stem"                        = "#999999"
+)
 ```
 
 ### a. BLM predictors
@@ -1090,15 +1110,8 @@ y_label_lookup <- c(
   "log_Cl_uM"  = "log Cl (µM)"
 )
 
-# 3. Colors for each Typology
-typology_colors <- c(
-  "Pooled Water"        = "#E69F00",
-  "Baseline Tributaries"         = "#56B4E9",
-  "Developed Tributaries" = "#D55E00",
-  "Main Stem"           = "#999999"
-)
 
-# 4. Loop through variables in title_lookup
+# 3. Loop through variables in title_lookup
 for (var in names(title_lookup)) {
 
   y_pos_df <- dat %>%
@@ -1108,27 +1121,36 @@ for (var in names(title_lookup)) {
       .groups = "drop"
     )
 
-  letters_sub <- letters_df %>%
+  letters_plot_df <- letters_df %>%
     filter(Variable == var) %>%
-    dplyr::select(Typology, Letters)
-
-  letters_plot_df <- letters_sub %>%
+    dplyr::select(Typology, Letters) %>%
+    mutate(Typology = factor(Typology)) %>%
     left_join(y_pos_df, by = "Typology")
 
   p <- ggplot(dat, aes(
-    x = Typology,
-    y = .data[[var]],
+    x    = Typology,
+    y    = .data[[var]],
+    fill = Typology,
     color = Typology
   )) +
-    geom_boxplot(fill = NA, width = 0.6) +
-    geom_jitter(width = 0.15, size = 2, alpha = 0.7) +
+    geom_boxplot(
+      width = 0.6,
+      alpha = 0.35,        
+      outlier.shape = NA 
+    ) +
+    geom_jitter(
+      width = 0.15,
+      size  = 2,
+      alpha = 0.7
+    ) +
     geom_text(
       data = letters_plot_df,
       aes(x = Typology, y = y_pos, label = Letters),
       inherit.aes = FALSE,
       size = 5
     ) +
-    scale_color_manual(values = typology_colors) +
+    scale_fill_manual(values = typology_colors, drop = FALSE) +
+    scale_color_manual(values = typology_colors, drop = FALSE) +
     labs(
       title = title_lookup[[var]],
       y     = y_label_lookup[[var]],
@@ -1138,20 +1160,13 @@ for (var in names(title_lookup)) {
     theme_minimal(base_size = 12) +
     theme(
       legend.position = "none",
-      axis.text.x  = element_text(size = 11, angle = 0, vjust = 0.5),
-      axis.title.x = element_text(size = 12),
-      axis.text.y  = element_text(size = 11),
+      axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
+      axis.text.y = element_text(size = 11),
       axis.title.y = element_text(size = 12),
-      plot.title   = element_text(size = 14)
-    ) +
-    theme(
-  axis.text.x = element_text(
-    angle = 45,
-    hjust = 1,
-    vjust = 1
-  )
-)
-
+      plot.title = element_text(size = 14)
+    )
+ p
+ 
   # ---- Save ---
   file_stub <- paste0("Boxplot_", var, "_by_Typology")
 
@@ -1173,96 +1188,81 @@ library(dplyr)
 library(tidyr)
 library(ggplot2)
 
-# ------------------------------------------------------------------
-# 0. Typology colors
-# ------------------------------------------------------------------
-typology_colors <- c(
-  "Pooled Water"          = "#E69F00",
-  "Baseline Tributaries"  = "#56B4E9",
-  "Developed Tributaries" = "#D55E00",
-  "Main Stem"             = "#999999"
-)
-
 # 1. Make sure output folder exists
 out_dir <- "Plots by typology"
 if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
 
-# 2. Put data into long format: one row = 1 observation of 1 variable
+# 2. Long format (DO NOT re-factor Typology)
 dat_long <- dat %>%
-  dplyr::select(Typology, all_of(names(title_lookup))) %>%  
+  dplyr::select(Typology, all_of(names(title_lookup))) %>%
   pivot_longer(
     cols      = -Typology,
     names_to  = "Variable",
     values_to = "Value"
   ) %>%
-  filter(!is.na(Value))
+  filter(!is.na(Value)) %>%
+  mutate(
+    Variable = factor(Variable, levels = names(title_lookup))
+  )
 
-# 3. Prepare letters for all variables in one table ----
-
-# 3a. Get max y per Variable x Typology from the long data
+# 3a. Get max y per Variable x Typology
 y_pos_df <- dat_long %>%
   group_by(Variable, Typology) %>%
   summarise(y_max = max(Value, na.rm = TRUE), .groups = "drop")
 
-# 3b. Subset letters_df to only the variables you are plotting
-#     letters_df must have: Variable, Typology, Letters
+# 3b. Letters (DO NOT re-factor Typology)
 letters_long <- letters_df %>%
   filter(Variable %in% names(title_lookup)) %>%
-  # join to get y_max for each Variable x Typology
+  mutate(
+    Variable = factor(Variable, levels = names(title_lookup))
+  ) %>%
   left_join(y_pos_df, by = c("Variable", "Typology")) %>%
-  # position letters slightly above the max
   mutate(
     y_pos = y_max * 1.05
   )
 
-# 4. Facet labels using title_lookup
+# 4. Facet labels
 facet_labels <- as_labeller(title_lookup)
 
-# 5. Build one faceted plot
-all_vars_panel <- ggplot(dat_long, aes(
+# 5. Build plot (filled)
+all_vars_panel <- ggplot(
+  dat_long,
+  aes(
     x     = Typology,
     y     = Value,
-    color = Typology
-  )) +
-  # Boxplots
-  geom_boxplot(fill = NA, width = 0.6) +
-  
-  # Jittered points
+    color = Typology,
+    fill  = Typology
+  )
+) +
+  geom_boxplot(
+    width = 0.6,
+    alpha = 0.35,
+    outlier.shape = NA
+  ) +
   geom_jitter(
     width = 0.15,
     size  = 1.5,
     alpha = 0.7
   ) +
-  
-  # Letters from Kruskal groups
   geom_text(
     data = letters_long,
-    aes(
-      x     = Typology,
-      y     = y_pos,
-      label = Letters
-    ),
+    aes(x = Typology, y = y_pos, label = Letters),
     inherit.aes = FALSE,
     size = 3
   ) +
-  
-  # Typology colors
-  scale_color_manual(values = typology_colors) +
-  
-  # Facet by Variable, with nice titles
+  scale_color_manual(values = typology_colors, drop = FALSE) +
+  scale_fill_manual(values = typology_colors, drop = FALSE) +
   facet_wrap(
     ~ Variable,
-    scales  = "free_y",
-    ncol    = 3,
+    scales   = "free_y",
+    ncol     = 3,
     labeller = facet_labels
   ) +
-  
   labs(
     title = "BLM Predictors by Stream Typology",
     x     = "Stream Typology",
-    y     = "Log Concentration (µM)"
+    y     = "Log Concentration (uM)"
   ) +
-  
   theme_minimal(base_size = 12) +
   theme(
     legend.position = "none",
@@ -1271,21 +1271,8 @@ all_vars_panel <- ggplot(dat_long, aes(
     plot.title   = element_text(size = 14)
   )
 
-# 6. Show in RStudio
 all_vars_panel
 
-```
-
-Save plot
-
-```{r}
-ggsave(
-  filename = file.path(out_dir, "All_BLM_predictors_square.png"),
-  plot     = all_vars_panel,
-  width    = 9,
-  height   = 9,
-  dpi      = 300
-)
 ```
 
 ### b. Trace element fractions
@@ -1396,7 +1383,7 @@ bioavail_panel <- ggplot(
   labs(
     title = "Trace Elements by Stream Typology",
     x     = "Stream Typology",
-    y     = "Log10(Value)"    # <-- y-axis label shows exactly this text
+    y     = "Log(Value)"   
   ) +
   theme_minimal(base_size = 12) +
   theme(
@@ -1423,10 +1410,6 @@ ggsave(
 ### c. Zn-complexes
 
 ```{r}
-# keep Typology order consistent
-typology_levels <- names(typology_colors)
-
-
 library(dplyr)
 library(tidyr)
 library(ggplot2)
@@ -1435,35 +1418,30 @@ library(ggplot2)
 # 1) Zn species variables you want in the panel
 # ------------------------------------------------------------------
 vars_spec <- c(
-  "ZnOH_M",
-  "Zn_OH_2_M",
-  "ZnCO3_M",
-  "ZnHCO3_M",
-  "ZnSO4_M",
-  "ZnCl_M",
-  "ZnS_M",
-  "TOrg_Zn_M"
+  "log_ZnOH_uM",
+  "log_Zn_OH_2_uM",
+  "log_ZnCO3_uM",
+  "log_ZnHCO3_uM",
+  "log_ZnSO4_uM",
+  "log_ZnCl_uM"
 )
 
-# Facet titles (edit if you want different formatting)
+# Facet titles
 title_lookup <- c(
-  "ZnOH_M"     = "ZnOH",
-  "Zn_OH_2_M"  = "Zn(OH)2",
-  "ZnCO3_M"    = "ZnCO3",
-  "ZnHCO3_M"   = "ZnHCO3",
-  "ZnSO4_M"    = "ZnSO4",
-  "ZnCl_M"     = "ZnCl",
-  "ZnS_M"      = "ZnS",
-  "TOrg_Zn_M"  = "TOrg Zn"
+  "log_ZnOH_uM"     = "ZnOH",
+  "log_Zn_OH_2_uM"  = "Zn(OH)2",
+  "log_ZnCO3_uM"    = "ZnCO3",
+  "log_ZnHCO3_uM"   = "ZnHCO3",
+  "log_ZnSO4_uM"    = "ZnSO4",
+  "log_ZnCl_uM"     = "ZnCl"
 )
 
 facet_labels <- as_labeller(title_lookup)
 
 # ------------------------------------------------------------------
-# 2) Long data (one row = 1 observation of 1 variable)
+# 2) Long data (DO NOT re-factor Typology)
 # ------------------------------------------------------------------
 dat_long_spec <- dat %>%
-  mutate(Typology = factor(Typology, levels = typology_levels)) %>%
   dplyr::select(Typology, all_of(vars_spec)) %>%
   pivot_longer(
     cols      = -Typology,
@@ -1478,6 +1456,7 @@ dat_long_spec <- dat %>%
 # ------------------------------------------------------------------
 # 3) Letters (Kruskal groups) + y positions
 #     letters_df must have: Variable, Typology, Letters
+#     (DO NOT re-factor Typology here either)
 # ------------------------------------------------------------------
 y_pos_df_spec <- dat_long_spec %>%
   group_by(Variable, Typology) %>%
@@ -1485,19 +1464,15 @@ y_pos_df_spec <- dat_long_spec %>%
 
 letters_long_spec <- letters_df %>%
   filter(Variable %in% vars_spec) %>%
-  mutate(Typology = factor(Typology, levels = typology_levels)) %>%
   left_join(y_pos_df_spec, by = c("Variable", "Typology")) %>%
   mutate(
     y_pos = y_max + 0.05 * (abs(y_max) + 1)
   )
 
 # ------------------------------------------------------------------
-# 4) Faceted panel (boxplot + jitter), colored by Typology
+# 4) Faceted panel (FILLED boxplot + jitter), colored by Typology
 # ------------------------------------------------------------------
-spec_panel <- ggplot(dat_long_spec, aes(
-  x = Typology,
-  y = Value
-)) +
+spec_panel <- ggplot(dat_long_spec, aes(x = Typology, y = Value)) +
   geom_boxplot(
     aes(color = Typology, fill = Typology),
     width = 0.6,
@@ -1516,8 +1491,8 @@ spec_panel <- ggplot(dat_long_spec, aes(
     inherit.aes = FALSE,
     size = 3
   ) +
-  scale_fill_manual(values = typology_colors) +
-  scale_color_manual(values = typology_colors) +
+  scale_fill_manual(values = typology_colors, drop = FALSE) +
+  scale_color_manual(values = typology_colors, drop = FALSE) +
   facet_wrap(
     ~ Variable,
     scales   = "free_y",
@@ -1527,7 +1502,7 @@ spec_panel <- ggplot(dat_long_spec, aes(
   labs(
     title = "Zn Species by Stream Typology",
     x     = "Stream Typology",
-    y     = "Concentration (M)"
+    y     = "Log Concentration (uM)"
   ) +
   theme_minimal(base_size = 12) +
   theme(
@@ -1541,12 +1516,13 @@ spec_panel
 
 # Save
 ggsave(
-  filename = file.path(out_dir, "Inorganic_Cu_complexes.png"),
+  filename = file.path(out_dir, "Inorganic_Zn_complexes.png"),
   plot     = spec_panel,
   width    = 9,
   height   = 9,
   dpi      = 300
 )
+
 ```
 
 ### d. Organic complexes
@@ -1564,26 +1540,23 @@ vars_spec <- c(
   "log_TOrg_H_nM",
   "log_TOrg_Ca_nM",
   "log_TOrg_Mg_nM",
-  "log_TOrg_Na_nM",
-  "log_TOrg_K_nM")
-
+  "log_TOrg_Na_nM"
+)
 
 title_lookup <- c(
   "log_TOrg_Zn_nM" = "TOrg Zn",
-  "log_TOrg_H_nM" = "TOrg H",
+  "log_TOrg_H_nM"  = "TOrg H",
   "log_TOrg_Ca_nM" = "TOrg Ca",
   "log_TOrg_Mg_nM" = "TOrg Mg",
-  "log_TOrg_Na_nM" = "TOrg Na",
-  "log_TOrg_K_nM" = "TOrg K"
+  "log_TOrg_Na_nM" = "TOrg Na"
 )
 
 facet_labels <- as_labeller(title_lookup)
 
 # ------------------------------------------------------------------
-# 2) Long data (one row = 1 observation of 1 variable)
+# 2) Long data (DO NOT re-factor Typology)
 # ------------------------------------------------------------------
 dat_long_spec <- dat %>%
-  mutate(Typology = factor(Typology, levels = typology_levels)) %>%
   dplyr::select(Typology, all_of(vars_spec)) %>%
   pivot_longer(
     cols      = -Typology,
@@ -1596,8 +1569,9 @@ dat_long_spec <- dat %>%
   )
 
 # ------------------------------------------------------------------
-# 4) Letters (Kruskal groups) + y positions
+# 3) Letters (Kruskal groups) + y positions
 #     letters_df must have: Variable, Typology, Letters
+#     (DO NOT re-factor Typology here either)
 # ------------------------------------------------------------------
 y_pos_df_spec <- dat_long_spec %>%
   group_by(Variable, Typology) %>%
@@ -1605,62 +1579,46 @@ y_pos_df_spec <- dat_long_spec %>%
 
 letters_long_spec <- letters_df %>%
   filter(Variable %in% vars_spec) %>%
-  mutate(Typology = factor(Typology, levels = typology_levels)) %>%
   left_join(y_pos_df_spec, by = c("Variable", "Typology")) %>%
   mutate(
-    # works well for log-scale-ish values; tweak if needed
     y_pos = y_max + 0.05 * (abs(y_max) + 1)
   )
 
 # ------------------------------------------------------------------
-# 5) Faceted panel (boxplot + jitter), colored by Typology
+# 4) Faceted panel (FILLED boxplot + jitter), colored by Typology
 # ------------------------------------------------------------------
-spec_panel2 <- ggplot(dat_long_spec, aes(
-  x = Typology,
-  y = Value
-)) +
-  # Boxplots: outline + fill BOTH by Typology
+spec_panel2 <- ggplot(dat_long_spec, aes(x = Typology, y = Value)) +
   geom_boxplot(
     aes(color = Typology, fill = Typology),
     width = 0.6,
     alpha = 0.35,
     outlier.shape = NA
   ) +
-  
-  # Jittered points
   geom_jitter(
     aes(color = Typology),
     width = 0.15,
     size  = 1.3,
     alpha = 0.6
   ) +
-  
-  # Letters
   geom_text(
     data = letters_long_spec,
     aes(x = Typology, y = y_pos, label = Letters),
     inherit.aes = FALSE,
     size = 3
   ) +
-  
-  # Typology colors
-  scale_fill_manual(values = typology_colors) +
-  scale_color_manual(values = typology_colors) +
-  
-  # Facets
+  scale_fill_manual(values = typology_colors, drop = FALSE) +
+  scale_color_manual(values = typology_colors, drop = FALSE) +
   facet_wrap(
     ~ Variable,
     scales   = "free_y",
     ncol     = 3,
     labeller = facet_labels
   ) +
-  
   labs(
     title = "Organic Complexes by Stream Typology",
     x     = "Stream Typology",
     y     = "Log Concentration (nM)"
   ) +
-  
   theme_minimal(base_size = 12) +
   theme(
     legend.position = "none",
@@ -1679,6 +1637,7 @@ ggsave(
   height   = 6,
   dpi      = 300
 )
+
 ```
 
 ### e. BL-bound cations
@@ -1695,12 +1654,12 @@ vars_spec <- c(
   "log_BL_Ca_nmol_g",
   "log_BL_H_nmol_g",
   "log_BL_Mg_nmol_g",
-  "log_BL_Na_nmol_g")
-
+  "log_BL_Na_nmol_g"
+)
 
 title_lookup <- c(
   "log_BL_Ca_nmol_g" = "BL-Ca",
-  "log_BL_H_nmol_g" = "BL-H",
+  "log_BL_H_nmol_g"  = "BL-H",
   "log_BL_Mg_nmol_g" = "BL-Mg",
   "log_BL_Na_nmol_g" = "BL-Na"
 )
@@ -1708,10 +1667,9 @@ title_lookup <- c(
 facet_labels <- as_labeller(title_lookup)
 
 # ------------------------------------------------------------------
-# 2) Long data (one row = 1 observation of 1 variable)
+# 2) Long data (DO NOT re-factor Typology)
 # ------------------------------------------------------------------
 dat_long_spec <- dat %>%
-  mutate(Typology = factor(Typology, levels = typology_levels)) %>%
   dplyr::select(Typology, all_of(vars_spec)) %>%
   pivot_longer(
     cols      = -Typology,
@@ -1724,8 +1682,9 @@ dat_long_spec <- dat %>%
   )
 
 # ------------------------------------------------------------------
-# 4) Letters (Kruskal groups) + y positions
+# 3) Letters (Kruskal groups) + y positions
 #     letters_df must have: Variable, Typology, Letters
+#     (DO NOT re-factor Typology here either)
 # ------------------------------------------------------------------
 y_pos_df_spec <- dat_long_spec %>%
   group_by(Variable, Typology) %>%
@@ -1733,62 +1692,46 @@ y_pos_df_spec <- dat_long_spec %>%
 
 letters_long_spec <- letters_df %>%
   filter(Variable %in% vars_spec) %>%
-  mutate(Typology = factor(Typology, levels = typology_levels)) %>%
   left_join(y_pos_df_spec, by = c("Variable", "Typology")) %>%
   mutate(
-    # works well for log-scale-ish values; tweak if needed
     y_pos = y_max + 0.05 * (abs(y_max) + 1)
   )
 
 # ------------------------------------------------------------------
-# 5) Faceted panel (boxplot + jitter), colored by Typology
+# 4) Faceted panel (FILLED boxplot + jitter), colored by Typology
 # ------------------------------------------------------------------
-spec_panel3 <- ggplot(dat_long_spec, aes(
-  x = Typology,
-  y = Value
-)) +
-  # Boxplots: outline + fill BOTH by Typology
+spec_panel3 <- ggplot(dat_long_spec, aes(x = Typology, y = Value)) +
   geom_boxplot(
     aes(color = Typology, fill = Typology),
     width = 0.6,
     alpha = 0.35,
     outlier.shape = NA
   ) +
-  
-  # Jittered points
   geom_jitter(
     aes(color = Typology),
     width = 0.15,
     size  = 1.3,
     alpha = 0.6
   ) +
-  
-  # Letters
   geom_text(
     data = letters_long_spec,
     aes(x = Typology, y = y_pos, label = Letters),
     inherit.aes = FALSE,
     size = 3
   ) +
-  
-  # Typology colors
-  scale_fill_manual(values = typology_colors) +
-  scale_color_manual(values = typology_colors) +
-  
-  # Facets
+  scale_fill_manual(values = typology_colors, drop = FALSE) +
+  scale_color_manual(values = typology_colors, drop = FALSE) +
   facet_wrap(
-  ~ Variable,
-  scales   = "free_y",
-  ncol     = 2,         
-  labeller = facet_labels
-) +
-  
+    ~ Variable,
+    scales   = "free_y",
+    ncol     = 2,
+    labeller = facet_labels
+  ) +
   labs(
     title = "Biotic Ligand-Bound Cations by Stream Typology",
     x     = "Stream Typology",
     y     = "Log Concentration (nmol/g)"
   ) +
-  
   theme_minimal(base_size = 12) +
   theme(
     legend.position = "none",
@@ -1807,6 +1750,7 @@ ggsave(
   height   = 6,
   dpi      = 300
 )
+
 ```
 
 ### f. Toxicity
@@ -1919,11 +1863,7 @@ overlap_Zn_by_typology <- dat %>%
 # View results
 overlap_Zn_by_typology
 
-```
-
-Save
-
-```{r}
+# Save
 library(openxlsx)
 
 write.xlsx(
@@ -1933,198 +1873,351 @@ write.xlsx(
 )
 ```
 
-# Variables by Site within Typology
-
-Need Dist_from_EFPC_km variable to plot
-
-## **1. Main Stem**
+# Bioavailability by Site within Network
 
 ```{r}
-# Isolate Main Stem typology and order the sites
-main_stem <- dat %>%
-  filter(Typology == "Main Stem") %>%
-  mutate(Site = factor(Site, 
-                       levels = unique(Site[order(Dist_from_EFPC_km)])))
-
-
-# Plot by site
+library(dplyr)
 library(ggplot2)
 
-main_stem_plot <- ggplot(
-  main_stem,
+#-------------------------------------------------
+# 1) Prep all sites + order by elevation
+#-------------------------------------------------
+all_sites <- dat %>%
+  mutate(
+    Network = factor(Network)
+  ) %>%
+  group_by(Site) %>%
+  mutate(site_elev = median(Relative_elevation_m, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(
+    Site = factor(Site, levels = unique(Site[order(site_elev)]))
+  )
+
+#-------------------------------------------------
+# 2) Plot (NO typology coloring)
+#-------------------------------------------------
+sites_by_network <- ggplot(
+  all_sites,
   aes(x = Site, y = log_TBL_Zn_nmol_g)
 ) +
   geom_boxplot(
-    fill = "darkslategray1",    
-    color = "black",             
-    position = position_dodge(width = 0.75)
+    fill = "grey70",      # single neutral fill
+    color = "black",
+    outlier.alpha = 0.6
   ) +
+  facet_grid(~Network, scales = "free_x", space = "free_x", switch = "x") +
   labs(
-    title = "Bioavailable Zn in Main Stem",
-    x = "Site (upstream to downstream)",
-    y = "Log TBL Zn (umol/g wet weight)"
+    title = "Bioavailable Zn Across All Sites",
+    x = "Site (ordered by relative elevation)",
+    y = "Log TBL Zn (nmol/g wet weight)"
   ) +
   theme_test() +
   theme(
     axis.text.x = element_text(angle = 30, hjust = 1),
-    plot.title = element_text(hjust = 0.5, face = "bold"),
-    legend.position = "none"
+    plot.title  = element_text(hjust = 0.5, face = "bold")
   )
 
+# View
+sites_by_network
+
+#-------------------------------------------------
+# 3) Save
+#-------------------------------------------------
+out_dir <- "Plots by site within typology"
+if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+
+ggsave(
+  filename = file.path(out_dir, "Sites_by_network.png"),
+  plot     = sites_by_network,
+  width    = 20,
+  height   = 6,
+  dpi      = 300
+)
+```
+
+With mean by Network
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+#-------------------------------------------------
+# 1) Prep all sites + order by elevation
+#-------------------------------------------------
+all_sites <- dat %>%
+  mutate(
+    Network = factor(Network)
+  ) %>%
+  group_by(Site) %>%
+  mutate(site_elev = median(Relative_elevation_m, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(
+    Site = factor(Site, levels = unique(Site[order(site_elev)]))
+  )
+
+#-------------------------------------------------
+# 2) Calculate mean by Network
+#-------------------------------------------------
+network_means <- all_sites %>%
+  group_by(Network) %>%
+  summarise(
+    mean_value = mean(log_TBL_Zn_nmol_g, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+#-------------------------------------------------
+# 3) Plot
+#-------------------------------------------------
+sites_by_network <- ggplot(
+  all_sites,
+  aes(x = Site, y = log_TBL_Zn_nmol_g)
+) +
+  geom_boxplot(
+    fill = "grey70",
+    color = "black",
+    outlier.alpha = 0.6
+  ) +
+  
+  # Add horizontal mean line per Network
+  geom_hline(
+    data = network_means,
+    aes(yintercept = mean_value),
+    linetype = "dashed",
+    linewidth = 1,
+    color = "red"
+  ) +
+  
+  facet_grid(~Network, scales = "free_x", space = "free_x", switch = "x") +
+  labs(
+    title = "Bioavailable Zn Across All Sites",
+    x = "Site (ordered by relative elevation)",
+    y = "Log TBL Zn (nmol/g wet weight)"
+  ) +
+  theme_test() +
+  theme(
+    axis.text.x = element_text(angle = 30, hjust = 1),
+    plot.title  = element_text(hjust = 0.5, face = "bold")
+  )
 
 # View
-main_stem_plot
+sites_by_network
+
+# Save
+out_dir <- "Plots by site within typology"
+if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+
+ggsave(
+  filename = file.path(out_dir, "Sites_by_network_with_mean.png"),
+  plot     = sites_by_network,
+  width    = 20,
+  height   = 6,
+  dpi      = 300
+)
+
+```
+
+Colored by typology
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+#-------------------------------------------------
+# 1) Prep all sites + order by elevation
+#-------------------------------------------------
+all_sites <- dat %>%
+  mutate(
+    Typology = factor(Typology),
+    Network  = factor(Network)
+  ) %>%
+  group_by(Site) %>%
+  mutate(site_elev = median(Relative_elevation_m, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(
+    Site = factor(Site, levels = unique(Site[order(site_elev)]))
+  )
+
+#-------------------------------------------------
+# 2) Plot
+#-------------------------------------------------
+sites_by_network_typology <- ggplot(
+  all_sites,
+  aes(x = Site, y = log_TBL_Zn_nmol_g, fill = Typology)
+) +
+  geom_boxplot(color = "black", outlier.alpha = 0.6) +
+  facet_grid(~Network, scales = "free_x", space = "free_x", switch = "x") +
+  scale_fill_manual(values = typology_colors, drop = FALSE) +
+  labs(
+    title = "Bioavailable Zn Across All Sites",
+    x = "Site (ordered by relative elevation)",
+    y = "Log TBL Zn (nmol/g wet weight)",
+    fill = "Typology"
+  ) +
+  theme_test() +
+  theme(
+    axis.text.x = element_text(angle = 30, hjust = 1),
+    plot.title  = element_text(hjust = 0.5, face = "bold")
+  )
+
+# View
+sites_by_network_typology
 
 # Save 
-out_dir <- "Plots by site within typology"
-# Create directory if it does not exist
-if (!dir.exists(out_dir)) {
-  dir.create(out_dir, recursive = TRUE)
-}
-
 ggsave(
-  filename = file.path(out_dir, "Bioavailability_main_stem.png"),
-  plot     = main_stem_plot,
-  width    = 10,
+  filename = file.path(out_dir, "Sites_by_network_typology.png"),
+  plot     = sites_by_network_typology,
+  width    = 20,
   height   = 6,
   dpi      = 300
 )
 ```
 
-## **2. Baseline Tribs**
-
-```{r}
-# Isolate Flowing Tribs typology and order the sites
-f_tribs <- dat %>%
-  filter(Typology == "Baseline Tributaries") %>%
-  mutate(Site = factor(Site, 
-                       levels = unique(Site[order(Dist_from_EFPC_km)])))
-
-
-# Plot by site colored by Network
-library(ggplot2)
-
-# Zinc
-baseline_trib <- 
-  ggplot(f_tribs, aes(x = Site, y = log_TBL_Zn_nmol_g, fill = Network)) +
-  geom_boxplot(color = "black", position = position_dodge(width = 0.75)) +
-  labs(
-    title = "Bioavailable Zn in Flowing Tributaries",
-    x = "Site (grouped by network)",
-    y = " Log TBL Zn (umol/g wet weight)"
-  ) +
-  theme_test() +
-  theme(
-    axis.text.x = element_text(angle = 30, hjust = 1),
-    legend.position = "none",
-    plot.title = element_text(hjust = 0.5, face = "bold")
-  ) +
-
-  # Add vertical dividers between networks
-  facet_grid(~Network, scales = "free_x", space = "free_x", switch = "x")
-
-# View 
-baseline_trib
-
-# Save
-ggsave(
-  filename = file.path(out_dir, "Bioavailability_baseline_tribs.png"),
-  plot     = baseline_trib,
-  width    = 10,
-  height   = 6,
-  dpi      = 300
-)
-```
-
-## 3. Pooled Water
+Colored by typology and mean by Network and Typology
 
 ```{r}
 library(dplyr)
 library(ggplot2)
 
-# 1. Isolate Non-Perennial Pooled Tribs typology and order the sites
-pooled_tribs <- dat %>%
-  filter(Typology == "Pooled Water") %>%
+#-------------------------------------------------
+# 1) Prep all sites + order by elevation
+#-------------------------------------------------
+all_sites <- dat %>%
   mutate(
-    Site = factor(
-      Site,
-      levels = unique(Site[order(Dist_from_EFPC_km)])
-    )
+    Typology = factor(Typology),
+    Network  = factor(Network)
+  ) %>%
+  group_by(Site) %>%
+  mutate(site_elev = median(Relative_elevation_m, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(
+    Site = factor(Site, levels = unique(Site[order(site_elev)]))
   )
 
-pooled_tribs_plot <- 
-  ggplot(pooled_tribs, aes(x = Site, y = log_TBL_Zn_nmol_g, fill = Network)) +
-  geom_boxplot(color = "black", position = position_dodge(width = 0.75)) +
-  labs(
-    title = "Bioavailable Zn in Non-Perennial Pooled Tributaries",
-    x = "Site (grouped by network)",
-    y = "Log TBL Zn (umol/g wet weight)"
+#-------------------------------------------------
+# 2) Compute Means
+#-------------------------------------------------
+
+# Mean by Network (one per facet)
+network_means <- all_sites %>%
+  group_by(Network) %>%
+  summarise(
+    mean_network = mean(log_TBL_Zn_nmol_g, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# Mean by Typology within each Network
+typology_means <- all_sites %>%
+  group_by(Network, Typology) %>%
+  summarise(
+    mean_typology = mean(log_TBL_Zn_nmol_g, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+#-------------------------------------------------
+# 3) Plot
+#-------------------------------------------------
+sites_by_network_typology <- ggplot(
+  all_sites,
+  aes(x = Site, y = log_TBL_Zn_nmol_g, fill = Typology)
+) +
+  geom_boxplot(color = "black", outlier.alpha = 0.6) +
+
+  # Red dashed line = Network mean
+  geom_hline(
+    data = network_means,
+    aes(yintercept = mean_network),
+    color = "red",
+    linetype = "dashed",
+    linewidth = 1.2
   ) +
+
+  # Colored dotted lines = Typology means
+  geom_hline(
+    data = typology_means,
+    aes(yintercept = mean_typology, color = Typology),
+    linetype = "dotted",
+    linewidth = 1
+  ) +
+
+  facet_grid(~Network, scales = "free_x", space = "free_x", switch = "x") +
+
+  scale_fill_manual(values = typology_colors, drop = FALSE) +
+  scale_color_manual(values = typology_colors, drop = FALSE) +
+
+  labs(
+    title = "Bioavailable Zn Across All Sites",
+    x = "Site (ordered by relative elevation)",
+    y = "Log TBL Zn (nmol/g wet weight)",
+    fill = "Typology"
+  ) +
+
   theme_test() +
   theme(
     axis.text.x = element_text(angle = 30, hjust = 1),
-    legend.position = "none",
-    plot.title = element_text(hjust = 0.5, face = "bold")
-  ) +
-  facet_grid(~Network, scales = "free_x", space = "free_x", switch = "x")
+    plot.title  = element_text(hjust = 0.5, face = "bold"),
+    legend.position = "right"
+  )
 
 # View
-pooled_tribs_plot
+sites_by_network_typology
 
-# Save
+# Save 
 ggsave(
-  filename = file.path(out_dir, "Bioavailability_pooled_water.png"),
-  plot     = pooled_tribs_plot,
-  width    = 10,
+  filename = file.path(out_dir, "Sites_by_network_typology_means.png"),
+  plot     = sites_by_network_typology,
+  width    = 20,
   height   = 6,
   dpi      = 300
 )
-
 ```
 
-## 4. Perennial Developed Tribs
+Table
 
 ```{r}
 library(dplyr)
-library(ggplot2)
+library(tidyr)
 
-# Isolate Developed Tribs typology and order sites
-d_tribs <- dat %>%
-  filter(Typology == "Developed Tributaries") %>%
+# Count observations per Site × Typology
+site_typology_counts <- dat %>%
+  group_by(Network, Site, Typology) %>%
+  summarise(n_obs = n(), .groups = "drop")
+
+# Determine dominant Typology per Site
+site_dominant <- site_typology_counts %>%
+  group_by(Network, Site) %>%
+  slice_max(order_by = n_obs, n = 1, with_ties = FALSE) %>%
+  rename(Dominant_Typology = Typology,
+         Dominant_n = n_obs) %>%
+  ungroup()
+
+# Join back for full site-level table
+site_summary_table <- site_typology_counts %>%
+  left_join(site_dominant %>%
+              dplyr::select(Network, Site, Dominant_Typology),
+            by = c("Network", "Site")) %>%
+  arrange(Network, Site, desc(n_obs))
+
+# Merged table
+nested_table <- site_summary_table %>%
+  group_by(Network, Site) %>%
+  summarise(
+    Typologies_Observed = paste0(Typology, " (n=", n_obs, ")", collapse = "; "),
+    Dominant_Typology   = first(Dominant_Typology),
+    .groups = "drop"
+  ) %>%
   mutate(
-    Site = factor(
-      Site,
-      levels = unique(Site[order(Dist_from_EFPC_km)])
-    )
-  )
+    Dominant_Typology = factor(Dominant_Typology)
+  ) %>%
+  arrange(Dominant_Typology, Network, Site)
 
-d_tribs_plot <- 
-  ggplot(d_tribs, aes(x = Site, y = log_TBL_Zn_nmol_g, fill = Network)) +
-  geom_boxplot(color = "black", position = position_dodge(width = 0.75)) +
-  labs(
-    title = "Bioavailable Zn in Developed Tributaries",
-    x = "Site (grouped by network)",
-    y = "Log TBL Zn (umol/g wet weight)"
-  ) +
-  theme_test() +
-  theme(
-    axis.text.x = element_text(angle = 30, hjust = 1),
-    legend.position = "none",
-    plot.title = element_text(hjust = 0.5, face = "bold")
-  ) +
-  facet_grid(~Network, scales = "free_x", space = "free_x", switch = "x")
-
-
-# View
-d_tribs_plot
+nested_table
 
 # Save
-ggsave(
-  filename = file.path(out_dir, "Bioavailability_developed_tribs.png"),
-  plot     = d_tribs_plot,
-  width    = 10,
-  height   = 6,
-  dpi      = 300
-)
+library(openxlsx)
 
+write.xlsx(
+  nested_table,
+  file = file.path(out_dir, "Sites_by_network_typology.xlsx"),
+  overwrite = TRUE
+)
 ```

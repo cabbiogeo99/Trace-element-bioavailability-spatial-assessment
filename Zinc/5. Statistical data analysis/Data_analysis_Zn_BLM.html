@@ -9,6 +9,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
+<meta name="author" content="Cecilia Albert-Black" />
 
 
 <title>Data analysis Zn BLM</title>
@@ -349,6 +350,7 @@ display: none;
 
 
 <h1 class="title toc-ignore">Data analysis Zn BLM</h1>
+<h4 class="author">Cecilia Albert-Black</h4>
 
 </div>
 
@@ -358,18 +360,18 @@ statistical analyses on the Bioavailability Master Spreadsheet Clean
 version 2 using only the baseline BLM assumptions (HA 10% Closed
 System)</p>
 <p>First, set the working directory</p>
-<pre class="r"><code>setwd(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Zinc/5. Statistical data analysis&quot;)</code></pre>
+<pre class="r"><code>setwd(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt&quot;)</code></pre>
 <div id="identifying-stream-typologies" class="section level1">
 <h1>Identifying Stream Typologies</h1>
 <p>Cluster analysis of all sites in WaDE Synoptic Survey</p>
 <p>Import dataset</p>
 <pre class="r"><code>library(readxl)
 
-dat &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Zinc/4. Exploratory data analysis/Bioavailability_Master_Spreadsheet_Clean2.xlsx&quot;, 
+dat &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/4. Exploratory data analysis/Bioavailability_Master_Spreadsheet_Clean2.xlsx&quot;, 
     sheet = &quot;HA 10% Closed System&quot;)
 
 head(dat)</code></pre>
-<pre><code>## # A tibble: 6 × 271
+<pre><code>## # A tibble: 6 × 282
 ##   Sample_ID Site    Date                Regime       Flow_state Network
 ##   &lt;chr&gt;     &lt;chr&gt;   &lt;dttm&gt;              &lt;chr&gt;        &lt;chr&gt;      &lt;chr&gt;  
 ## 1 WaDE_62   MTN1.1  2023-06-23 00:00:00 NonPerennial Flowing    MTN    
@@ -378,13 +380,13 @@ head(dat)</code></pre>
 ## 4 WaDE_65   MTN2    2023-06-23 00:00:00 NonPerennial Pooled     MTN    
 ## 5 WaDE_66   MCA3.3  2023-06-23 00:00:00 NonPerennial Flowing    MCA    
 ## 6 WaDE_67   MCA3.2  2023-06-23 00:00:00 NonPerennial Flowing    MCA    
-## # ℹ 265 more variables: Relative_elevation_m &lt;dbl&gt;, Dist_from_EFPC_km &lt;dbl&gt;,
-## #   Drainage_area_km2 &lt;dbl&gt;, Developed_lulc &lt;dbl&gt;, Type &lt;chr&gt;,
-## #   Development &lt;chr&gt;, Distance_from_EFPC &lt;chr&gt;, Drainage_area &lt;chr&gt;,
-## #   Orientation &lt;chr&gt;, Relative_elevation &lt;chr&gt;, pH &lt;dbl&gt;, Temp_C &lt;dbl&gt;,
+## # ℹ 276 more variables: Relative_elevation_m &lt;dbl&gt;,
+## #   Upstream_from_main_stem_km &lt;dbl&gt;, Developed_lulc &lt;dbl&gt;, Type &lt;chr&gt;,
+## #   Development &lt;chr&gt;, Relative_elevation &lt;chr&gt;, pH &lt;dbl&gt;, Temp_C &lt;dbl&gt;,
 ## #   DOC_uM &lt;dbl&gt;, Ca_uM &lt;dbl&gt;, Mg_uM &lt;dbl&gt;, Na_uM &lt;dbl&gt;, K_uM &lt;dbl&gt;,
 ## #   SO4_uM &lt;dbl&gt;, Cl_uM &lt;dbl&gt;, DIC_uM &lt;dbl&gt;, Zn_uM &lt;dbl&gt;, Cu_uM &lt;dbl&gt;,
-## #   Free_Zn_M &lt;dbl&gt;, ZnOH_M &lt;dbl&gt;, Zn_OH_2_M &lt;dbl&gt;, ZnCO3_M &lt;dbl&gt;, …</code></pre>
+## #   Free_Zn_M &lt;dbl&gt;, ZnOH_M &lt;dbl&gt;, Zn_OH_2_M &lt;dbl&gt;, ZnCO3_M &lt;dbl&gt;,
+## #   ZnHCO3_M &lt;dbl&gt;, ZnSO4_M &lt;dbl&gt;, ZnCl_M &lt;dbl&gt;, ZnS_M &lt;dbl&gt;, …</code></pre>
 <div id="select-variables" class="section level2">
 <h2>1. Select variables</h2>
 <p>We’ll use the scaled, log-transformed BLM predictors to conduct a
@@ -448,70 +450,8 @@ ggplot(dr_long, aes(sample = value)) +
   ) +
   theme_minimal()</code></pre>
 </div>
-<div id="adequacy-test" class="section level2">
-<h2>3. Adequacy test</h2>
-<pre class="r"><code>library(psych)  </code></pre>
-<pre><code>## 
-## Attaching package: &#39;psych&#39;</code></pre>
-<pre><code>## The following objects are masked from &#39;package:ggplot2&#39;:
-## 
-##     %+%, alpha</code></pre>
-<pre class="r"><code># Scaled predictors
-KMO(scaled_blm_predict)</code></pre>
-<pre><code>## Kaiser-Meyer-Olkin factor adequacy
-## Call: KMO(r = scaled_blm_predict)
-## Overall MSA =  0.72
-## MSA for each item = 
-## log_Temp_C         pH log_DOC_uM log_DIC_uM  log_Cl_uM  log_Ca_uM  log_Mg_uM 
-##       0.43       0.79       0.49       0.71       0.68       0.75       0.77 
-## log_SO4_uM  log_Na_uM   log_K_uM 
-##       0.84       0.69       0.70</code></pre>
-</div>
-<div id="run-pca" class="section level2">
-<h2>4. Run PCA</h2>
-<pre class="r"><code>pca_result &lt;- prcomp(scaled_blm_predict, center = TRUE, scale. = TRUE)
-pca_result</code></pre>
-<pre><code>## Standard deviations (1, .., p=10):
-##  [1] 2.1215785 1.4034418 1.0472114 0.9264820 0.8806137 0.5467239 0.5204591
-##  [8] 0.3585196 0.2491594 0.1958389
-## 
-## Rotation (n x k) = (10 x 10):
-##                    PC1         PC2         PC3         PC4         PC5
-## log_Temp_C -0.04638955 -0.16610798  0.77528550  0.53920848 -0.09767023
-## pH         -0.21825907 -0.08423432 -0.35745323  0.66507285  0.54854959
-## log_DOC_uM -0.09838842 -0.55845304  0.28297650 -0.33855030  0.27469203
-## log_DIC_uM -0.33136192  0.39621298  0.24271207 -0.20322927  0.26429157
-## log_Cl_uM  -0.38311538 -0.03351223 -0.07839494  0.12729612 -0.57822934
-## log_Ca_uM  -0.38552086  0.26762450  0.20217512 -0.24007485  0.21800423
-## log_Mg_uM  -0.33403877  0.42790696  0.07882191  0.09210356  0.01798327
-## log_SO4_uM -0.37583890 -0.22919981 -0.25293479 -0.09711133  0.03456602
-## log_Na_uM  -0.42033601 -0.15664151 -0.12114499  0.05198763 -0.37496236
-## log_K_uM   -0.32528006 -0.40439928  0.01700520 -0.12867499  0.14233110
-##                   PC6         PC7         PC8          PC9         PC10
-## log_Temp_C -0.2324974  0.11348185  0.03311126  0.029347135 -0.003532654
-## pH          0.0928583 -0.22972320 -0.10930315 -0.027099241 -0.013756501
-## log_DOC_uM  0.2476824 -0.49943891  0.29094103 -0.082940758  0.077398554
-## log_DIC_uM -0.1258838 -0.02766075 -0.23334951 -0.697178475  0.077663174
-## log_Cl_uM   0.1818624 -0.34876105 -0.08007668 -0.174165411 -0.551313199
-## log_Ca_uM  -0.1449693 -0.20786969 -0.29973429  0.676625981 -0.147732722
-## log_Mg_uM   0.4263183  0.18013166  0.67511047  0.109448524  0.091359343
-## log_SO4_uM -0.7091293  0.15654382  0.43078817 -0.035324391 -0.131964247
-## log_Na_uM   0.0116653 -0.05367271 -0.19935124  0.063887307  0.770691990
-## log_K_uM    0.3482688  0.67783962 -0.26553975 -0.001641125 -0.205615512</code></pre>
-<pre class="r"><code>pca_summary &lt;- summary(pca_result)
-pca_summary</code></pre>
-<pre><code>## Importance of components:
-##                           PC1    PC2    PC3     PC4     PC5     PC6     PC7
-## Standard deviation     2.1216 1.4034 1.0472 0.92648 0.88061 0.54672 0.52046
-## Proportion of Variance 0.4501 0.1970 0.1097 0.08584 0.07755 0.02989 0.02709
-## Cumulative Proportion  0.4501 0.6471 0.7567 0.84258 0.92012 0.95002 0.97710
-##                            PC8     PC9    PC10
-## Standard deviation     0.35852 0.24916 0.19584
-## Proportion of Variance 0.01285 0.00621 0.00384
-## Cumulative Proportion  0.98996 0.99616 1.00000</code></pre>
-</div>
 <div id="k-means-clustering" class="section level2">
-<h2>5. K-means clustering</h2>
+<h2>3. K-means clustering</h2>
 <div id="i.-identifying-the-number-of-clusters" class="section level3">
 <h3>i. Identifying the number of clusters</h3>
 <p>Run k-means using 2-10 and identify which number of clusters
@@ -558,11 +498,42 @@ str(dat$cluster)</code></pre>
 </div>
 </div>
 <div id="plot-of-clusters-on-pca" class="section level2">
-<h2>6. Plot of clusters on PCA</h2>
+<h2>4. Plot of clusters on PCA</h2>
 <p>Overlay clusters on PCA</p>
 <pre class="r"><code>library(factoextra)</code></pre>
 <pre><code>## Welcome! Want to learn more? See two factoextra-related books at https://goo.gl/ve3WBa</code></pre>
 <pre class="r"><code>library(ggplot2)
+
+pca_result &lt;- prcomp(scaled_blm_predict, center = TRUE, scale. = TRUE)
+pca_result</code></pre>
+<pre><code>## Standard deviations (1, .., p=10):
+##  [1] 2.1215785 1.4034418 1.0472114 0.9264820 0.8806137 0.5467239 0.5204591
+##  [8] 0.3585196 0.2491594 0.1958389
+## 
+## Rotation (n x k) = (10 x 10):
+##                    PC1         PC2         PC3         PC4         PC5
+## log_Temp_C -0.04638955 -0.16610798  0.77528550  0.53920848 -0.09767023
+## pH         -0.21825907 -0.08423432 -0.35745323  0.66507285  0.54854959
+## log_DOC_uM -0.09838842 -0.55845304  0.28297650 -0.33855030  0.27469203
+## log_DIC_uM -0.33136192  0.39621298  0.24271207 -0.20322927  0.26429157
+## log_Cl_uM  -0.38311538 -0.03351223 -0.07839494  0.12729612 -0.57822934
+## log_Ca_uM  -0.38552086  0.26762450  0.20217512 -0.24007485  0.21800423
+## log_Mg_uM  -0.33403877  0.42790696  0.07882191  0.09210356  0.01798327
+## log_SO4_uM -0.37583890 -0.22919981 -0.25293479 -0.09711133  0.03456602
+## log_Na_uM  -0.42033601 -0.15664151 -0.12114499  0.05198763 -0.37496236
+## log_K_uM   -0.32528006 -0.40439928  0.01700520 -0.12867499  0.14233110
+##                   PC6         PC7         PC8          PC9         PC10
+## log_Temp_C -0.2324974  0.11348185  0.03311126  0.029347135 -0.003532654
+## pH          0.0928583 -0.22972320 -0.10930315 -0.027099241 -0.013756501
+## log_DOC_uM  0.2476824 -0.49943891  0.29094103 -0.082940758  0.077398554
+## log_DIC_uM -0.1258838 -0.02766075 -0.23334951 -0.697178475  0.077663174
+## log_Cl_uM   0.1818624 -0.34876105 -0.08007668 -0.174165411 -0.551313199
+## log_Ca_uM  -0.1449693 -0.20786969 -0.29973429  0.676625981 -0.147732722
+## log_Mg_uM   0.4263183  0.18013166  0.67511047  0.109448524  0.091359343
+## log_SO4_uM -0.7091293  0.15654382  0.43078817 -0.035324391 -0.131964247
+## log_Na_uM   0.0116653 -0.05367271 -0.19935124  0.063887307  0.770691990
+## log_K_uM    0.3482688  0.67783962 -0.26553975 -0.001641125 -0.205615512</code></pre>
+<pre class="r"><code>pca_summary &lt;- summary(pca_result)
 
 # PCA biplot
 pca_cluster &lt;- fviz_pca_biplot(
@@ -595,7 +566,7 @@ ggsave(
 )</code></pre>
 </div>
 <div id="characterizing-clusters" class="section level2">
-<h2>7. Characterizing clusters</h2>
+<h2>5. Characterizing clusters</h2>
 <div id="i.-frequency-table" class="section level3">
 <h3>i. Frequency table</h3>
 <pre class="r"><code>library(dplyr)
@@ -723,11 +694,12 @@ ggsave(
   dpi      = 300
 )</code></pre>
 <ul>
-<li><p>Cluster 1: Less developed sites</p></li>
-<li><p>Cluster 2: More developed sites</p></li>
+<li><p>Cluster 1: Mostly perennial less developed tributary
+sites</p></li>
+<li><p>Cluster 2: Mostly perennial highly developed tributary
+sites</p></li>
 <li><p>Cluster 3: Mostly main stem sites</p></li>
-<li><p>Cluster 4: Non-perennial sites, far from the main stem, draining
-small areas, with low-medium development</p></li>
+<li><p>Cluster 4: Mostly non-perennial tributary sites</p></li>
 </ul>
 </div>
 <div id="iii.-rename-clusters-to-typologies" class="section level3">
@@ -738,23 +710,23 @@ dat &lt;- dat %&gt;%
   mutate(cluster = as.character(cluster)) %&gt;%
   mutate(cluster = dplyr::recode(
     cluster,
-    `1` = &quot;Baseline Tributaries&quot;,
-    `2` = &quot;Developed Tributaries&quot;,
+    `1` = &quot;Perennial Tribs&quot;,
+    `2` = &quot;Perennial Developed Tribs&quot;,
     `3` = &quot;Main Stem&quot;,
-    `4` = &quot;Pooled Water&quot;
+    `4` = &quot;Non-Perennial Tribs&quot;
   )) %&gt;%
   dplyr::rename(Typology = cluster) %&gt;%
   dplyr::mutate(Typology = as.factor(Typology)) %&gt;%
   dplyr::mutate(Typology = factor(Typology, 
-                          levels = c(&quot;Pooled Water&quot;,
-                                     &quot;Baseline Tributaries&quot;,
-                                     &quot;Developed Tributaries&quot;,
+                          levels = c(&quot;Non-Perennial Tribs&quot;,
+                                     &quot;Perennial Tribs&quot;,
+                                     &quot;Perennial Developed Tribs&quot;,
                                      &quot;Main Stem&quot;)))
 
 # check
 levels(dat$Typology)</code></pre>
-<pre><code>## [1] &quot;Pooled Water&quot;          &quot;Baseline Tributaries&quot;  &quot;Developed Tributaries&quot;
-## [4] &quot;Main Stem&quot;</code></pre>
+<pre><code>## [1] &quot;Non-Perennial Tribs&quot;       &quot;Perennial Tribs&quot;          
+## [3] &quot;Perennial Developed Tribs&quot; &quot;Main Stem&quot;</code></pre>
 <p>Save to Bioavailability_Master_Spreadsheet_Clean3.xlsx</p>
 <pre class="r"><code>library(openxlsx)
 
@@ -780,9 +752,63 @@ element bioavailability, we will conduct a multiple linear regressions
 determine their standardized beta coefficients using the formula:</p>
 <p>total bioavailable element = sum of BLM predictors (as standardized
 log-transformed variables)</p>
-<div id="build-and-select-the-mlr" class="section level2">
-<h2>1. Build and select the MLR</h2>
-<p>Use log-transformed variables</p>
+<div id="assess-correlation" class="section level2">
+<h2>1. Assess correlation</h2>
+<pre class="r"><code># Spearman correlation matrix of all BLM predictors
+BLM_predict &lt;- c(&quot;log_Zn_nM&quot;, &quot;log_Cu_nM&quot;, &quot;log_Temp_C&quot;, 
+                    &quot;pH&quot;, &quot;log_DOC_nM&quot;, &quot;log_DIC_nM&quot;, &quot;log_Cl_nM&quot;, 
+                    &quot;log_Ca_nM&quot;, &quot;log_Mg_nM&quot;, &quot;log_SO4_nM&quot;, 
+                    &quot;log_Na_nM&quot;, &quot;log_K_nM&quot;)
+
+library(dplyr)
+
+cor_df_std &lt;- dat %&gt;%
+  dplyr::select(all_of(BLM_predict)) %&gt;%
+  mutate(across(everything(), as.numeric)) %&gt;%
+  mutate(across(everything(), scale)) %&gt;%
+  as.data.frame()
+
+cor_mat &lt;- cor(
+  cor_df_std,
+  method = &quot;spearman&quot;,
+  use    = &quot;pairwise.complete.obs&quot;
+)
+
+# Plot &amp; save
+library(corrplot)</code></pre>
+<pre><code>## corrplot 0.95 loaded</code></pre>
+<pre class="r"><code>out_dir &lt;- &quot;Multiple linear regression&quot;
+if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+
+png(
+  filename = file.path(out_dir, &quot;Spearman_correlation_BLM_predictors.png&quot;),
+  width    = 2400,
+  height   = 2000,
+  res      = 300
+)
+
+corrplot(
+  cor_mat,
+  method      = &quot;color&quot;,
+  type        = &quot;upper&quot;,
+  order       = &quot;hclust&quot;,
+  tl.col      = &quot;black&quot;,
+  tl.cex      = 0.8,
+  addCoef.col = &quot;black&quot;,
+  number.cex  = 0.7,
+  diag        = FALSE
+)
+
+dev.off()</code></pre>
+<pre><code>## png 
+##   2</code></pre>
+</div>
+<div id="build-mlr" class="section level2">
+<h2>2. Build MLR</h2>
+<p>Use log-transformed and standardized variables to build a large
+model, stepwise select a better model, calculate standardized beta
+coefficients, variance inflation factors (VIF), and relative importance
+on bioavailability</p>
 <pre class="r"><code>library(MASS)</code></pre>
 <pre><code>## 
 ## Attaching package: &#39;MASS&#39;</code></pre>
@@ -793,21 +819,14 @@ log-transformed variables)</p>
 <pre><code>## Loading required package: carData</code></pre>
 <pre><code>## 
 ## Attaching package: &#39;car&#39;</code></pre>
-<pre><code>## The following object is masked from &#39;package:psych&#39;:
-## 
-##     logit</code></pre>
 <pre><code>## The following object is masked from &#39;package:dplyr&#39;:
 ## 
 ##     recode</code></pre>
-<pre class="r"><code>library(lm.beta)
-library(relaimpo)</code></pre>
+<pre class="r"><code>library(relaimpo)</code></pre>
 <pre><code>## Loading required package: boot</code></pre>
 <pre><code>## 
 ## Attaching package: &#39;boot&#39;</code></pre>
 <pre><code>## The following object is masked from &#39;package:car&#39;:
-## 
-##     logit</code></pre>
-<pre><code>## The following object is masked from &#39;package:psych&#39;:
 ## 
 ##     logit</code></pre>
 <pre><code>## Loading required package: survey</code></pre>
@@ -834,131 +853,88 @@ library(relaimpo)</code></pre>
 <pre><code>## If you are a non-US user, a version with the interesting additional metric pmvd is available</code></pre>
 <pre><code>## from Ulrike Groempings web site at prof.beuth-hochschule.de/groemping.</code></pre>
 <pre class="r"><code>library(dplyr)
+library(openxlsx)
+library(corrplot)
 
-vars_to_select &lt;- c(&quot;log_Zn_uM&quot;, &quot;log_Temp_C&quot;, &quot;pH&quot;, &quot;log_DOC_uM&quot;,
-                    &quot;log_DIC_uM&quot;, &quot;log_Cl_uM&quot;, &quot;log_Ca_uM&quot;, 
-                    &quot;log_Mg_uM&quot;, &quot;log_SO4_uM&quot;, &quot;log_Na_uM&quot;, 
-                    &quot;log_K_uM&quot;)
+vars_to_select &lt;- c(&quot;log_Zn_nM&quot;, &quot;log_Temp_C&quot;, 
+                    &quot;pH&quot;, &quot;log_DOC_nM&quot;, &quot;log_DIC_nM&quot;, &quot;log_Cl_nM&quot;, 
+                    &quot;log_Ca_nM&quot;, &quot;log_Mg_nM&quot;, &quot;log_SO4_nM&quot;, 
+                    &quot;log_Na_nM&quot;, &quot;log_K_nM&quot;)
 
-form &lt;- reformulate(vars_to_select, response = &quot;log_TBL_Zn_nmol_g&quot;)
+# 0. Standardize variables
+std_vars &lt;- dat %&gt;%
+  dplyr::select(log_TBL_Zn_nmol_g, all_of(vars_to_select)) %&gt;%
+  mutate(across(everything(), as.numeric)) %&gt;%
+  mutate(across(everything(), ~ as.numeric(scale(.x)), .names = &quot;{.col}_std&quot;)) %&gt;%
+  dplyr::select(ends_with(&quot;_std&quot;)) %&gt;%
+  as.data.frame()
 
-# 1. Build long model
-full_mod &lt;- lm(form, data = dat)
+# Define the standardized predictor names + standardized response
+vars_to_select_std &lt;- paste0(vars_to_select, &quot;_std&quot;)
+response_std &lt;- &quot;log_TBL_Zn_nmol_g_std&quot;
 
-# 2. Stepwise selection (AIC) of long model
-step_mod &lt;- stepAIC(full_mod, direction = &quot;both&quot;, trace = FALSE)
+# Model formula using standardized columns
+form_std &lt;- reformulate(vars_to_select_std, response = response_std)
 
-# 3. Standardized betas
-step_mod_beta &lt;- lm.beta(step_mod)
+# 1. Full MLR
+full_mod &lt;- lm(form_std, data = std_vars)
 
-coef_table &lt;- summary(step_mod_beta)$coefficients
+# 2. Estimates (standardized partial slopes) + p-values
+coef_table &lt;- summary(full_mod)$coefficients
 
-beta_df &lt;- data.frame(
+est_df &lt;- data.frame(
   Predictor = rownames(coef_table),
-  Std_Beta  = coef_table[, &quot;Standardized&quot;],
+  Estimate  = coef_table[, &quot;Estimate&quot;],
   p_value   = coef_table[, &quot;Pr(&gt;|t|)&quot;]
 ) %&gt;%
   filter(Predictor != &quot;(Intercept)&quot;)
 
-# 4. VIF
-vif_vals &lt;- vif(step_mod)
+# 3. VIF
+vif_vals &lt;- vif(full_mod)
 
 vif_df &lt;- data.frame(
   Predictor = names(vif_vals),
   VIF       = as.numeric(vif_vals)
 )
 
-# 5. Relative importance
-rel_imp &lt;- calc.relimp(step_mod, type = &quot;lmg&quot;, rela = TRUE)
+# 4. Relative importance (lmg)
+rel_imp &lt;- calc.relimp(full_mod, type = &quot;lmg&quot;, rela = TRUE)
 
 rel_df &lt;- data.frame(
   Predictor = names(rel_imp$lmg),
-  Rel_Importance = rel_imp$lmg
+  Rel_Importance = as.numeric(rel_imp$lmg)
 )
 
-# 7. Combine into a summary table
-final_table &lt;- beta_df %&gt;%
+# 5. Combine summary table
+final_table &lt;- est_df %&gt;%
   left_join(vif_df, by = &quot;Predictor&quot;) %&gt;%
   left_join(rel_df, by = &quot;Predictor&quot;) %&gt;%
   arrange(desc(Rel_Importance))
 
 final_table</code></pre>
-<pre><code>##     Predictor    Std_Beta       p_value       VIF Rel_Importance
-## 1   log_Zn_uM  0.90905365 3.752564e-188  1.519766    0.616053608
-## 2   log_Ca_uM -0.44318402  2.222058e-53  3.619928    0.138339111
-## 3  log_DOC_uM -0.43028990  1.190365e-66  2.478167    0.115848695
-## 4   log_Mg_uM  0.03690005  1.615886e-01  4.212975    0.026430741
-## 5   log_Cl_uM -0.17911003  9.318642e-06  9.667026    0.025089932
-## 6   log_Na_uM  0.18732796  2.972020e-04 16.013852    0.023038502
-## 7    log_K_uM -0.11578394  1.070610e-05  4.096431    0.021534192
-## 8          pH  0.14197549  3.678085e-19  1.373079    0.014902297
-## 9  log_Temp_C -0.05567598  6.326257e-05  1.152425    0.010116573
-## 10 log_SO4_uM  0.05453209  3.009930e-02  3.818692    0.008646349</code></pre>
-<p>Omitted Na since VIF &gt;15</p>
-<pre class="r"><code>library(MASS)
-library(car)
-library(lm.beta)
-library(relaimpo)
-library(dplyr)
+<pre><code>##         Predictor    Estimate       p_value       VIF Rel_Importance
+## 1   log_Zn_nM_std  0.91069519 2.229006e-187  1.535367    0.606975917
+## 2  log_DOC_nM_std -0.43326078  2.629670e-66  2.529266    0.114612427
+## 3   log_Ca_nM_std -0.41141410  1.531378e-22  9.463449    0.101805361
+## 4  log_DIC_nM_std -0.03910243  3.058479e-01  8.852173    0.049948044
+## 5   log_Cl_nM_std -0.18294330  6.617640e-06  9.752097    0.026346833
+## 6   log_Na_nM_std  0.18253520  4.438371e-04 16.146841    0.024500972
+## 7   log_Mg_nM_std  0.04718763  9.458998e-02  4.825704    0.022941828
+## 8    log_K_nM_std -0.11589335  1.050290e-05  4.096500    0.021166416
+## 9          pH_std  0.14036080  1.248351e-18  1.388174    0.014044120
+## 10 log_Temp_C_std -0.05418864  1.067536e-04  1.165232    0.009716488
+## 11 log_SO4_nM_std  0.05653930  2.499874e-02  3.842017    0.007941593</code></pre>
+<pre class="r"><code># 6. Save
+library(openxlsx)
 
-vars_to_select_2 &lt;- c(&quot;log_Zn_uM&quot;, &quot;log_Temp_C&quot;, &quot;pH&quot;, &quot;log_DOC_uM&quot;,
-                    &quot;log_DIC_uM&quot;, &quot;log_Cl_uM&quot;, &quot;log_Ca_uM&quot;, 
-                    &quot;log_Mg_uM&quot;, &quot;log_SO4_uM&quot;, 
-                    &quot;log_K_uM&quot;)
+out_dir &lt;- &quot;Multiple linear regression&quot;
+dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
 
-form &lt;- reformulate(vars_to_select_2, response = &quot;log_TBL_Zn_nmol_g&quot;)
-
-# 1. Build long model
-full_mod_2 &lt;- lm(form, data = dat)
-
-# 2. Stepwise selection (AIC) of long model
-step_mod_2 &lt;- stepAIC(full_mod_2, direction = &quot;both&quot;, trace = FALSE)
-
-# 3. Standardized betas
-step_mod_beta_2 &lt;- lm.beta(step_mod_2)
-
-coef_table_2 &lt;- summary(step_mod_beta_2)$coefficients
-
-beta_df_2 &lt;- data.frame(
-  Predictor = rownames(coef_table_2),
-  Std_Beta  = coef_table_2[, &quot;Standardized&quot;],
-  p_value   = coef_table_2[, &quot;Pr(&gt;|t|)&quot;]
-) %&gt;%
-  filter(Predictor != &quot;(Intercept)&quot;)
-
-# 4. VIF
-vif_vals_2 &lt;- vif(step_mod_2)
-
-vif_df_2 &lt;- data.frame(
-  Predictor = names(vif_vals_2),
-  VIF       = as.numeric(vif_vals_2)
-)
-
-# 5. Relative importance
-rel_imp_2 &lt;- calc.relimp(step_mod_2, type = &quot;lmg&quot;, rela = TRUE)
-
-rel_df_2 &lt;- data.frame(
-  Predictor = names(rel_imp_2$lmg),
-  Rel_Importance = rel_imp_2$lmg
-)
-
-# 7. Combine into a summary table
-final_table_2 &lt;- beta_df_2 %&gt;%
-  left_join(vif_df_2, by = &quot;Predictor&quot;) %&gt;%
-  left_join(rel_df_2, by = &quot;Predictor&quot;) %&gt;%
-  arrange(desc(Rel_Importance))
-
-final_table_2</code></pre>
-<pre><code>##    Predictor    Std_Beta       p_value      VIF Rel_Importance
-## 1  log_Zn_uM  0.91188741 2.114379e-187 1.509121    0.634502123
-## 2  log_Ca_uM -0.41407002  6.453636e-84 1.559499    0.142581221
-## 3 log_DOC_uM -0.45010704  1.193484e-84 1.816956    0.123716459
-## 4  log_Cl_uM -0.04801500  1.402461e-02 2.231544    0.038255654
-## 5   log_K_uM -0.06751818  3.342216e-03 3.082141    0.024802566
-## 6         pH  0.14850408  5.351313e-21 1.303408    0.016169737
-## 7 log_Temp_C -0.05455216  1.122774e-04 1.151582    0.010359247
-## 8 log_SO4_uM  0.08756570  8.578786e-05 2.867467    0.009612994</code></pre>
-<p>Better VIF, all &lt;5</p>
+write.xlsx(
+  final_table,
+  file = file.path(out_dir, &quot;MLR.xlsx&quot;),
+  overwrite = TRUE
+)</code></pre>
 </div>
 <div id="check-of-residuals" class="section level2">
 <h2>2. Check of residuals</h2>
@@ -974,10 +950,10 @@ png(
 
 # Build plot
 par(mfrow = c(2, 2))   # 2 rows, 2 columns
-step.mod_plots &lt;- plot(step_mod)
+full_mod_plots &lt;- plot(full_mod)
 
 # View
-step.mod_plots</code></pre>
+full_mod_plots</code></pre>
 <pre><code>## NULL</code></pre>
 <pre class="r"><code>dev.off()</code></pre>
 <pre><code>## png 
@@ -991,7 +967,7 @@ library(ggplot2)
 library(broom)
 
 # 1. Extract retained predictors from stepwise model
-retained_vars &lt;- names(coef(step_mod))[-1]  # drop intercept
+retained_vars &lt;- names(coef(full_mod))[-1]  # drop intercept
 
 # 2. Function to get partial residuals for each predictor
 get_partial_df &lt;- function(model, data, var) {
@@ -1017,7 +993,7 @@ get_partial_df &lt;- function(model, data, var) {
 
 # 3. Build combined dataset for all retained predictors
 partial_df &lt;- do.call(rbind, lapply(retained_vars, get_partial_df, 
-                                    model = step_mod, data = dat))
+                                    model = full_mod, data = std_vars))
 
 # 4. Plot partial regression slopes
 step.mod_partial_slopes &lt;-
@@ -1028,7 +1004,7 @@ step.mod_partial_slopes &lt;-
   labs(
     x = &quot;Predictor (residuals)&quot;,
     y = &quot;Response (residuals)&quot;,
-    title = &quot;Partial Regression Plots for Retained Predictors&quot;
+    title = &quot;Standardized Partial Regression Plots of Predictors&quot;
   ) +
   theme_minimal(base_size = 12)
 
@@ -1047,7 +1023,7 @@ ggsave(
 <div id="outlier-detection" class="section level2">
 <h2>5. Outlier detection</h2>
 <pre class="r"><code># 1. Get model diagnostics
-model_diag &lt;- influence.measures(step_mod)
+model_diag &lt;- influence.measures(full_mod)
 
 # 2. Extract indices of influential points flagged by diagnostics
 infl_points &lt;- which(apply(model_diag$is.inf, 1, any))
@@ -1055,47 +1031,47 @@ infl_points &lt;- which(apply(model_diag$is.inf, 1, any))
 # 3. Create a dataframe with their info
 flagged_obs &lt;- data.frame(
   Sample_ID = dat$Sample_ID[infl_points],
-  Fitted = fitted(step_mod)[infl_points],
-  Residual = residuals(step_mod)[infl_points],
-  Std_Residual = rstandard(step_mod)[infl_points],
-  Leverage = hatvalues(step_mod)[infl_points],
-  Cooks_D = cooks.distance(step_mod)[infl_points])
+  Fitted = fitted(full_mod)[infl_points],
+  Residual = residuals(full_mod)[infl_points],
+  Std_Residual = rstandard(full_mod)[infl_points],
+  Leverage = hatvalues(full_mod)[infl_points],
+  Cooks_D = cooks.distance(full_mod)[infl_points])
 
 # View flagged observations
 flagged_obs</code></pre>
-<pre><code>##     Sample_ID    Fitted     Residual Std_Residual   Leverage      Cooks_D
-## 4     WaDE_65 -6.435458 -0.223743395  -3.11923245 0.19261941 2.110204e-01
-## 6     WaDE_67 -5.507697 -0.271403873  -3.63671698 0.12605036 1.734139e-01
-## 7     WaDE_68 -8.146366  0.048753304   0.68452148 0.20401063 1.091760e-02
-## 27    WaDE_88 -5.914435  0.349518549   4.57426588 0.08384072 1.740741e-01
-## 28   WaDE_108 -5.902385  0.233167366   2.98767569 0.04425516 3.757476e-02
-## 34   WaDE_127 -7.712438 -0.004435129  -0.05837041 0.09405798 3.215793e-05
-## 74   WaDE_187 -5.512235 -0.188734806  -2.52001276 0.11981927 7.859006e-02
-## 80   WaDE_193 -6.405328 -0.171821153  -2.28142250 0.10994846 5.845111e-02
-## 82   WaDE_195 -6.650569 -0.040659040  -0.52629945 0.06346988 1.706550e-03
-## 84   WaDE_198 -5.822643  0.008658589   0.11153355 0.05429305 6.492411e-05
-## 103  WaDE_234 -5.940673 -0.181702164  -2.30807355 0.02748962 1.368930e-02
-## 120  WaDE_305 -6.571491 -0.065674686  -0.86246062 0.09010601 6.696515e-03
-## 128  WaDE_315 -5.493689  0.224033301   2.86790238 0.04243169 3.313269e-02
-## 132  WaDE_328 -6.503897 -0.003701557  -0.04802911 0.06796294 1.529169e-05
-## 138  WaDE_338 -6.881612  0.280922638   3.70755454 0.09911010 1.374765e-01
-## 158  WaDE_358 -5.643563  0.247796400   3.18187939 0.04830915 4.672058e-02
-## 171  WaDE_390 -5.728854  0.105928390   1.42408111 0.13178232 2.798371e-02
-## 172  WaDE_391 -6.271966 -0.010730423  -0.13979206 0.07542519 1.449261e-04
-## 178  WaDE_397 -6.038303  0.271417058   3.49393853 0.05307171 6.219906e-02
-## 179  WaDE_398 -5.631887 -0.074190017  -0.99623646 0.12975925 1.345337e-02
-## 195  WaDE_416 -5.997211 -0.183298801  -2.34113294 0.03807673 1.972326e-02
-## 199  WaDE_420 -6.293598 -0.166428384  -2.17350972 0.07996371 3.732660e-02
-## 201  WaDE_422 -6.006754 -0.318248578  -4.20595505 0.10158494 1.818398e-01
-## 203  WaDE_425 -6.215880 -0.023700292  -0.31837512 0.13043418 1.382212e-03
-## 207  WaDE_438 -6.471753 -0.331790235  -4.34473835 0.08489004 1.591908e-01
-## 211  WaDE_442 -5.345579 -0.112980145  -1.49435571 0.10304714 2.332285e-02
-## 239  WaDE_480 -6.214510  0.165476297   2.18012687 0.09597303 4.587105e-02
-## 240  WaDE_481 -6.266754 -0.086792103  -1.19408205 0.17097922 2.673336e-02
-## 306  WaDE_593 -6.471926  0.246023668   3.13162627 0.03152758 2.902355e-02
-## 351  WaDE_696 -5.648490  0.204954057   2.66246735 0.07013952 4.860947e-02
-## 379  WaDE_732 -5.943324  0.216591748   2.77516494 0.04417244 3.235614e-02
-## 380  WaDE_733 -5.166566 -0.055597682  -0.74262683 0.12048059 6.867841e-03</code></pre>
+<pre><code>##     Sample_ID      Fitted     Residual Std_Residual   Leverage      Cooks_D
+## 2     WaDE_63 -1.45457815  0.119357778   0.50144603 0.10421829 2.437861e-03
+## 3     WaDE_64  2.31327533  0.252959708   1.12052268 0.19423102 2.522134e-02
+## 4     WaDE_65 -0.39262763 -0.695629762  -3.08079783 0.19391831 1.902764e-01
+## 6     WaDE_67  2.48192336 -0.797343575  -3.49304790 0.17618241 2.174500e-01
+## 7     WaDE_68 -5.79644809  0.176348064   0.78981360 0.21179112 1.396801e-02
+## 27    WaDE_88  1.24149955  1.117885733   4.65459979 0.08803267 1.742802e-01
+## 28   WaDE_108  1.30377128  0.727004207   2.95827467 0.04512615 3.446498e-02
+## 34   WaDE_127 -4.39986684 -0.020678748  -0.08641930 0.09473413 6.512842e-05
+## 74   WaDE_187  2.59209711 -0.661357668  -2.91613763 0.18678403 1.627679e-01
+## 80   WaDE_193 -0.27922005 -0.550521745  -2.32194070 0.11121677 5.622059e-02
+## 103  WaDE_234  1.17047645 -0.567412282  -2.28829523 0.02787414 1.251186e-02
+## 120  WaDE_305 -0.81182684 -0.207004112  -0.86289544 0.09010613 6.144672e-03
+## 128  WaDE_315  2.58987590  0.699755294   2.84421256 0.04298790 3.028110e-02
+## 132  WaDE_328 -0.60781229 -0.002805109  -0.01156066 0.06914259 8.272687e-07
+## 138  WaDE_338 -1.77874812  0.874839179   3.66814764 0.10068471 1.255347e-01
+## 158  WaDE_358  2.11505596  0.777254162   3.16833095 0.04848820 4.262866e-02
+## 171  WaDE_390  1.85625933  0.320365356   1.36923917 0.13447103 2.427306e-02
+## 172  WaDE_391  0.14801228 -0.050056940  -0.20744474 0.07939598 3.092782e-04
+## 178  WaDE_397  0.90659020  0.816474696   3.37654008 0.07553434 7.762761e-02
+## 179  WaDE_398  2.15401815 -0.239369076  -1.02056752 0.13023536 1.299659e-02
+## 195  WaDE_416  0.99673114 -0.576826981  -2.33857583 0.03808353 1.804353e-02
+## 199  WaDE_420  0.07981911 -0.540556496  -2.24567898 0.08391456 3.849599e-02
+## 201  WaDE_422  1.06123104 -1.096563791  -4.98239695 0.23415603 6.324999e-01
+## 203  WaDE_425  0.30359775 -0.069799508  -0.29769038 0.13079088 1.111224e-03
+## 207  WaDE_438 -0.49217393 -1.050845128  -4.36902990 0.08534662 1.484289e-01
+## 211  WaDE_442  3.00240197 -0.307926114  -1.31856204 0.13773442 2.314309e-02
+## 239  WaDE_480  0.32085248  0.513278847   2.14769474 0.09695214 4.126772e-02
+## 240  WaDE_481  0.14626573 -0.271526646  -1.18582017 0.17103463 2.417709e-02
+## 306  WaDE_593 -0.50702540  0.783916676   3.16928964 0.03269131 2.828850e-02
+## 351  WaDE_696  2.12605338  0.615754791   2.55770892 0.08364763 4.976364e-02
+## 379  WaDE_732  1.16557840  0.683994105   2.78192827 0.04421105 2.983180e-02
+## 380  WaDE_733  3.60398726 -0.164728128  -0.69907610 0.12211878 5.665188e-03</code></pre>
 <pre class="r"><code># Save
 library(openxlsx)
 
@@ -1184,29 +1160,31 @@ flagged_obs_clusters &lt;- bind_rows(compare_typ, compare_site, compare_dev)
 
 # 7. Check result
 flagged_obs_clusters</code></pre>
-<pre><code>##                    Value n.x prop_flagged n.y prop_overall
-## 1           Pooled Water  13      0.40625  19  0.049222798
-## 2   Baseline Tributaries  13      0.40625 109  0.282383420
-## 3  Developed Tributaries   1      0.03125 126  0.326424870
-## 4              Main Stem   5      0.15625 132  0.341968912
-## 5                 BSL3.2   1      0.03125  11  0.028497409
-## 6                 BSL3.3   1      0.03125  10  0.025906736
-## 7                 BSL4.2   1      0.03125   4  0.010362694
-## 8                 BSL4.3   1      0.03125   4  0.010362694
-## 9                 BSL5.1   1      0.03125   1  0.002590674
-## 10               EFK23.5   5      0.15625  11  0.028497409
-## 11                MCA3.2   5      0.15625   5  0.012953368
-## 12                MCA3.3   2      0.06250   4  0.010362694
-## 13                  MCA4   1      0.03125  11  0.028497409
-## 14                  MTN2   2      0.06250   2  0.005181347
-## 15                  NBO3   4      0.12500   6  0.015544041
-## 16                  NBO5   3      0.09375   6  0.015544041
-## 17        Pinhook Branch   2      0.06250  10  0.025906736
-## 18                  WBK2   1      0.03125   5  0.012953368
-## 19                  WBK3   2      0.06250   8  0.020725389
-## 20                  High   8      0.25000 131  0.339378238
-## 21                   Low  10      0.31250 110  0.284974093
-## 22                Medium  14      0.43750 145  0.375647668</code></pre>
+<pre><code>##                        Value n.x prop_flagged n.y prop_overall
+## 1        Non-Perennial Tribs  12      0.37500  19  0.049222798
+## 2            Perennial Tribs  13      0.40625 109  0.282383420
+## 3  Perennial Developed Tribs   1      0.03125 126  0.326424870
+## 4                  Main Stem   6      0.18750 132  0.341968912
+## 5                     BSL3.2   1      0.03125  11  0.028497409
+## 6                     BSL3.3   1      0.03125  10  0.025906736
+## 7                     BSL4.2   1      0.03125   4  0.010362694
+## 8                     BSL4.3   1      0.03125   4  0.010362694
+## 9                     BSL5.1   1      0.03125   1  0.002590674
+## 10                   EFK13.8   1      0.03125  11  0.028497409
+## 11                   EFK23.5   5      0.15625  11  0.028497409
+## 12                    MCA3.2   5      0.15625   5  0.012953368
+## 13                    MCA3.3   2      0.06250   4  0.010362694
+## 14                      MCA4   1      0.03125  11  0.028497409
+## 15                      MTN2   2      0.06250   2  0.005181347
+## 16                      MTN4   1      0.03125  11  0.028497409
+## 17                      NBO3   3      0.09375   6  0.015544041
+## 18                      NBO5   2      0.06250   6  0.015544041
+## 19            Pinhook Branch   2      0.06250  10  0.025906736
+## 20                      WBK2   1      0.03125   5  0.012953368
+## 21                      WBK3   2      0.06250   8  0.020725389
+## 22                      High   8      0.25000 131  0.339378238
+## 23                       Low   9      0.28125 110  0.284974093
+## 24                    Medium  15      0.46875 145  0.375647668</code></pre>
 <pre class="r"><code># 8. Save
 library(openxlsx)
 
@@ -1232,19 +1210,6 @@ saveWorkbook(wb, file_path, overwrite = TRUE)</code></pre>
 </div>
 <div id="assessing-variables-by-typology" class="section level1">
 <h1>Assessing Variables by Typology</h1>
-<p>Set order of Typologies</p>
-<pre class="r"><code># Rearrange order
-dat$Typology &lt;- as.factor(dat$Typology)
-dat$Typology &lt;- factor(dat$Typology, 
-                          levels = c(&quot;Pooled Water&quot;,
-                                     &quot;Baseline Tributaries&quot;,
-                                     &quot;Developed Tributaries&quot;,
-                                     &quot;Main Stem&quot;))
-
-# Check
-levels(dat$Typology)</code></pre>
-<pre><code>## [1] &quot;Pooled Water&quot;          &quot;Baseline Tributaries&quot;  &quot;Developed Tributaries&quot;
-## [4] &quot;Main Stem&quot;</code></pre>
 <div id="summary-statistics" class="section level2">
 <h2>1. Summary Statistics</h2>
 <p>Mean and standard error by typology</p>
@@ -1282,20 +1247,20 @@ summary_table &lt;- dat %&gt;%
   )
 
 summary_table</code></pre>
-<pre><code>## # A tibble: 1,036 × 7
+<pre><code>## # A tibble: 1,092 × 7
 ##    Variable      Typology               Mean   Median     Mode Variance       SE
 ##    &lt;chr&gt;         &lt;fct&gt;                 &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;
-##  1 BL_Ca_mol_kg  Pooled Water       1.92e-10 2.08e-10 2.79e-10 6.08e-21 1.79e-11
-##  2 BL_Ca_mol_kg  Baseline Tributar… 3.71e-10 3.83e-10 2.56e-10 2.29e-21 4.59e-12
-##  3 BL_Ca_mol_kg  Developed Tributa… 3.91e-10 3.95e-10 4.15e-10 6.86e-22 2.33e-12
+##  1 BL_Ca_mol_kg  Non-Perennial Tri… 1.92e-10 2.08e-10 2.79e-10 6.08e-21 1.79e-11
+##  2 BL_Ca_mol_kg  Perennial Tribs    3.71e-10 3.83e-10 2.56e-10 2.29e-21 4.59e-12
+##  3 BL_Ca_mol_kg  Perennial Develop… 3.91e-10 3.95e-10 4.15e-10 6.86e-22 2.33e-12
 ##  4 BL_Ca_mol_kg  Main Stem          3.98e-10 3.96e-10 4.20e-10 3.18e-22 1.55e-12
-##  5 BL_Ca_nmol_g  Pooled Water       1.92e- 4 2.08e- 4 2.79e- 4 6.08e- 9 1.79e- 5
-##  6 BL_Ca_nmol_g  Baseline Tributar… 3.71e- 4 3.83e- 4 2.56e- 4 2.29e- 9 4.59e- 6
-##  7 BL_Ca_nmol_g  Developed Tributa… 3.91e- 4 3.95e- 4 4.15e- 4 6.86e-10 2.33e- 6
+##  5 BL_Ca_nmol_g  Non-Perennial Tri… 1.92e- 4 2.08e- 4 2.79e- 4 6.08e- 9 1.79e- 5
+##  6 BL_Ca_nmol_g  Perennial Tribs    3.71e- 4 3.83e- 4 2.56e- 4 2.29e- 9 4.59e- 6
+##  7 BL_Ca_nmol_g  Perennial Develop… 3.91e- 4 3.95e- 4 4.15e- 4 6.86e-10 2.33e- 6
 ##  8 BL_Ca_nmol_g  Main Stem          3.98e- 4 3.96e- 4 4.20e- 4 3.18e-10 1.55e- 6
-##  9 BL_Ca_nmol_kg Pooled Water       1.92e- 1 2.08e- 1 2.79e- 1 6.08e- 3 1.79e- 2
-## 10 BL_Ca_nmol_kg Baseline Tributar… 3.71e- 1 3.83e- 1 2.56e- 1 2.29e- 3 4.59e- 3
-## # ℹ 1,026 more rows</code></pre>
+##  9 BL_Ca_nmol_kg Non-Perennial Tri… 1.92e- 1 2.08e- 1 2.79e- 1 6.08e- 3 1.79e- 2
+## 10 BL_Ca_nmol_kg Perennial Tribs    3.71e- 1 3.83e- 1 2.56e- 1 2.29e- 3 4.59e- 3
+## # ℹ 1,082 more rows</code></pre>
 <p>Export to excel</p>
 <pre class="r"><code>library(openxlsx)
 
@@ -1379,266 +1344,280 @@ for (var in numeric_vars) {
 
 # View results
 levene_results</code></pre>
-<pre><code>##                       Variable     F_value      p_value Homogeneous
-## 1         Relative_elevation_m 23.50672209 5.538841e-14       FALSE
-## 2            Dist_from_EFPC_km 14.06981087 1.020694e-08       FALSE
-## 3            Drainage_area_km2 69.87144820 4.844759e-36       FALSE
-## 4               Developed_lulc 19.16345711 1.349736e-11       FALSE
-## 5                           pH  1.47212362 2.216849e-01        TRUE
-## 6                       Temp_C  9.73245928 3.342453e-06       FALSE
-## 7                       DOC_uM 14.22938258 8.268685e-09       FALSE
-## 8                        Ca_uM 15.58158513 1.398564e-09       FALSE
-## 9                        Mg_uM  4.96153957 2.170939e-03       FALSE
-## 10                       Na_uM 46.59365986 1.108432e-25       FALSE
-## 11                        K_uM 29.11063127 5.687797e-17       FALSE
-## 12                      SO4_uM 50.58081204 1.504082e-27       FALSE
-## 13                       Cl_uM 16.86088256 2.636316e-10       FALSE
-## 14                      DIC_uM  9.45592421 4.854698e-06       FALSE
-## 15                       Zn_uM 18.50544117 3.142810e-11       FALSE
-## 16                       Cu_uM 11.67178511 2.470529e-07       FALSE
-## 17                   Free_Zn_M  2.62093729 5.048598e-02        TRUE
-## 18                      ZnOH_M  7.95816875 3.689360e-05       FALSE
-## 19                   Zn_OH_2_M  4.46182573 4.276135e-03       FALSE
-## 20                     ZnCO3_M  9.87068888 2.774007e-06       FALSE
-## 21                    ZnHCO3_M  3.96733717 8.345838e-03       FALSE
-## 22                     ZnSO4_M 37.41896994 3.198005e-21       FALSE
-## 23                      ZnCl_M 13.23297323 3.089154e-08       FALSE
-## 24                       ZnS_M  5.28002153 1.408324e-03       FALSE
-## 25                   TOrg_Zn_M 34.42760219 1.025745e-19       FALSE
-## 26                BL_Zn_mol_kg 37.56547748 2.702642e-21       FALSE
-## 27                BL_Ca_mol_kg 40.13544158 1.444586e-22       FALSE
-## 28                 BL_H_mol_kg 29.37217014 4.148802e-17       FALSE
-## 29                BL_Mg_mol_kg  8.76425889 1.236951e-05       FALSE
-## 30                BL_Na_mol_kg 30.37931224 1.236750e-17       FALSE
-## 31              BL_ZnOH_mol_kg  6.49210536 2.707042e-04       FALSE
-## 32                      HCO3_M  8.51930481 1.723636e-05       FALSE
-## 33                    H2_CO3_M 14.19137254 8.693901e-09       FALSE
-## 34                        HS_M  2.78105448 4.085698e-02       FALSE
-## 35                       H2S_M  7.21142716 1.017500e-04       FALSE
-## 36                    MgHCO3_M 20.01404282 4.548700e-12       FALSE
-## 37                     MgCO3_M  7.82780704 4.403613e-05       FALSE
-## 38                     MgSO4_M 86.53094782 9.694604e-43       FALSE
-## 39                    CaHCO3_M  8.93544857 9.811220e-06       FALSE
-## 40                     CaCO3_M  7.69707886 5.259073e-05       FALSE
-## 41                     CaSO4_M 47.71512383 3.275435e-26       FALSE
-## 42                    TOrg_H_M 26.61203211 1.188259e-15       FALSE
-## 43                   TOrg_Ca_M 16.36223389 5.044642e-10       FALSE
-## 44                   TOrg_Mg_M 10.88104820 7.125825e-07       FALSE
-## 45                   TOrg_Na_M  3.23590047 2.230208e-02       FALSE
-## 46                    TOrg_K_M 15.52161006 1.512821e-09       FALSE
-## 47       Zn_Toxicity_Daphnia_M  4.52060412 3.948775e-03       FALSE
-## 48                       DOC_M 14.22938258 8.268685e-09       FALSE
-## 49                      DOC_nM 14.22938258 8.268685e-09       FALSE
-## 50                        Ca_M 15.58158513 1.398564e-09       FALSE
-## 51                       Ca_nM 15.58158513 1.398564e-09       FALSE
-## 52                        Mg_M  4.96153957 2.170939e-03       FALSE
-## 53                       Mg_nM  4.96153957 2.170939e-03       FALSE
-## 54                        Na_M 46.59365986 1.108432e-25       FALSE
-## 55                       Na_nM 46.59365986 1.108432e-25       FALSE
-## 56                         K_M 29.11063127 5.687797e-17       FALSE
-## 57                        K_nM 29.11063127 5.687797e-17       FALSE
-## 58                       SO4_M 50.58081204 1.504082e-27       FALSE
-## 59                      SO4_nM 50.58081204 1.504082e-27       FALSE
-## 60                        Cl_M 16.86088256 2.636316e-10       FALSE
-## 61                       Cl_nM 16.86088256 2.636316e-10       FALSE
-## 62                       DIC_M  9.45592421 4.854698e-06       FALSE
-## 63                      DIC_nM  9.45592421 4.854698e-06       FALSE
-## 64                        Zn_M 18.50544117 3.142810e-11       FALSE
-## 65                       Zn_nM 18.50544117 3.142810e-11       FALSE
-## 66                        Cu_M 11.67178511 2.470529e-07       FALSE
-## 67                       Cu_nM 11.67178511 2.470529e-07       FALSE
-## 68                  Free_Zn_uM  2.62093729 5.048598e-02        TRUE
-## 69                  Free_Zn_nM  2.62093729 5.048598e-02        TRUE
-## 70                     ZnOH_uM  7.95816875 3.689360e-05       FALSE
-## 71                     ZnOH_nM  7.95816875 3.689360e-05       FALSE
-## 72                  Zn_OH_2_uM  4.46182573 4.276135e-03       FALSE
-## 73                  Zn_OH_2_nM  4.46182573 4.276135e-03       FALSE
-## 74                    ZnCO3_uM  9.87068888 2.774007e-06       FALSE
-## 75                    ZnCO3_nM  9.87068888 2.774007e-06       FALSE
-## 76                   ZnHCO3_uM  3.96733717 8.345838e-03       FALSE
-## 77                   ZnHCO3_nM  3.96733717 8.345838e-03       FALSE
-## 78                    ZnSO4_uM 37.41896994 3.198005e-21       FALSE
-## 79                    ZnSO4_nM 37.41896994 3.198005e-21       FALSE
-## 80                     ZnCl_uM 13.23297323 3.089154e-08       FALSE
-## 81                     ZnCl_nM 13.23297323 3.089154e-08       FALSE
-## 82                      ZnS_uM  5.28002153 1.408324e-03       FALSE
-## 83                      ZnS_nM  5.28002153 1.408324e-03       FALSE
-## 84                  TOrg_Zn_uM 34.42760219 1.025745e-19       FALSE
-## 85                  TOrg_Zn_nM 34.42760219 1.025745e-19       FALSE
-## 86                     HCO3_uM  8.51930481 1.723636e-05       FALSE
-## 87                     HCO3_nM  8.51930481 1.723636e-05       FALSE
-## 88                   H2_CO3_uM 14.19137254 8.693901e-09       FALSE
-## 89                   H2_CO3_nM 14.19137254 8.693901e-09       FALSE
-## 90                       HS_uM  2.78105448 4.085698e-02       FALSE
-## 91                       HS_nM  2.78105448 4.085698e-02       FALSE
-## 92                      H2S_uM  7.21142716 1.017500e-04       FALSE
-## 93                      H2S_nM  7.21142716 1.017500e-04       FALSE
-## 94                   MgHCO3_uM 20.01404282 4.548700e-12       FALSE
-## 95                   MgHCO3_nM 20.01404282 4.548700e-12       FALSE
-## 96                    MgCO3_uM  7.82780704 4.403613e-05       FALSE
-## 97                    MgCO3_nM  7.82780704 4.403613e-05       FALSE
-## 98                    MgSO4_uM 86.53094782 9.694604e-43       FALSE
-## 99                    MgSO4_nM 86.53094782 9.694604e-43       FALSE
-## 100                  CaHCO3_uM  8.93544857 9.811220e-06       FALSE
-## 101                  CaHCO3_nM  8.93544857 9.811220e-06       FALSE
-## 102                   CaCO3_uM  7.69707886 5.259073e-05       FALSE
-## 103                   CaCO3_nM  7.69707886 5.259073e-05       FALSE
-## 104                   CaSO4_uM 47.71512383 3.275435e-26       FALSE
-## 105                   CaSO4_nM 47.71512383 3.275435e-26       FALSE
-## 106                  TOrg_H_uM 26.61203211 1.188259e-15       FALSE
-## 107                  TOrg_H_nM 26.61203211 1.188259e-15       FALSE
-## 108                 TOrg_Ca_uM 16.36223389 5.044642e-10       FALSE
-## 109                 TOrg_Ca_nM 16.36223389 5.044642e-10       FALSE
-## 110                 TOrg_Mg_uM 10.88104820 7.125825e-07       FALSE
-## 111                 TOrg_Mg_nM 10.88104820 7.125825e-07       FALSE
-## 112                 TOrg_Na_uM  3.23590047 2.230208e-02       FALSE
-## 113                 TOrg_Na_nM  3.23590047 2.230208e-02       FALSE
-## 114                  TOrg_K_uM 15.52161006 1.512821e-09       FALSE
-## 115                  TOrg_K_nM 15.52161006 1.512821e-09       FALSE
-## 116     Zn_Toxicity_Daphnia_uM  4.52060412 3.948775e-03       FALSE
-## 117     Zn_Toxicity_Daphnia_nM  4.52060412 3.948775e-03       FALSE
-## 118              BL_Zn_nmol_kg 37.56547748 2.702642e-21       FALSE
-## 119               BL_Zn_nmol_g 37.56547748 2.702642e-21       FALSE
-## 120              BL_Ca_nmol_kg 40.13544158 1.444586e-22       FALSE
-## 121               BL_Ca_nmol_g 40.13544158 1.444586e-22       FALSE
-## 122               BL_H_nmol_kg 29.37217014 4.148802e-17       FALSE
-## 123                BL_H_nmol_g 29.37217014 4.148802e-17       FALSE
-## 124              BL_Mg_nmol_kg  8.76425889 1.236951e-05       FALSE
-## 125               BL_Mg_nmol_g  8.76425889 1.236951e-05       FALSE
-## 126              BL_Na_nmol_kg 30.37931224 1.236750e-17       FALSE
-## 127               BL_Na_nmol_g 30.37931224 1.236750e-17       FALSE
-## 128            BL_ZnOH_nmol_kg  6.49210536 2.707042e-04       FALSE
-## 129             BL_ZnOH_nmol_g  6.49210536 2.707042e-04       FALSE
-## 130              TBL_Zn_nmol_g 13.05537126 3.910117e-08       FALSE
-## 131              TBL_Zn_mol_kg 13.05537126 3.910117e-08       FALSE
-## 132                rel_prop_Zn 17.50335322 1.145735e-10       FALSE
-## 133                 log_Temp_C  8.91883843 1.003423e-05       FALSE
-## 134                 log_DOC_uM  7.61499228 5.879416e-05       FALSE
-## 135                  log_Ca_uM 43.25916166 4.352828e-24       FALSE
-## 136                  log_Mg_uM 31.08579228 5.314346e-18       FALSE
-## 137                  log_Na_uM  6.57181476 2.428779e-04       FALSE
-## 138                   log_K_uM 26.13812658 2.125795e-15       FALSE
-## 139                 log_SO4_uM 30.12659873 1.674473e-17       FALSE
-## 140                  log_Cl_uM  5.38049267 1.228504e-03       FALSE
-## 141                 log_DIC_uM 38.24001772 1.247596e-21       FALSE
-## 142                  log_Zn_uM  8.87226639 1.068701e-05       FALSE
-## 143                  log_Cu_uM  5.00756067 2.039396e-03       FALSE
-## 144              log_Free_Zn_M  8.87756543 1.061064e-05       FALSE
-## 145                 log_ZnOH_M  0.01528841 9.974184e-01        TRUE
-## 146              log_Zn_OH_2_M  0.85168280 4.663460e-01        TRUE
-## 147                log_ZnCO3_M  1.62662924 1.827035e-01        TRUE
-## 148               log_ZnHCO3_M 12.09852438 1.397191e-07       FALSE
-## 149                log_ZnSO4_M 25.42419648 5.122052e-15       FALSE
-## 150                 log_ZnCl_M 13.35943908 2.612268e-08       FALSE
-## 151                  log_ZnS_M  5.26941886 1.428770e-03       FALSE
-## 152              log_TOrg_Zn_M  1.38713477 2.462972e-01        TRUE
-## 153           log_BL_Zn_mol_kg  7.83546836 4.358043e-05       FALSE
-## 154           log_BL_Ca_mol_kg 58.85252632 2.693289e-31       FALSE
-## 155            log_BL_H_mol_kg  1.36689770 2.525178e-01        TRUE
-## 156           log_BL_Mg_mol_kg 19.37866683 1.024490e-11       FALSE
-## 157           log_BL_Na_mol_kg 14.40744991 6.538405e-09       FALSE
-## 158         log_BL_ZnOH_mol_kg  1.26233204 2.870105e-01        TRUE
-## 159                 log_HCO3_M 46.26142381 1.592926e-25       FALSE
-## 160               log_H2_CO3_M  0.86422335 4.597225e-01        TRUE
-## 161                   log_HS_M  0.45916579 7.109779e-01        TRUE
-## 162                  log_H2S_M  0.19011590 9.031133e-01        TRUE
-## 163               log_MgHCO3_M 42.92905780 6.283788e-24       FALSE
-## 164                log_MgCO3_M 17.13476773 1.847343e-10       FALSE
-## 165                log_MgSO4_M 28.80975055 8.181701e-17       FALSE
-## 166               log_CaHCO3_M 53.61454380 6.075398e-29       FALSE
-## 167                log_CaCO3_M 21.07878999 1.174845e-12       FALSE
-## 168                log_CaSO4_M 35.80028775 2.073010e-20       FALSE
-## 169               log_TOrg_H_M  8.60500812 1.534680e-05       FALSE
-## 170              log_TOrg_Ca_M 12.06423966 1.462593e-07       FALSE
-## 171              log_TOrg_Mg_M  2.49597113 5.951319e-02        TRUE
-## 172              log_TOrg_Na_M  4.51864897 3.959252e-03       FALSE
-## 173               log_TOrg_K_M 14.11262453 9.646034e-09       FALSE
-## 174  log_Zn_Toxicity_Daphnia_M 17.14654275 1.819335e-10       FALSE
-## 175                  log_DOC_M  7.61499228 5.879416e-05       FALSE
-## 176                 log_DOC_nM  7.61499228 5.879416e-05       FALSE
-## 177                   log_Ca_M 43.25916166 4.352828e-24       FALSE
-## 178                  log_Ca_nM 43.25916166 4.352828e-24       FALSE
-## 179                   log_Mg_M 31.08579228 5.314346e-18       FALSE
-## 180                  log_Mg_nM 31.08579228 5.314346e-18       FALSE
-## 181                   log_Na_M  6.57181476 2.428779e-04       FALSE
-## 182                  log_Na_nM  6.57181476 2.428779e-04       FALSE
-## 183                    log_K_M 26.13812658 2.125795e-15       FALSE
-## 184                   log_K_nM 26.13812658 2.125795e-15       FALSE
-## 185                  log_SO4_M 30.12659873 1.674473e-17       FALSE
-## 186                 log_SO4_nM 30.12659873 1.674473e-17       FALSE
-## 187                   log_Cl_M  5.38049267 1.228504e-03       FALSE
-## 188                  log_Cl_nM  5.38049267 1.228504e-03       FALSE
-## 189                  log_DIC_M 38.24001772 1.247596e-21       FALSE
-## 190                 log_DIC_nM 38.24001772 1.247596e-21       FALSE
-## 191                   log_Zn_M  8.87226639 1.068701e-05       FALSE
-## 192                  log_Zn_nM  8.87226639 1.068701e-05       FALSE
-## 193                   log_Cu_M  5.00756067 2.039396e-03       FALSE
-## 194                  log_Cu_nM  5.00756067 2.039396e-03       FALSE
-## 195             log_Free_Zn_uM  8.87756543 1.061064e-05       FALSE
-## 196             log_Free_Zn_nM  8.87756543 1.061064e-05       FALSE
-## 197                log_ZnOH_uM  0.01528841 9.974184e-01        TRUE
-## 198                log_ZnOH_nM  0.01528841 9.974184e-01        TRUE
-## 199             log_Zn_OH_2_uM  0.85168280 4.663460e-01        TRUE
-## 200             log_Zn_OH_2_nM  0.85168280 4.663460e-01        TRUE
-## 201               log_ZnCO3_uM  1.62662924 1.827035e-01        TRUE
-## 202               log_ZnCO3_nM  1.62662924 1.827035e-01        TRUE
-## 203              log_ZnHCO3_uM 12.09852438 1.397191e-07       FALSE
-## 204              log_ZnHCO3_nM 12.09852438 1.397191e-07       FALSE
-## 205               log_ZnSO4_uM 25.42419648 5.122052e-15       FALSE
-## 206               log_ZnSO4_nM 25.42419648 5.122052e-15       FALSE
-## 207                log_ZnCl_uM 13.35943908 2.612268e-08       FALSE
-## 208                log_ZnCl_nM 13.35943908 2.612268e-08       FALSE
-## 209                 log_ZnS_uM  5.26941886 1.428770e-03       FALSE
-## 210                 log_ZnS_nM  5.26941886 1.428770e-03       FALSE
-## 211             log_TOrg_Zn_uM  1.38713477 2.462972e-01        TRUE
-## 212             log_TOrg_Zn_nM  1.38713477 2.462972e-01        TRUE
-## 213                log_HCO3_uM 46.26142381 1.592926e-25       FALSE
-## 214                log_HCO3_nM 46.26142381 1.592926e-25       FALSE
-## 215              log_H2_CO3_uM  0.86422335 4.597225e-01        TRUE
-## 216              log_H2_CO3_nM  0.86422335 4.597225e-01        TRUE
-## 217                  log_HS_uM  0.45916579 7.109779e-01        TRUE
-## 218                  log_HS_nM  0.45916579 7.109779e-01        TRUE
-## 219                 log_H2S_uM  0.19011590 9.031133e-01        TRUE
-## 220                 log_H2S_nM  0.19011590 9.031133e-01        TRUE
-## 221              log_MgHCO3_uM 42.92905780 6.283788e-24       FALSE
-## 222              log_MgHCO3_nM 42.92905780 6.283788e-24       FALSE
-## 223               log_MgCO3_uM 17.13476773 1.847343e-10       FALSE
-## 224               log_MgCO3_nM 17.13476773 1.847343e-10       FALSE
-## 225               log_MgSO4_uM 28.80975055 8.181701e-17       FALSE
-## 226               log_MgSO4_nM 28.80975055 8.181701e-17       FALSE
-## 227              log_CaHCO3_uM 53.61454380 6.075398e-29       FALSE
-## 228              log_CaHCO3_nM 53.61454380 6.075398e-29       FALSE
-## 229               log_CaCO3_uM 21.07878999 1.174845e-12       FALSE
-## 230               log_CaCO3_nM 21.07878999 1.174845e-12       FALSE
-## 231               log_CaSO4_uM 35.80028775 2.073010e-20       FALSE
-## 232               log_CaSO4_nM 35.80028775 2.073010e-20       FALSE
-## 233              log_TOrg_H_uM  8.60500812 1.534680e-05       FALSE
-## 234              log_TOrg_H_nM  8.60500812 1.534680e-05       FALSE
-## 235             log_TOrg_Ca_uM 12.06423966 1.462593e-07       FALSE
-## 236             log_TOrg_Ca_nM 12.06423966 1.462593e-07       FALSE
-## 237             log_TOrg_Mg_uM  2.49597113 5.951319e-02        TRUE
-## 238             log_TOrg_Mg_nM  2.49597113 5.951319e-02        TRUE
-## 239             log_TOrg_Na_uM  4.51864897 3.959252e-03       FALSE
-## 240             log_TOrg_Na_nM  4.51864897 3.959252e-03       FALSE
-## 241              log_TOrg_K_uM 14.11262453 9.646034e-09       FALSE
-## 242              log_TOrg_K_nM 14.11262453 9.646034e-09       FALSE
-## 243 log_Zn_Toxicity_Daphnia_uM 17.14654275 1.819335e-10       FALSE
-## 244 log_Zn_Toxicity_Daphnia_nM 17.14654275 1.819335e-10       FALSE
-## 245          log_BL_Zn_nmol_kg  7.83546836 4.358043e-05       FALSE
-## 246           log_BL_Zn_nmol_g  7.83546836 4.358043e-05       FALSE
-## 247          log_BL_Ca_nmol_kg 58.85252632 2.693289e-31       FALSE
-## 248           log_BL_Ca_nmol_g 58.85252632 2.693289e-31       FALSE
-## 249           log_BL_H_nmol_kg  1.36689770 2.525178e-01        TRUE
-## 250            log_BL_H_nmol_g  1.36689770 2.525178e-01        TRUE
-## 251          log_BL_Mg_nmol_kg 19.37866683 1.024490e-11       FALSE
-## 252           log_BL_Mg_nmol_g 19.37866683 1.024490e-11       FALSE
-## 253          log_BL_Na_nmol_kg 14.40744991 6.538405e-09       FALSE
-## 254           log_BL_Na_nmol_g 14.40744991 6.538405e-09       FALSE
-## 255        log_BL_ZnOH_nmol_kg  1.26233204 2.870105e-01        TRUE
-## 256         log_BL_ZnOH_nmol_g  1.26233204 2.870105e-01        TRUE
-## 257          log_TBL_Zn_nmol_g  4.84253321 2.551659e-03       FALSE
-## 258          log_TBL_Zn_mol_kg  4.84253321 2.551659e-03       FALSE
-## 259            log_rel_prop_Zn 17.20837906 1.679108e-10       FALSE</code></pre>
+<pre><code>##                           Variable     F_value      p_value Homogeneous
+## 1             Relative_elevation_m 23.50672209 5.538841e-14       FALSE
+## 2       Upstream_from_main_stem_km 14.06981087 1.020694e-08       FALSE
+## 3                   Developed_lulc 19.16345711 1.349736e-11       FALSE
+## 4                               pH  1.47212362 2.216849e-01        TRUE
+## 5                           Temp_C  9.73245928 3.342453e-06       FALSE
+## 6                           DOC_uM 14.22938258 8.268685e-09       FALSE
+## 7                            Ca_uM 15.58158513 1.398564e-09       FALSE
+## 8                            Mg_uM  4.96153957 2.170939e-03       FALSE
+## 9                            Na_uM 46.59365986 1.108432e-25       FALSE
+## 10                            K_uM 29.11063127 5.687797e-17       FALSE
+## 11                          SO4_uM 50.58081204 1.504082e-27       FALSE
+## 12                           Cl_uM 16.86088256 2.636316e-10       FALSE
+## 13                          DIC_uM  9.45592421 4.854698e-06       FALSE
+## 14                           Zn_uM 18.50544117 3.142810e-11       FALSE
+## 15                           Cu_uM 11.67178511 2.470529e-07       FALSE
+## 16                       Free_Zn_M  2.62093729 5.048598e-02        TRUE
+## 17                          ZnOH_M  7.95816875 3.689360e-05       FALSE
+## 18                       Zn_OH_2_M  4.46182573 4.276135e-03       FALSE
+## 19                         ZnCO3_M  9.87068888 2.774007e-06       FALSE
+## 20                        ZnHCO3_M  3.96733717 8.345838e-03       FALSE
+## 21                         ZnSO4_M 37.41896994 3.198005e-21       FALSE
+## 22                          ZnCl_M 13.23297323 3.089154e-08       FALSE
+## 23                           ZnS_M  5.28002153 1.408324e-03       FALSE
+## 24                       TOrg_Zn_M 34.42760219 1.025745e-19       FALSE
+## 25                    BL_Zn_mol_kg 37.56547748 2.702642e-21       FALSE
+## 26                    BL_Ca_mol_kg 40.13544158 1.444586e-22       FALSE
+## 27                     BL_H_mol_kg 29.37217014 4.148802e-17       FALSE
+## 28                    BL_Mg_mol_kg  8.76425889 1.236951e-05       FALSE
+## 29                    BL_Na_mol_kg 30.37931224 1.236750e-17       FALSE
+## 30                  BL_ZnOH_mol_kg  6.49210536 2.707042e-04       FALSE
+## 31                          HCO3_M  8.51930481 1.723636e-05       FALSE
+## 32                        H2_CO3_M 14.19137254 8.693901e-09       FALSE
+## 33                            HS_M  2.78105448 4.085698e-02       FALSE
+## 34                           H2S_M  7.21142716 1.017500e-04       FALSE
+## 35                        MgHCO3_M 20.01404282 4.548700e-12       FALSE
+## 36                         MgCO3_M  7.82780704 4.403613e-05       FALSE
+## 37                         MgSO4_M 86.53094782 9.694604e-43       FALSE
+## 38                        CaHCO3_M  8.93544857 9.811220e-06       FALSE
+## 39                         CaCO3_M  7.69707886 5.259073e-05       FALSE
+## 40                         CaSO4_M 47.71512383 3.275435e-26       FALSE
+## 41                        TOrg_H_M 26.61203211 1.188259e-15       FALSE
+## 42                       TOrg_Ca_M 16.36223389 5.044642e-10       FALSE
+## 43                       TOrg_Mg_M 10.88104820 7.125825e-07       FALSE
+## 44                       TOrg_Na_M  3.23590047 2.230208e-02       FALSE
+## 45                        TOrg_K_M 15.52161006 1.512821e-09       FALSE
+## 46           Zn_Toxicity_Daphnia_M  4.52060412 3.948775e-03       FALSE
+## 47                           DOC_M 14.22938258 8.268685e-09       FALSE
+## 48                          DOC_nM 14.22938258 8.268685e-09       FALSE
+## 49                            Ca_M 15.58158513 1.398564e-09       FALSE
+## 50                           Ca_nM 15.58158513 1.398564e-09       FALSE
+## 51                            Mg_M  4.96153957 2.170939e-03       FALSE
+## 52                           Mg_nM  4.96153957 2.170939e-03       FALSE
+## 53                            Na_M 46.59365986 1.108432e-25       FALSE
+## 54                           Na_nM 46.59365986 1.108432e-25       FALSE
+## 55                             K_M 29.11063127 5.687797e-17       FALSE
+## 56                            K_nM 29.11063127 5.687797e-17       FALSE
+## 57                           SO4_M 50.58081204 1.504082e-27       FALSE
+## 58                          SO4_nM 50.58081204 1.504082e-27       FALSE
+## 59                            Cl_M 16.86088256 2.636316e-10       FALSE
+## 60                           Cl_nM 16.86088256 2.636316e-10       FALSE
+## 61                           DIC_M  9.45592421 4.854698e-06       FALSE
+## 62                          DIC_nM  9.45592421 4.854698e-06       FALSE
+## 63                            Zn_M 18.50544117 3.142810e-11       FALSE
+## 64                           Zn_nM 18.50544117 3.142810e-11       FALSE
+## 65                            Cu_M 11.67178511 2.470529e-07       FALSE
+## 66                           Cu_nM 11.67178511 2.470529e-07       FALSE
+## 67                      Free_Zn_uM  2.62093729 5.048598e-02        TRUE
+## 68                      Free_Zn_nM  2.62093729 5.048598e-02        TRUE
+## 69                         ZnOH_uM  7.95816875 3.689360e-05       FALSE
+## 70                         ZnOH_nM  7.95816875 3.689360e-05       FALSE
+## 71                      Zn_OH_2_uM  4.46182573 4.276135e-03       FALSE
+## 72                      Zn_OH_2_nM  4.46182573 4.276135e-03       FALSE
+## 73                        ZnCO3_uM  9.87068888 2.774007e-06       FALSE
+## 74                        ZnCO3_nM  9.87068888 2.774007e-06       FALSE
+## 75                       ZnHCO3_uM  3.96733717 8.345838e-03       FALSE
+## 76                       ZnHCO3_nM  3.96733717 8.345838e-03       FALSE
+## 77                        ZnSO4_uM 37.41896994 3.198005e-21       FALSE
+## 78                        ZnSO4_nM 37.41896994 3.198005e-21       FALSE
+## 79                         ZnCl_uM 13.23297323 3.089154e-08       FALSE
+## 80                         ZnCl_nM 13.23297323 3.089154e-08       FALSE
+## 81                          ZnS_uM  5.28002153 1.408324e-03       FALSE
+## 82                          ZnS_nM  5.28002153 1.408324e-03       FALSE
+## 83                      TOrg_Zn_uM 34.42760219 1.025745e-19       FALSE
+## 84                      TOrg_Zn_nM 34.42760219 1.025745e-19       FALSE
+## 85                         HCO3_uM  8.51930481 1.723636e-05       FALSE
+## 86                         HCO3_nM  8.51930481 1.723636e-05       FALSE
+## 87                       H2_CO3_uM 14.19137254 8.693901e-09       FALSE
+## 88                       H2_CO3_nM 14.19137254 8.693901e-09       FALSE
+## 89                           HS_uM  2.78105448 4.085698e-02       FALSE
+## 90                           HS_nM  2.78105448 4.085698e-02       FALSE
+## 91                          H2S_uM  7.21142716 1.017500e-04       FALSE
+## 92                          H2S_nM  7.21142716 1.017500e-04       FALSE
+## 93                       MgHCO3_uM 20.01404282 4.548700e-12       FALSE
+## 94                       MgHCO3_nM 20.01404282 4.548700e-12       FALSE
+## 95                        MgCO3_uM  7.82780704 4.403613e-05       FALSE
+## 96                        MgCO3_nM  7.82780704 4.403613e-05       FALSE
+## 97                        MgSO4_uM 86.53094782 9.694604e-43       FALSE
+## 98                        MgSO4_nM 86.53094782 9.694604e-43       FALSE
+## 99                       CaHCO3_uM  8.93544857 9.811220e-06       FALSE
+## 100                      CaHCO3_nM  8.93544857 9.811220e-06       FALSE
+## 101                       CaCO3_uM  7.69707886 5.259073e-05       FALSE
+## 102                       CaCO3_nM  7.69707886 5.259073e-05       FALSE
+## 103                       CaSO4_uM 47.71512383 3.275435e-26       FALSE
+## 104                       CaSO4_nM 47.71512383 3.275435e-26       FALSE
+## 105                      TOrg_H_uM 26.61203211 1.188259e-15       FALSE
+## 106                      TOrg_H_nM 26.61203211 1.188259e-15       FALSE
+## 107                     TOrg_Ca_uM 16.36223389 5.044642e-10       FALSE
+## 108                     TOrg_Ca_nM 16.36223389 5.044642e-10       FALSE
+## 109                     TOrg_Mg_uM 10.88104820 7.125825e-07       FALSE
+## 110                     TOrg_Mg_nM 10.88104820 7.125825e-07       FALSE
+## 111                     TOrg_Na_uM  3.23590047 2.230208e-02       FALSE
+## 112                     TOrg_Na_nM  3.23590047 2.230208e-02       FALSE
+## 113                      TOrg_K_uM 15.52161006 1.512821e-09       FALSE
+## 114                      TOrg_K_nM 15.52161006 1.512821e-09       FALSE
+## 115         Zn_Toxicity_Daphnia_uM  4.52060412 3.948775e-03       FALSE
+## 116         Zn_Toxicity_Daphnia_nM  4.52060412 3.948775e-03       FALSE
+## 117                  BL_Zn_nmol_kg 37.56547748 2.702642e-21       FALSE
+## 118                   BL_Zn_nmol_g 37.56547748 2.702642e-21       FALSE
+## 119                   BL_Zn_umol_g 37.56547748 2.702642e-21       FALSE
+## 120                  BL_Ca_nmol_kg 40.13544158 1.444586e-22       FALSE
+## 121                   BL_Ca_nmol_g 40.13544158 1.444586e-22       FALSE
+## 122                   BL_Ca_umol_g 40.13544158 1.444586e-22       FALSE
+## 123                   BL_H_nmol_kg 29.37217014 4.148802e-17       FALSE
+## 124                    BL_H_nmol_g 29.37217014 4.148802e-17       FALSE
+## 125                    BL_H_umol_g 29.37217014 4.148802e-17       FALSE
+## 126                  BL_Mg_nmol_kg  8.76425889 1.236951e-05       FALSE
+## 127                   BL_Mg_nmol_g  8.76425889 1.236951e-05       FALSE
+## 128                   BL_Mg_umol_g  8.76425889 1.236951e-05       FALSE
+## 129                  BL_Na_nmol_kg 30.37931224 1.236750e-17       FALSE
+## 130                   BL_Na_nmol_g 30.37931224 1.236750e-17       FALSE
+## 131                   BL_Na_umol_g 30.37931224 1.236750e-17       FALSE
+## 132                BL_ZnOH_nmol_kg  6.49210536 2.707042e-04       FALSE
+## 133                 BL_ZnOH_nmol_g  6.49210536 2.707042e-04       FALSE
+## 134                 BL_ZnOH_umol_g  6.49210536 2.707042e-04       FALSE
+## 135                  TBL_Zn_nmol_g 13.05537126 3.910117e-08       FALSE
+## 136                  TBL_Zn_umol_g 13.05537126 3.910117e-08       FALSE
+## 137                  TBL_Zn_mol_kg 13.05537126 3.910117e-08       FALSE
+## 138                    rel_prop_Zn 17.50335322 1.145735e-10       FALSE
+## 139 log_Upstream_from_main_stem_km 12.29001539 1.431221e-07       FALSE
+## 140                     log_Temp_C  8.91883843 1.003423e-05       FALSE
+## 141                     log_DOC_uM  7.61499228 5.879416e-05       FALSE
+## 142                      log_Ca_uM 43.25916166 4.352828e-24       FALSE
+## 143                      log_Mg_uM 31.08579228 5.314346e-18       FALSE
+## 144                      log_Na_uM  6.57181476 2.428779e-04       FALSE
+## 145                       log_K_uM 26.13812658 2.125795e-15       FALSE
+## 146                     log_SO4_uM 30.12659873 1.674473e-17       FALSE
+## 147                      log_Cl_uM  5.38049267 1.228504e-03       FALSE
+## 148                     log_DIC_uM 38.24001772 1.247596e-21       FALSE
+## 149                      log_Zn_uM  8.87226639 1.068701e-05       FALSE
+## 150                      log_Cu_uM  5.00756067 2.039396e-03       FALSE
+## 151                  log_Free_Zn_M  8.87756543 1.061064e-05       FALSE
+## 152                     log_ZnOH_M  0.01528841 9.974184e-01        TRUE
+## 153                  log_Zn_OH_2_M  0.85168280 4.663460e-01        TRUE
+## 154                    log_ZnCO3_M  1.62662924 1.827035e-01        TRUE
+## 155                   log_ZnHCO3_M 12.09852438 1.397191e-07       FALSE
+## 156                    log_ZnSO4_M 25.42419648 5.122052e-15       FALSE
+## 157                     log_ZnCl_M 13.35943908 2.612268e-08       FALSE
+## 158                      log_ZnS_M  5.26941886 1.428770e-03       FALSE
+## 159                  log_TOrg_Zn_M  1.38713477 2.462972e-01        TRUE
+## 160               log_BL_Zn_mol_kg  7.83546836 4.358043e-05       FALSE
+## 161               log_BL_Ca_mol_kg 58.85252632 2.693289e-31       FALSE
+## 162                log_BL_H_mol_kg  1.36689770 2.525178e-01        TRUE
+## 163               log_BL_Mg_mol_kg 19.37866683 1.024490e-11       FALSE
+## 164               log_BL_Na_mol_kg 14.40744991 6.538405e-09       FALSE
+## 165             log_BL_ZnOH_mol_kg  1.26233204 2.870105e-01        TRUE
+## 166                     log_HCO3_M 46.26142381 1.592926e-25       FALSE
+## 167                   log_H2_CO3_M  0.86422335 4.597225e-01        TRUE
+## 168                       log_HS_M  0.45916579 7.109779e-01        TRUE
+## 169                      log_H2S_M  0.19011590 9.031133e-01        TRUE
+## 170                   log_MgHCO3_M 42.92905780 6.283788e-24       FALSE
+## 171                    log_MgCO3_M 17.13476773 1.847343e-10       FALSE
+## 172                    log_MgSO4_M 28.80975055 8.181701e-17       FALSE
+## 173                   log_CaHCO3_M 53.61454380 6.075398e-29       FALSE
+## 174                    log_CaCO3_M 21.07878999 1.174845e-12       FALSE
+## 175                    log_CaSO4_M 35.80028775 2.073010e-20       FALSE
+## 176                   log_TOrg_H_M  8.60500812 1.534680e-05       FALSE
+## 177                  log_TOrg_Ca_M 12.06423966 1.462593e-07       FALSE
+## 178                  log_TOrg_Mg_M  2.49597113 5.951319e-02        TRUE
+## 179                  log_TOrg_Na_M  4.51864897 3.959252e-03       FALSE
+## 180                   log_TOrg_K_M 14.11262453 9.646034e-09       FALSE
+## 181      log_Zn_Toxicity_Daphnia_M 17.14654275 1.819335e-10       FALSE
+## 182                      log_DOC_M  7.61499228 5.879416e-05       FALSE
+## 183                     log_DOC_nM  7.61499228 5.879416e-05       FALSE
+## 184                       log_Ca_M 43.25916166 4.352828e-24       FALSE
+## 185                      log_Ca_nM 43.25916166 4.352828e-24       FALSE
+## 186                       log_Mg_M 31.08579228 5.314346e-18       FALSE
+## 187                      log_Mg_nM 31.08579228 5.314346e-18       FALSE
+## 188                       log_Na_M  6.57181476 2.428779e-04       FALSE
+## 189                      log_Na_nM  6.57181476 2.428779e-04       FALSE
+## 190                        log_K_M 26.13812658 2.125795e-15       FALSE
+## 191                       log_K_nM 26.13812658 2.125795e-15       FALSE
+## 192                      log_SO4_M 30.12659873 1.674473e-17       FALSE
+## 193                     log_SO4_nM 30.12659873 1.674473e-17       FALSE
+## 194                       log_Cl_M  5.38049267 1.228504e-03       FALSE
+## 195                      log_Cl_nM  5.38049267 1.228504e-03       FALSE
+## 196                      log_DIC_M 38.24001772 1.247596e-21       FALSE
+## 197                     log_DIC_nM 38.24001772 1.247596e-21       FALSE
+## 198                       log_Zn_M  8.87226639 1.068701e-05       FALSE
+## 199                      log_Zn_nM  8.87226639 1.068701e-05       FALSE
+## 200                       log_Cu_M  5.00756067 2.039396e-03       FALSE
+## 201                      log_Cu_nM  5.00756067 2.039396e-03       FALSE
+## 202                 log_Free_Zn_uM  8.87756543 1.061064e-05       FALSE
+## 203                 log_Free_Zn_nM  8.87756543 1.061064e-05       FALSE
+## 204                    log_ZnOH_uM  0.01528841 9.974184e-01        TRUE
+## 205                    log_ZnOH_nM  0.01528841 9.974184e-01        TRUE
+## 206                 log_Zn_OH_2_uM  0.85168280 4.663460e-01        TRUE
+## 207                 log_Zn_OH_2_nM  0.85168280 4.663460e-01        TRUE
+## 208                   log_ZnCO3_uM  1.62662924 1.827035e-01        TRUE
+## 209                   log_ZnCO3_nM  1.62662924 1.827035e-01        TRUE
+## 210                  log_ZnHCO3_uM 12.09852438 1.397191e-07       FALSE
+## 211                  log_ZnHCO3_nM 12.09852438 1.397191e-07       FALSE
+## 212                   log_ZnSO4_uM 25.42419648 5.122052e-15       FALSE
+## 213                   log_ZnSO4_nM 25.42419648 5.122052e-15       FALSE
+## 214                    log_ZnCl_uM 13.35943908 2.612268e-08       FALSE
+## 215                    log_ZnCl_nM 13.35943908 2.612268e-08       FALSE
+## 216                     log_ZnS_uM  5.26941886 1.428770e-03       FALSE
+## 217                     log_ZnS_nM  5.26941886 1.428770e-03       FALSE
+## 218                 log_TOrg_Zn_uM  1.38713477 2.462972e-01        TRUE
+## 219                 log_TOrg_Zn_nM  1.38713477 2.462972e-01        TRUE
+## 220                    log_HCO3_uM 46.26142381 1.592926e-25       FALSE
+## 221                    log_HCO3_nM 46.26142381 1.592926e-25       FALSE
+## 222                  log_H2_CO3_uM  0.86422335 4.597225e-01        TRUE
+## 223                  log_H2_CO3_nM  0.86422335 4.597225e-01        TRUE
+## 224                      log_HS_uM  0.45916579 7.109779e-01        TRUE
+## 225                      log_HS_nM  0.45916579 7.109779e-01        TRUE
+## 226                     log_H2S_uM  0.19011590 9.031133e-01        TRUE
+## 227                     log_H2S_nM  0.19011590 9.031133e-01        TRUE
+## 228                  log_MgHCO3_uM 42.92905780 6.283788e-24       FALSE
+## 229                  log_MgHCO3_nM 42.92905780 6.283788e-24       FALSE
+## 230                   log_MgCO3_uM 17.13476773 1.847343e-10       FALSE
+## 231                   log_MgCO3_nM 17.13476773 1.847343e-10       FALSE
+## 232                   log_MgSO4_uM 28.80975055 8.181701e-17       FALSE
+## 233                   log_MgSO4_nM 28.80975055 8.181701e-17       FALSE
+## 234                  log_CaHCO3_uM 53.61454380 6.075398e-29       FALSE
+## 235                  log_CaHCO3_nM 53.61454380 6.075398e-29       FALSE
+## 236                   log_CaCO3_uM 21.07878999 1.174845e-12       FALSE
+## 237                   log_CaCO3_nM 21.07878999 1.174845e-12       FALSE
+## 238                   log_CaSO4_uM 35.80028775 2.073010e-20       FALSE
+## 239                   log_CaSO4_nM 35.80028775 2.073010e-20       FALSE
+## 240                  log_TOrg_H_uM  8.60500812 1.534680e-05       FALSE
+## 241                  log_TOrg_H_nM  8.60500812 1.534680e-05       FALSE
+## 242                 log_TOrg_Ca_uM 12.06423966 1.462593e-07       FALSE
+## 243                 log_TOrg_Ca_nM 12.06423966 1.462593e-07       FALSE
+## 244                 log_TOrg_Mg_uM  2.49597113 5.951319e-02        TRUE
+## 245                 log_TOrg_Mg_nM  2.49597113 5.951319e-02        TRUE
+## 246                 log_TOrg_Na_uM  4.51864897 3.959252e-03       FALSE
+## 247                 log_TOrg_Na_nM  4.51864897 3.959252e-03       FALSE
+## 248                  log_TOrg_K_uM 14.11262453 9.646034e-09       FALSE
+## 249                  log_TOrg_K_nM 14.11262453 9.646034e-09       FALSE
+## 250     log_Zn_Toxicity_Daphnia_uM 17.14654275 1.819335e-10       FALSE
+## 251     log_Zn_Toxicity_Daphnia_nM 17.14654275 1.819335e-10       FALSE
+## 252              log_BL_Zn_nmol_kg  7.83546836 4.358043e-05       FALSE
+## 253               log_BL_Zn_nmol_g  7.83546836 4.358043e-05       FALSE
+## 254               log_BL_Zn_umol_g  7.83546836 4.358043e-05       FALSE
+## 255              log_BL_Ca_nmol_kg 58.85252632 2.693289e-31       FALSE
+## 256               log_BL_Ca_nmol_g 58.85252632 2.693289e-31       FALSE
+## 257               log_BL_Ca_umol_g 58.85252632 2.693289e-31       FALSE
+## 258               log_BL_H_nmol_kg  1.36689770 2.525178e-01        TRUE
+## 259                log_BL_H_nmol_g  1.36689770 2.525178e-01        TRUE
+## 260                log_BL_H_umol_g  1.36689770 2.525178e-01        TRUE
+## 261              log_BL_Mg_nmol_kg 19.37866683 1.024490e-11       FALSE
+## 262               log_BL_Mg_nmol_g 19.37866683 1.024490e-11       FALSE
+## 263               log_BL_Mg_umol_g 19.37866683 1.024490e-11       FALSE
+## 264              log_BL_Na_nmol_kg 14.40744991 6.538405e-09       FALSE
+## 265               log_BL_Na_nmol_g 14.40744991 6.538405e-09       FALSE
+## 266               log_BL_Na_umol_g 14.40744991 6.538405e-09       FALSE
+## 267            log_BL_ZnOH_nmol_kg  1.26233204 2.870105e-01        TRUE
+## 268             log_BL_ZnOH_nmol_g  1.26233204 2.870105e-01        TRUE
+## 269             log_BL_ZnOH_umol_g  1.26233204 2.870105e-01        TRUE
+## 270              log_TBL_Zn_nmol_g  4.84253321 2.551659e-03       FALSE
+## 271              log_TBL_Zn_umol_g  4.84253321 2.551659e-03       FALSE
+## 272              log_TBL_Zn_mol_kg  4.84253321 2.551659e-03       FALSE
+## 273                log_rel_prop_Zn 17.20837906 1.679108e-10       FALSE</code></pre>
 <p>Export results to excel</p>
 <pre class="r"><code>library(openxlsx)
 
@@ -1739,8 +1718,10 @@ na_counts &lt;- dat %&gt;%
 
 # View results, should be 0
 na_counts</code></pre>
-<pre><code>## # A tibble: 0 × 2
-## # ℹ 2 variables: Variable &lt;chr&gt;, NA_count &lt;int&gt;</code></pre>
+<pre><code>## # A tibble: 1 × 2
+##   Variable                       NA_count
+##   &lt;chr&gt;                             &lt;int&gt;
+## 1 log_Upstream_from_main_stem_km      106</code></pre>
 </div>
 <div id="iii.-check-for-zero-variance" class="section level3">
 <h3>iii. Check for zero variance</h3>
@@ -1824,8 +1805,8 @@ combined_kruskal &lt;- bind_rows(combined_list)
 
 # View
 str(combined_kruskal)</code></pre>
-<pre><code>## &#39;data.frame&#39;:    1036 obs. of  8 variables:
-##  $ Typology   : chr  &quot;Pooled Water&quot; &quot;Baseline Tributaries&quot; &quot;Developed Tributaries&quot; &quot;Main Stem&quot; ...
+<pre><code>## &#39;data.frame&#39;:    1092 obs. of  8 variables:
+##  $ Typology   : chr  &quot;Non-Perennial Tribs&quot; &quot;Perennial Tribs&quot; &quot;Perennial Developed Tribs&quot; &quot;Main Stem&quot; ...
 ##  $ dat[[v]]   : num  352.5 246.1 228.9 93.3 302 ...
 ##  $ groups     : chr  &quot;a&quot; &quot;b&quot; &quot;b&quot; &quot;c&quot; ...
 ##  $ Variable   : chr  &quot;Relative_elevation_m&quot; &quot;Relative_elevation_m&quot; &quot;Relative_elevation_m&quot; &quot;Relative_elevation_m&quot; ...
@@ -1854,12 +1835,27 @@ saveWorkbook(wb, &quot;Statistical_analyses_by_typology.xlsx&quot;, overwrite = 
 <div id="boxplots-by-typology" class="section level2">
 <h2>4. Boxplots by Typology</h2>
 <p>We first need to create an object with the pair-wise comparison
-letters</p>
+letters and set the order of Typology</p>
 <pre class="r"><code># Create letters_df from combined_kruskal
 letters_df &lt;- combined_kruskal %&gt;%
   dplyr::select(Variable, Typology, groups) %&gt;%
   dplyr::distinct() %&gt;%
-  dplyr::rename(Letters = groups)</code></pre>
+  dplyr::rename(Letters = groups)
+
+dat$Typology &lt;- as.factor(dat$Typology)
+
+dat$Typology &lt;- factor(dat$Typology, levels = c(&quot;Non-Perennial Tribs&quot;,
+                                     &quot;Perennial Tribs&quot;,
+                                     &quot;Perennial Developed Tribs&quot;,
+                                     &quot;Main Stem&quot;))
+
+# 3. Colors for each Typology
+typology_colors &lt;- c(
+  &quot;Perennial Tribs&quot;                  = &quot;#56B4E9&quot;,
+  &quot;Perennial Developed Tribs&quot;        = &quot;#D55E00&quot;,
+  &quot;Non-Perennial Tribs&quot;              = &quot;#009E73&quot;,
+  &quot;Main Stem&quot;                        = &quot;#999999&quot;
+)</code></pre>
 <div id="a.-blm-predictors" class="section level3">
 <h3>a. BLM predictors</h3>
 <p>Create a boxplots for each BLM predictor</p>
@@ -1898,15 +1894,8 @@ y_label_lookup &lt;- c(
   &quot;log_Cl_uM&quot;  = &quot;log Cl (µM)&quot;
 )
 
-# 3. Colors for each Typology
-typology_colors &lt;- c(
-  &quot;Pooled Water&quot;        = &quot;#E69F00&quot;,
-  &quot;Tributaries&quot;         = &quot;#56B4E9&quot;,
-  &quot;Developed Tributaries&quot; = &quot;#D55E00&quot;,
-  &quot;Main Stem&quot;           = &quot;#999999&quot;
-)
 
-# 4. Loop through variables in title_lookup
+# 3. Loop through variables in title_lookup
 for (var in names(title_lookup)) {
 
   y_pos_df &lt;- dat %&gt;%
@@ -1916,27 +1905,36 @@ for (var in names(title_lookup)) {
       .groups = &quot;drop&quot;
     )
 
-  letters_sub &lt;- letters_df %&gt;%
+  letters_plot_df &lt;- letters_df %&gt;%
     filter(Variable == var) %&gt;%
-    dplyr::select(Typology, Letters)
-
-  letters_plot_df &lt;- letters_sub %&gt;%
+    dplyr::select(Typology, Letters) %&gt;%
+    mutate(Typology = factor(Typology)) %&gt;%
     left_join(y_pos_df, by = &quot;Typology&quot;)
 
   p &lt;- ggplot(dat, aes(
-    x = Typology,
-    y = .data[[var]],
+    x    = Typology,
+    y    = .data[[var]],
+    fill = Typology,
     color = Typology
   )) +
-    geom_boxplot(fill = NA, width = 0.6) +
-    geom_jitter(width = 0.15, size = 2, alpha = 0.7) +
+    geom_boxplot(
+      width = 0.6,
+      alpha = 0.35,        
+      outlier.shape = NA 
+    ) +
+    geom_jitter(
+      width = 0.15,
+      size  = 2,
+      alpha = 0.7
+    ) +
     geom_text(
       data = letters_plot_df,
       aes(x = Typology, y = y_pos, label = Letters),
       inherit.aes = FALSE,
       size = 5
     ) +
-    scale_color_manual(values = typology_colors) +
+    scale_fill_manual(values = typology_colors, drop = FALSE) +
+    scale_color_manual(values = typology_colors, drop = FALSE) +
     labs(
       title = title_lookup[[var]],
       y     = y_label_lookup[[var]],
@@ -1946,20 +1944,13 @@ for (var in names(title_lookup)) {
     theme_minimal(base_size = 12) +
     theme(
       legend.position = &quot;none&quot;,
-      axis.text.x  = element_text(size = 11, angle = 0, vjust = 0.5),
-      axis.title.x = element_text(size = 12),
-      axis.text.y  = element_text(size = 11),
+      axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
+      axis.text.y = element_text(size = 11),
       axis.title.y = element_text(size = 12),
-      plot.title   = element_text(size = 14)
-    ) +
-    theme(
-  axis.text.x = element_text(
-    angle = 45,
-    hjust = 1,
-    vjust = 1
-  )
-)
-
+      plot.title = element_text(size = 14)
+    )
+ p
+ 
   # ---- Save ---
   file_stub &lt;- paste0(&quot;Boxplot_&quot;, var, &quot;_by_Typology&quot;)
 
@@ -1976,96 +1967,81 @@ for (var in names(title_lookup)) {
 library(tidyr)
 library(ggplot2)
 
-# ------------------------------------------------------------------
-# 0. Typology colors
-# ------------------------------------------------------------------
-typology_colors &lt;- c(
-  &quot;Pooled Water&quot;          = &quot;#E69F00&quot;,
-  &quot;Baseline Tributaries&quot;  = &quot;#56B4E9&quot;,
-  &quot;Developed Tributaries&quot; = &quot;#D55E00&quot;,
-  &quot;Main Stem&quot;             = &quot;#999999&quot;
-)
-
 # 1. Make sure output folder exists
 out_dir &lt;- &quot;Plots by typology&quot;
 if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
 
-# 2. Put data into long format: one row = 1 observation of 1 variable
+# 2. Long format (DO NOT re-factor Typology)
 dat_long &lt;- dat %&gt;%
-  dplyr::select(Typology, all_of(names(title_lookup))) %&gt;%  
+  dplyr::select(Typology, all_of(names(title_lookup))) %&gt;%
   pivot_longer(
     cols      = -Typology,
     names_to  = &quot;Variable&quot;,
     values_to = &quot;Value&quot;
   ) %&gt;%
-  filter(!is.na(Value))
+  filter(!is.na(Value)) %&gt;%
+  mutate(
+    Variable = factor(Variable, levels = names(title_lookup))
+  )
 
-# 3. Prepare letters for all variables in one table ----
-
-# 3a. Get max y per Variable x Typology from the long data
+# 3a. Get max y per Variable x Typology
 y_pos_df &lt;- dat_long %&gt;%
   group_by(Variable, Typology) %&gt;%
   summarise(y_max = max(Value, na.rm = TRUE), .groups = &quot;drop&quot;)
 
-# 3b. Subset letters_df to only the variables you are plotting
-#     letters_df must have: Variable, Typology, Letters
+# 3b. Letters (DO NOT re-factor Typology)
 letters_long &lt;- letters_df %&gt;%
   filter(Variable %in% names(title_lookup)) %&gt;%
-  # join to get y_max for each Variable x Typology
+  mutate(
+    Variable = factor(Variable, levels = names(title_lookup))
+  ) %&gt;%
   left_join(y_pos_df, by = c(&quot;Variable&quot;, &quot;Typology&quot;)) %&gt;%
-  # position letters slightly above the max
   mutate(
     y_pos = y_max * 1.05
   )
 
-# 4. Facet labels using title_lookup
+# 4. Facet labels
 facet_labels &lt;- as_labeller(title_lookup)
 
-# 5. Build one faceted plot
-all_vars_panel &lt;- ggplot(dat_long, aes(
+# 5. Build plot (filled)
+all_vars_panel &lt;- ggplot(
+  dat_long,
+  aes(
     x     = Typology,
     y     = Value,
-    color = Typology
-  )) +
-  # Boxplots
-  geom_boxplot(fill = NA, width = 0.6) +
-  
-  # Jittered points
+    color = Typology,
+    fill  = Typology
+  )
+) +
+  geom_boxplot(
+    width = 0.6,
+    alpha = 0.35,
+    outlier.shape = NA
+  ) +
   geom_jitter(
     width = 0.15,
     size  = 1.5,
     alpha = 0.7
   ) +
-  
-  # Letters from Kruskal groups
   geom_text(
     data = letters_long,
-    aes(
-      x     = Typology,
-      y     = y_pos,
-      label = Letters
-    ),
+    aes(x = Typology, y = y_pos, label = Letters),
     inherit.aes = FALSE,
     size = 3
   ) +
-  
-  # Typology colors
-  scale_color_manual(values = typology_colors) +
-  
-  # Facet by Variable, with nice titles
+  scale_color_manual(values = typology_colors, drop = FALSE) +
+  scale_fill_manual(values = typology_colors, drop = FALSE) +
   facet_wrap(
     ~ Variable,
-    scales  = &quot;free_y&quot;,
-    ncol    = 3,
+    scales   = &quot;free_y&quot;,
+    ncol     = 3,
     labeller = facet_labels
   ) +
-  
   labs(
     title = &quot;BLM Predictors by Stream Typology&quot;,
     x     = &quot;Stream Typology&quot;,
-    y     = &quot;Log Concentration (µM)&quot;
+    y     = &quot;Log Concentration (uM)&quot;
   ) +
-  
   theme_minimal(base_size = 12) +
   theme(
     legend.position = &quot;none&quot;,
@@ -2074,16 +2050,7 @@ all_vars_panel &lt;- ggplot(dat_long, aes(
     plot.title   = element_text(size = 14)
   )
 
-# 6. Show in RStudio
 all_vars_panel</code></pre>
-<p>Save plot</p>
-<pre class="r"><code>ggsave(
-  filename = file.path(out_dir, &quot;All_BLM_predictors_square.png&quot;),
-  plot     = all_vars_panel,
-  width    = 9,
-  height   = 9,
-  dpi      = 300
-)</code></pre>
 </div>
 <div id="b.-trace-element-fractions" class="section level3">
 <h3>b. Trace element fractions</h3>
@@ -2130,22 +2097,22 @@ dat_long_trace &lt;- dat %&gt;%
   pivot_longer(
     cols      = -Typology,
     names_to  = &quot;Variable&quot;,
-    values_to = &quot;Value&quot;
+    values_to = &quot;Log10(Value)&quot;
   ) %&gt;%
-  filter(!is.na(Value)) %&gt;%
-  mutate(
+  dplyr::filter(!is.na(`Log10(Value)`)) %&gt;%   # &lt;-- backticks + no quotes
+  dplyr::mutate(
     Response = response_lookup[Variable],
     Response = factor(Response, levels = names(response_colors))
   )
 
 #-------------------------------------------------
-# 5. Letters (from letters_df) for all 6 variables
+# 5. Letters (from letters_df) for all variables
 #-------------------------------------------------
 
 # 5a. Max y per Variable x Typology
 y_pos_df &lt;- dat_long_trace %&gt;%
   group_by(Variable, Typology) %&gt;%
-  summarise(y_max = max(Value, na.rm = TRUE), .groups = &quot;drop&quot;)
+  summarise(y_max = max(`Log10(Value)`, na.rm = TRUE), .groups = &quot;drop&quot;)  # &lt;-- backticks
 
 # 5b. Attach Response + y positions + nudges to letters_df
 #     letters_df must have: Variable, Typology, Letters
@@ -2160,29 +2127,22 @@ letters_long_trace &lt;- letters_df %&gt;%
     by = c(&quot;Variable&quot;, &quot;Typology&quot;)
   ) %&gt;%
   mutate(
-    # add different nudge per facet
     y_pos = y_max + letter_nudge[as.character(Response)]
   )
 
 #-------------------------------------------------
 # 6. One faceted trace element panel (x = Typology)
 #-------------------------------------------------
-bioavail_panel &lt;- ggplot(dat_long_trace, aes(
+bioavail_panel &lt;- ggplot(
+  dat_long_trace,
+  aes(
     x     = Typology,
-    y     = Value,
+    y     = `Log10(Value)`,   # &lt;-- backticks + no quotes
     color = Response
-  )) +
-  # Boxplots
+  )
+) +
   geom_boxplot(fill = NA, width = 0.6) +
-  
-  # Jittered points
-  geom_jitter(
-    width = 0.15,
-    size  = 1,
-    alpha = 0.7
-  ) +
-  
-  # Letters from Kruskal groups
+  geom_jitter(width = 0.15, size = 1, alpha = 0.7) +
   geom_text(
     data = letters_long_trace,
     aes(
@@ -2193,22 +2153,13 @@ bioavail_panel &lt;- ggplot(dat_long_trace, aes(
     inherit.aes = FALSE,
     size = 3.5
   ) +
-  
-  # Colors by response (your palette)
   scale_color_manual(values = response_colors) +
-  
-  # One facet per response variable
-  facet_wrap(
-    ~ Response,
-    scales = &quot;free_y&quot;,
-    ncol   = 3
-  ) +
-  
+  facet_wrap(~ Response, scales = &quot;free_y&quot;, ncol = 3) +
   labs(
     title = &quot;Trace Elements by Stream Typology&quot;,
-    x     = &quot;Stream Typology&quot;
+    x     = &quot;Stream Typology&quot;,
+    y     = &quot;Log(Value)&quot;   
   ) +
-  
   theme_minimal(base_size = 12) +
   theme(
     legend.position = &quot;none&quot;,
@@ -2219,18 +2170,356 @@ bioavail_panel &lt;- ggplot(dat_long_trace, aes(
   )
 
 # View
-bioavail_panel</code></pre>
-<p>Save plot as a square</p>
-<pre class="r"><code>ggsave(
+bioavail_panel
+
+# Save
+ggsave(
   filename = file.path(&quot;Plots by typology&quot;, &quot;Trace_elements_panel_square.png&quot;),
   plot     = bioavail_panel,
   width    = 10,
+  height   = 4,
+  dpi      = 300
+)</code></pre>
+</div>
+<div id="c.-zn-complexes" class="section level3">
+<h3>c. Zn-complexes</h3>
+<pre class="r"><code>library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# ------------------------------------------------------------------
+# 1) Zn species variables you want in the panel
+# ------------------------------------------------------------------
+vars_spec &lt;- c(
+  &quot;log_ZnOH_uM&quot;,
+  &quot;log_Zn_OH_2_uM&quot;,
+  &quot;log_ZnCO3_uM&quot;,
+  &quot;log_ZnHCO3_uM&quot;,
+  &quot;log_ZnSO4_uM&quot;,
+  &quot;log_ZnCl_uM&quot;
+)
+
+# Facet titles
+title_lookup &lt;- c(
+  &quot;log_ZnOH_uM&quot;     = &quot;ZnOH&quot;,
+  &quot;log_Zn_OH_2_uM&quot;  = &quot;Zn(OH)2&quot;,
+  &quot;log_ZnCO3_uM&quot;    = &quot;ZnCO3&quot;,
+  &quot;log_ZnHCO3_uM&quot;   = &quot;ZnHCO3&quot;,
+  &quot;log_ZnSO4_uM&quot;    = &quot;ZnSO4&quot;,
+  &quot;log_ZnCl_uM&quot;     = &quot;ZnCl&quot;
+)
+
+facet_labels &lt;- as_labeller(title_lookup)
+
+# ------------------------------------------------------------------
+# 2) Long data (DO NOT re-factor Typology)
+# ------------------------------------------------------------------
+dat_long_spec &lt;- dat %&gt;%
+  dplyr::select(Typology, all_of(vars_spec)) %&gt;%
+  pivot_longer(
+    cols      = -Typology,
+    names_to  = &quot;Variable&quot;,
+    values_to = &quot;Value&quot;
+  ) %&gt;%
+  filter(!is.na(Value)) %&gt;%
+  mutate(
+    Variable = factor(Variable, levels = vars_spec)
+  )
+
+# ------------------------------------------------------------------
+# 3) Letters (Kruskal groups) + y positions
+#     letters_df must have: Variable, Typology, Letters
+#     (DO NOT re-factor Typology here either)
+# ------------------------------------------------------------------
+y_pos_df_spec &lt;- dat_long_spec %&gt;%
+  group_by(Variable, Typology) %&gt;%
+  summarise(y_max = max(Value, na.rm = TRUE), .groups = &quot;drop&quot;)
+
+letters_long_spec &lt;- letters_df %&gt;%
+  filter(Variable %in% vars_spec) %&gt;%
+  left_join(y_pos_df_spec, by = c(&quot;Variable&quot;, &quot;Typology&quot;)) %&gt;%
+  mutate(
+    y_pos = y_max + 0.05 * (abs(y_max) + 1)
+  )
+
+# ------------------------------------------------------------------
+# 4) Faceted panel (FILLED boxplot + jitter), colored by Typology
+# ------------------------------------------------------------------
+spec_panel &lt;- ggplot(dat_long_spec, aes(x = Typology, y = Value)) +
+  geom_boxplot(
+    aes(color = Typology, fill = Typology),
+    width = 0.6,
+    alpha = 0.35,
+    outlier.shape = NA
+  ) +
+  geom_jitter(
+    aes(color = Typology),
+    width = 0.15,
+    size  = 1.3,
+    alpha = 0.6
+  ) +
+  geom_text(
+    data = letters_long_spec,
+    aes(x = Typology, y = y_pos, label = Letters),
+    inherit.aes = FALSE,
+    size = 3
+  ) +
+  scale_fill_manual(values = typology_colors, drop = FALSE) +
+  scale_color_manual(values = typology_colors, drop = FALSE) +
+  facet_wrap(
+    ~ Variable,
+    scales   = &quot;free_y&quot;,
+    ncol     = 3,
+    labeller = facet_labels
+  ) +
+  labs(
+    title = &quot;Zn Species by Stream Typology&quot;,
+    x     = &quot;Stream Typology&quot;,
+    y     = &quot;Log Concentration (uM)&quot;
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = &quot;none&quot;,
+    axis.text.x  = element_text(size = 9, angle = 30, hjust = 1),
+    strip.text   = element_text(size = 11),
+    plot.title   = element_text(size = 14)
+  )
+
+spec_panel
+
+# Save
+ggsave(
+  filename = file.path(out_dir, &quot;Inorganic_Zn_complexes.png&quot;),
+  plot     = spec_panel,
+  width    = 9,
+  height   = 9,
+  dpi      = 300
+)</code></pre>
+</div>
+<div id="d.-organic-complexes" class="section level3">
+<h3>d. Organic complexes</h3>
+<pre class="r"><code>library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# ------------------------------------------------------------------
+# 1) Variables you want in the panel
+# ------------------------------------------------------------------
+vars_spec &lt;- c(
+  &quot;log_TOrg_Zn_nM&quot;,
+  &quot;log_TOrg_H_nM&quot;,
+  &quot;log_TOrg_Ca_nM&quot;,
+  &quot;log_TOrg_Mg_nM&quot;,
+  &quot;log_TOrg_Na_nM&quot;
+)
+
+title_lookup &lt;- c(
+  &quot;log_TOrg_Zn_nM&quot; = &quot;TOrg Zn&quot;,
+  &quot;log_TOrg_H_nM&quot;  = &quot;TOrg H&quot;,
+  &quot;log_TOrg_Ca_nM&quot; = &quot;TOrg Ca&quot;,
+  &quot;log_TOrg_Mg_nM&quot; = &quot;TOrg Mg&quot;,
+  &quot;log_TOrg_Na_nM&quot; = &quot;TOrg Na&quot;
+)
+
+facet_labels &lt;- as_labeller(title_lookup)
+
+# ------------------------------------------------------------------
+# 2) Long data (DO NOT re-factor Typology)
+# ------------------------------------------------------------------
+dat_long_spec &lt;- dat %&gt;%
+  dplyr::select(Typology, all_of(vars_spec)) %&gt;%
+  pivot_longer(
+    cols      = -Typology,
+    names_to  = &quot;Variable&quot;,
+    values_to = &quot;Value&quot;
+  ) %&gt;%
+  filter(!is.na(Value)) %&gt;%
+  mutate(
+    Variable = factor(Variable, levels = vars_spec)
+  )
+
+# ------------------------------------------------------------------
+# 3) Letters (Kruskal groups) + y positions
+#     letters_df must have: Variable, Typology, Letters
+#     (DO NOT re-factor Typology here either)
+# ------------------------------------------------------------------
+y_pos_df_spec &lt;- dat_long_spec %&gt;%
+  group_by(Variable, Typology) %&gt;%
+  summarise(y_max = max(Value, na.rm = TRUE), .groups = &quot;drop&quot;)
+
+letters_long_spec &lt;- letters_df %&gt;%
+  filter(Variable %in% vars_spec) %&gt;%
+  left_join(y_pos_df_spec, by = c(&quot;Variable&quot;, &quot;Typology&quot;)) %&gt;%
+  mutate(
+    y_pos = y_max + 0.05 * (abs(y_max) + 1)
+  )
+
+# ------------------------------------------------------------------
+# 4) Faceted panel (FILLED boxplot + jitter), colored by Typology
+# ------------------------------------------------------------------
+spec_panel2 &lt;- ggplot(dat_long_spec, aes(x = Typology, y = Value)) +
+  geom_boxplot(
+    aes(color = Typology, fill = Typology),
+    width = 0.6,
+    alpha = 0.35,
+    outlier.shape = NA
+  ) +
+  geom_jitter(
+    aes(color = Typology),
+    width = 0.15,
+    size  = 1.3,
+    alpha = 0.6
+  ) +
+  geom_text(
+    data = letters_long_spec,
+    aes(x = Typology, y = y_pos, label = Letters),
+    inherit.aes = FALSE,
+    size = 3
+  ) +
+  scale_fill_manual(values = typology_colors, drop = FALSE) +
+  scale_color_manual(values = typology_colors, drop = FALSE) +
+  facet_wrap(
+    ~ Variable,
+    scales   = &quot;free_y&quot;,
+    ncol     = 3,
+    labeller = facet_labels
+  ) +
+  labs(
+    title = &quot;Organic Complexes by Stream Typology&quot;,
+    x     = &quot;Stream Typology&quot;,
+    y     = &quot;Log Concentration (nM)&quot;
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = &quot;none&quot;,
+    axis.text.x  = element_text(size = 9, angle = 30, hjust = 1),
+    strip.text   = element_text(size = 11),
+    plot.title   = element_text(size = 14)
+  )
+
+spec_panel2
+
+# Save
+ggsave(
+  filename = file.path(out_dir, &quot;Organic_Complexes.png&quot;),
+  plot     = spec_panel2,
+  width    = 9,
   height   = 6,
   dpi      = 300
 )</code></pre>
 </div>
-<div id="e.-toxicity" class="section level3">
-<h3>e. Toxicity</h3>
+<div id="e.-bl-bound-cations" class="section level3">
+<h3>e. BL-bound cations</h3>
+<pre class="r"><code>library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# ------------------------------------------------------------------
+# 1) Variables you want in the panel
+# ------------------------------------------------------------------
+vars_spec &lt;- c(
+  &quot;log_BL_Ca_nmol_g&quot;,
+  &quot;log_BL_H_nmol_g&quot;,
+  &quot;log_BL_Mg_nmol_g&quot;,
+  &quot;log_BL_Na_nmol_g&quot;
+)
+
+title_lookup &lt;- c(
+  &quot;log_BL_Ca_nmol_g&quot; = &quot;BL-Ca&quot;,
+  &quot;log_BL_H_nmol_g&quot;  = &quot;BL-H&quot;,
+  &quot;log_BL_Mg_nmol_g&quot; = &quot;BL-Mg&quot;,
+  &quot;log_BL_Na_nmol_g&quot; = &quot;BL-Na&quot;
+)
+
+facet_labels &lt;- as_labeller(title_lookup)
+
+# ------------------------------------------------------------------
+# 2) Long data (DO NOT re-factor Typology)
+# ------------------------------------------------------------------
+dat_long_spec &lt;- dat %&gt;%
+  dplyr::select(Typology, all_of(vars_spec)) %&gt;%
+  pivot_longer(
+    cols      = -Typology,
+    names_to  = &quot;Variable&quot;,
+    values_to = &quot;Value&quot;
+  ) %&gt;%
+  filter(!is.na(Value)) %&gt;%
+  mutate(
+    Variable = factor(Variable, levels = vars_spec)
+  )
+
+# ------------------------------------------------------------------
+# 3) Letters (Kruskal groups) + y positions
+#     letters_df must have: Variable, Typology, Letters
+#     (DO NOT re-factor Typology here either)
+# ------------------------------------------------------------------
+y_pos_df_spec &lt;- dat_long_spec %&gt;%
+  group_by(Variable, Typology) %&gt;%
+  summarise(y_max = max(Value, na.rm = TRUE), .groups = &quot;drop&quot;)
+
+letters_long_spec &lt;- letters_df %&gt;%
+  filter(Variable %in% vars_spec) %&gt;%
+  left_join(y_pos_df_spec, by = c(&quot;Variable&quot;, &quot;Typology&quot;)) %&gt;%
+  mutate(
+    y_pos = y_max + 0.05 * (abs(y_max) + 1)
+  )
+
+# ------------------------------------------------------------------
+# 4) Faceted panel (FILLED boxplot + jitter), colored by Typology
+# ------------------------------------------------------------------
+spec_panel3 &lt;- ggplot(dat_long_spec, aes(x = Typology, y = Value)) +
+  geom_boxplot(
+    aes(color = Typology, fill = Typology),
+    width = 0.6,
+    alpha = 0.35,
+    outlier.shape = NA
+  ) +
+  geom_jitter(
+    aes(color = Typology),
+    width = 0.15,
+    size  = 1.3,
+    alpha = 0.6
+  ) +
+  geom_text(
+    data = letters_long_spec,
+    aes(x = Typology, y = y_pos, label = Letters),
+    inherit.aes = FALSE,
+    size = 3
+  ) +
+  scale_fill_manual(values = typology_colors, drop = FALSE) +
+  scale_color_manual(values = typology_colors, drop = FALSE) +
+  facet_wrap(
+    ~ Variable,
+    scales   = &quot;free_y&quot;,
+    ncol     = 2,
+    labeller = facet_labels
+  ) +
+  labs(
+    title = &quot;Biotic Ligand-Bound Cations by Stream Typology&quot;,
+    x     = &quot;Stream Typology&quot;,
+    y     = &quot;Log Concentration (nmol/g)&quot;
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = &quot;none&quot;,
+    axis.text.x  = element_text(size = 9, angle = 30, hjust = 1),
+    strip.text   = element_text(size = 11),
+    plot.title   = element_text(size = 14)
+  )
+
+spec_panel3
+
+# Save
+ggsave(
+  filename = file.path(out_dir, &quot;BL_cations.png&quot;),
+  plot     = spec_panel3,
+  width    = 9,
+  height   = 6,
+  dpi      = 300
+)</code></pre>
+</div>
+<div id="f.-toxicity" class="section level3">
+<h3>f. Toxicity</h3>
 <p>Zinc toxicity to daphnia</p>
 <pre class="r"><code>library(dplyr)
 library(ggplot2)
@@ -2334,14 +2623,14 @@ overlap_Zn_by_typology &lt;- dat %&gt;%
 # View results
 overlap_Zn_by_typology</code></pre>
 <pre><code>## # A tibble: 4 × 2
-##   Typology              Overlap_Daphnia
-##   &lt;fct&gt;                           &lt;dbl&gt;
-## 1 Pooled Water                        0
-## 2 Baseline Tributaries                0
-## 3 Developed Tributaries               0
-## 4 Main Stem                           0</code></pre>
-<p>Save</p>
-<pre class="r"><code>library(openxlsx)
+##   Typology                  Overlap_Daphnia
+##   &lt;fct&gt;                               &lt;dbl&gt;
+## 1 Non-Perennial Tribs                     0
+## 2 Perennial Tribs                         0
+## 3 Perennial Developed Tribs               0
+## 4 Main Stem                               0</code></pre>
+<pre class="r"><code># Save
+library(openxlsx)
 
 write.xlsx(
   overlap_Zn_by_typology,
@@ -2351,190 +2640,348 @@ write.xlsx(
 </div>
 </div>
 </div>
-<div id="variables-by-site-within-typology" class="section level1">
-<h1>Variables by Site within Typology</h1>
-<div id="main-stem" class="section level2">
-<h2><strong>1. Main Stem</strong></h2>
-<pre class="r"><code># Isolate Main Stem typology and order the sites
-main_stem &lt;- dat %&gt;%
-  filter(Typology == &quot;Main Stem&quot;) %&gt;%
-  mutate(Site = factor(Site, 
-                       levels = unique(Site[order(Dist_from_EFPC_km)])))
-
-
-# Plot by site
+<div id="bioavailability-by-site-within-network" class="section level1">
+<h1>Bioavailability by Site within Network</h1>
+<pre class="r"><code>library(dplyr)
 library(ggplot2)
 
-main_stem_plot &lt;- ggplot(
-  main_stem,
+#-------------------------------------------------
+# 1) Prep all sites + order by elevation
+#-------------------------------------------------
+all_sites &lt;- dat %&gt;%
+  mutate(
+    Network = factor(Network)
+  ) %&gt;%
+  group_by(Site) %&gt;%
+  mutate(site_elev = median(Relative_elevation_m, na.rm = TRUE)) %&gt;%
+  ungroup() %&gt;%
+  mutate(
+    Site = factor(Site, levels = unique(Site[order(site_elev)]))
+  )
+
+#-------------------------------------------------
+# 2) Plot (NO typology coloring)
+#-------------------------------------------------
+sites_by_network &lt;- ggplot(
+  all_sites,
   aes(x = Site, y = log_TBL_Zn_nmol_g)
 ) +
   geom_boxplot(
-    fill = &quot;darkslategray1&quot;,    
-    color = &quot;black&quot;,             
-    position = position_dodge(width = 0.75)
+    fill = &quot;grey70&quot;,      # single neutral fill
+    color = &quot;black&quot;,
+    outlier.alpha = 0.6
   ) +
+  facet_grid(~Network, scales = &quot;free_x&quot;, space = &quot;free_x&quot;, switch = &quot;x&quot;) +
   labs(
-    title = &quot;Bioavailable Zn in Main Stem&quot;,
-    x = &quot;Site (upstream to downstream)&quot;,
-    y = &quot;Log TBL Zn (umol/g wet weight)&quot;
+    title = &quot;Bioavailable Zn Across All Sites&quot;,
+    x = &quot;Site (ordered by relative elevation)&quot;,
+    y = &quot;Log TBL Zn (nmol/g wet weight)&quot;
   ) +
   theme_test() +
   theme(
     axis.text.x = element_text(angle = 30, hjust = 1),
-    plot.title = element_text(hjust = 0.5, face = &quot;bold&quot;),
-    legend.position = &quot;none&quot;
+    plot.title  = element_text(hjust = 0.5, face = &quot;bold&quot;)
   )
 
+# View
+sites_by_network
+
+#-------------------------------------------------
+# 3) Save
+#-------------------------------------------------
+out_dir &lt;- &quot;Plots by site within typology&quot;
+if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+
+ggsave(
+  filename = file.path(out_dir, &quot;Sites_by_network.png&quot;),
+  plot     = sites_by_network,
+  width    = 20,
+  height   = 6,
+  dpi      = 300
+)</code></pre>
+<p>With mean by Network</p>
+<pre class="r"><code>library(dplyr)
+library(ggplot2)
+
+#-------------------------------------------------
+# 1) Prep all sites + order by elevation
+#-------------------------------------------------
+all_sites &lt;- dat %&gt;%
+  mutate(
+    Network = factor(Network)
+  ) %&gt;%
+  group_by(Site) %&gt;%
+  mutate(site_elev = median(Relative_elevation_m, na.rm = TRUE)) %&gt;%
+  ungroup() %&gt;%
+  mutate(
+    Site = factor(Site, levels = unique(Site[order(site_elev)]))
+  )
+
+#-------------------------------------------------
+# 2) Calculate mean by Network
+#-------------------------------------------------
+network_means &lt;- all_sites %&gt;%
+  group_by(Network) %&gt;%
+  summarise(
+    mean_value = mean(log_TBL_Zn_nmol_g, na.rm = TRUE),
+    .groups = &quot;drop&quot;
+  )
+
+#-------------------------------------------------
+# 3) Plot
+#-------------------------------------------------
+sites_by_network &lt;- ggplot(
+  all_sites,
+  aes(x = Site, y = log_TBL_Zn_nmol_g)
+) +
+  geom_boxplot(
+    fill = &quot;grey70&quot;,
+    color = &quot;black&quot;,
+    outlier.alpha = 0.6
+  ) +
+  
+  # Add horizontal mean line per Network
+  geom_hline(
+    data = network_means,
+    aes(yintercept = mean_value),
+    linetype = &quot;dashed&quot;,
+    linewidth = 1,
+    color = &quot;red&quot;
+  ) +
+  
+  facet_grid(~Network, scales = &quot;free_x&quot;, space = &quot;free_x&quot;, switch = &quot;x&quot;) +
+  labs(
+    title = &quot;Bioavailable Zn Across All Sites&quot;,
+    x = &quot;Site (ordered by relative elevation)&quot;,
+    y = &quot;Log TBL Zn (nmol/g wet weight)&quot;
+  ) +
+  theme_test() +
+  theme(
+    axis.text.x = element_text(angle = 30, hjust = 1),
+    plot.title  = element_text(hjust = 0.5, face = &quot;bold&quot;)
+  )
 
 # View
-main_stem_plot
+sites_by_network
+
+# Save
+out_dir &lt;- &quot;Plots by site within typology&quot;
+if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+
+ggsave(
+  filename = file.path(out_dir, &quot;Sites_by_network_with_mean.png&quot;),
+  plot     = sites_by_network,
+  width    = 20,
+  height   = 6,
+  dpi      = 300
+)</code></pre>
+<p>Colored by typology</p>
+<pre class="r"><code>library(dplyr)
+library(ggplot2)
+
+#-------------------------------------------------
+# 1) Prep all sites + order by elevation
+#-------------------------------------------------
+all_sites &lt;- dat %&gt;%
+  mutate(
+    Typology = factor(Typology),
+    Network  = factor(Network)
+  ) %&gt;%
+  group_by(Site) %&gt;%
+  mutate(site_elev = median(Relative_elevation_m, na.rm = TRUE)) %&gt;%
+  ungroup() %&gt;%
+  mutate(
+    Site = factor(Site, levels = unique(Site[order(site_elev)]))
+  )
+
+#-------------------------------------------------
+# 2) Plot
+#-------------------------------------------------
+sites_by_network_typology &lt;- ggplot(
+  all_sites,
+  aes(x = Site, y = log_TBL_Zn_nmol_g, fill = Typology)
+) +
+  geom_boxplot(color = &quot;black&quot;, outlier.alpha = 0.6) +
+  facet_grid(~Network, scales = &quot;free_x&quot;, space = &quot;free_x&quot;, switch = &quot;x&quot;) +
+  scale_fill_manual(values = typology_colors, drop = FALSE) +
+  labs(
+    title = &quot;Bioavailable Zn Across All Sites&quot;,
+    x = &quot;Site (ordered by relative elevation)&quot;,
+    y = &quot;Log TBL Zn (nmol/g wet weight)&quot;,
+    fill = &quot;Typology&quot;
+  ) +
+  theme_test() +
+  theme(
+    axis.text.x = element_text(angle = 30, hjust = 1),
+    plot.title  = element_text(hjust = 0.5, face = &quot;bold&quot;)
+  )
+
+# View
+sites_by_network_typology
 
 # Save 
-out_dir &lt;- &quot;Plots by site within typology&quot;
-# Create directory if it does not exist
-if (!dir.exists(out_dir)) {
-  dir.create(out_dir, recursive = TRUE)
-}
-
 ggsave(
-  filename = file.path(out_dir, &quot;Bioavailability_main_stem.png&quot;),
-  plot     = main_stem_plot,
-  width    = 10,
+  filename = file.path(out_dir, &quot;Sites_by_network_typology.png&quot;),
+  plot     = sites_by_network_typology,
+  width    = 20,
   height   = 6,
   dpi      = 300
 )</code></pre>
-</div>
-<div id="baseline-tribs" class="section level2">
-<h2><strong>2. Baseline Tribs</strong></h2>
-<pre class="r"><code># Isolate Flowing Tribs typology and order the sites
-f_tribs &lt;- dat %&gt;%
-  filter(Typology == &quot;Baseline Tributaries&quot;) %&gt;%
-  mutate(Site = factor(Site, 
-                       levels = unique(Site[order(Dist_from_EFPC_km)])))
-
-
-# Plot by site colored by Network
-library(ggplot2)
-
-# Zinc
-baseline_trib &lt;- 
-  ggplot(f_tribs, aes(x = Site, y = log_TBL_Zn_nmol_g, fill = Network)) +
-  geom_boxplot(color = &quot;black&quot;, position = position_dodge(width = 0.75)) +
-  labs(
-    title = &quot;Bioavailable Zn in Flowing Tributaries&quot;,
-    x = &quot;Site (grouped by network)&quot;,
-    y = &quot; Log TBL Zn (umol/g wet weight)&quot;
-  ) +
-  theme_test() +
-  theme(
-    axis.text.x = element_text(angle = 30, hjust = 1),
-    legend.position = &quot;none&quot;,
-    plot.title = element_text(hjust = 0.5, face = &quot;bold&quot;)
-  ) +
-
-  # Add vertical dividers between networks
-  facet_grid(~Network, scales = &quot;free_x&quot;, space = &quot;free_x&quot;, switch = &quot;x&quot;)
-
-# View 
-baseline_trib
-
-# Save
-ggsave(
-  filename = file.path(out_dir, &quot;Bioavailability_baseline_tribs.png&quot;),
-  plot     = baseline_trib,
-  width    = 10,
-  height   = 6,
-  dpi      = 300
-)</code></pre>
-</div>
-<div id="pooled-water" class="section level2">
-<h2>3. Pooled Water</h2>
+<p>Colored by typology and mean by Network and Typology</p>
 <pre class="r"><code>library(dplyr)
 library(ggplot2)
 
-# 1. Isolate Non-Perennial Pooled Tribs typology and order the sites
-pooled_tribs &lt;- dat %&gt;%
-  filter(Typology == &quot;Pooled Water&quot;) %&gt;%
+#-------------------------------------------------
+# 1) Prep all sites + order by elevation
+#-------------------------------------------------
+all_sites &lt;- dat %&gt;%
   mutate(
-    Site = factor(
-      Site,
-      levels = unique(Site[order(Dist_from_EFPC_km)])
-    )
+    Typology = factor(Typology),
+    Network  = factor(Network)
+  ) %&gt;%
+  group_by(Site) %&gt;%
+  mutate(site_elev = median(Relative_elevation_m, na.rm = TRUE)) %&gt;%
+  ungroup() %&gt;%
+  mutate(
+    Site = factor(Site, levels = unique(Site[order(site_elev)]))
   )
 
-pooled_tribs_plot &lt;- 
-  ggplot(pooled_tribs, aes(x = Site, y = log_TBL_Zn_nmol_g, fill = Network)) +
-  geom_boxplot(color = &quot;black&quot;, position = position_dodge(width = 0.75)) +
-  labs(
-    title = &quot;Bioavailable Zn in Non-Perennial Pooled Tributaries&quot;,
-    x = &quot;Site (grouped by network)&quot;,
-    y = &quot;Log TBL Zn (umol/g wet weight)&quot;
+#-------------------------------------------------
+# 2) Compute Means
+#-------------------------------------------------
+
+# Mean by Network (one per facet)
+network_means &lt;- all_sites %&gt;%
+  group_by(Network) %&gt;%
+  summarise(
+    mean_network = mean(log_TBL_Zn_nmol_g, na.rm = TRUE),
+    .groups = &quot;drop&quot;
+  )
+
+# Mean by Typology within each Network
+typology_means &lt;- all_sites %&gt;%
+  group_by(Network, Typology) %&gt;%
+  summarise(
+    mean_typology = mean(log_TBL_Zn_nmol_g, na.rm = TRUE),
+    .groups = &quot;drop&quot;
+  )
+
+#-------------------------------------------------
+# 3) Plot
+#-------------------------------------------------
+sites_by_network_typology &lt;- ggplot(
+  all_sites,
+  aes(x = Site, y = log_TBL_Zn_nmol_g, fill = Typology)
+) +
+  geom_boxplot(color = &quot;black&quot;, outlier.alpha = 0.6) +
+
+  # Red dashed line = Network mean
+  geom_hline(
+    data = network_means,
+    aes(yintercept = mean_network),
+    color = &quot;red&quot;,
+    linetype = &quot;dashed&quot;,
+    linewidth = 1.2
   ) +
+
+  # Colored dotted lines = Typology means
+  geom_hline(
+    data = typology_means,
+    aes(yintercept = mean_typology, color = Typology),
+    linetype = &quot;dotted&quot;,
+    linewidth = 1
+  ) +
+
+  facet_grid(~Network, scales = &quot;free_x&quot;, space = &quot;free_x&quot;, switch = &quot;x&quot;) +
+
+  scale_fill_manual(values = typology_colors, drop = FALSE) +
+  scale_color_manual(values = typology_colors, drop = FALSE) +
+
+  labs(
+    title = &quot;Bioavailable Zn Across All Sites&quot;,
+    x = &quot;Site (ordered by relative elevation)&quot;,
+    y = &quot;Log TBL Zn (nmol/g wet weight)&quot;,
+    fill = &quot;Typology&quot;
+  ) +
+
   theme_test() +
   theme(
     axis.text.x = element_text(angle = 30, hjust = 1),
-    legend.position = &quot;none&quot;,
-    plot.title = element_text(hjust = 0.5, face = &quot;bold&quot;)
-  ) +
-  facet_grid(~Network, scales = &quot;free_x&quot;, space = &quot;free_x&quot;, switch = &quot;x&quot;)
+    plot.title  = element_text(hjust = 0.5, face = &quot;bold&quot;),
+    legend.position = &quot;right&quot;
+  )
 
 # View
-pooled_tribs_plot
+sites_by_network_typology
 
-# Save
+# Save 
 ggsave(
-  filename = file.path(out_dir, &quot;Bioavailability_pooled_water.png&quot;),
-  plot     = pooled_tribs_plot,
-  width    = 10,
+  filename = file.path(out_dir, &quot;Sites_by_network_typology_means.png&quot;),
+  plot     = sites_by_network_typology,
+  width    = 20,
   height   = 6,
   dpi      = 300
 )</code></pre>
-</div>
-<div id="perennial-developed-tribs" class="section level2">
-<h2>4. Perennial Developed Tribs</h2>
+<p>Table</p>
 <pre class="r"><code>library(dplyr)
-library(ggplot2)
+library(tidyr)
 
-# Isolate Developed Tribs typology and order sites
-d_tribs &lt;- dat %&gt;%
-  filter(Typology == &quot;Developed Tributaries&quot;) %&gt;%
+# Count observations per Site × Typology
+site_typology_counts &lt;- dat %&gt;%
+  group_by(Network, Site, Typology) %&gt;%
+  summarise(n_obs = n(), .groups = &quot;drop&quot;)
+
+# Determine dominant Typology per Site
+site_dominant &lt;- site_typology_counts %&gt;%
+  group_by(Network, Site) %&gt;%
+  slice_max(order_by = n_obs, n = 1, with_ties = FALSE) %&gt;%
+  rename(Dominant_Typology = Typology,
+         Dominant_n = n_obs) %&gt;%
+  ungroup()
+
+# Join back for full site-level table
+site_summary_table &lt;- site_typology_counts %&gt;%
+  left_join(site_dominant %&gt;%
+              dplyr::select(Network, Site, Dominant_Typology),
+            by = c(&quot;Network&quot;, &quot;Site&quot;)) %&gt;%
+  arrange(Network, Site, desc(n_obs))
+
+# Merged table
+nested_table &lt;- site_summary_table %&gt;%
+  group_by(Network, Site) %&gt;%
+  summarise(
+    Typologies_Observed = paste0(Typology, &quot; (n=&quot;, n_obs, &quot;)&quot;, collapse = &quot;; &quot;),
+    Dominant_Typology   = first(Dominant_Typology),
+    .groups = &quot;drop&quot;
+  ) %&gt;%
   mutate(
-    Site = factor(
-      Site,
-      levels = unique(Site[order(Dist_from_EFPC_km)])
-    )
-  )
+    Dominant_Typology = factor(Dominant_Typology)
+  ) %&gt;%
+  arrange(Dominant_Typology, Network, Site)
 
-d_tribs_plot &lt;- 
-  ggplot(d_tribs, aes(x = Site, y = log_TBL_Zn_nmol_g, fill = Network)) +
-  geom_boxplot(color = &quot;black&quot;, position = position_dodge(width = 0.75)) +
-  labs(
-    title = &quot;Bioavailable Zn in Developed Tributaries&quot;,
-    x = &quot;Site (grouped by network)&quot;,
-    y = &quot;Log TBL Zn (umol/g wet weight)&quot;
-  ) +
-  theme_test() +
-  theme(
-    axis.text.x = element_text(angle = 30, hjust = 1),
-    legend.position = &quot;none&quot;,
-    plot.title = element_text(hjust = 0.5, face = &quot;bold&quot;)
-  ) +
-  facet_grid(~Network, scales = &quot;free_x&quot;, space = &quot;free_x&quot;, switch = &quot;x&quot;)
+nested_table</code></pre>
+<pre><code>## # A tibble: 46 × 4
+##    Network Site   Typologies_Observed                          Dominant_Typology
+##    &lt;chr&gt;   &lt;chr&gt;  &lt;chr&gt;                                        &lt;fct&gt;            
+##  1 BSL     BSL7   Non-Perennial Tribs (n=1)                    Non-Perennial Tr…
+##  2 BSL     BSL8   Non-Perennial Tribs (n=1)                    Non-Perennial Tr…
+##  3 MCA     MCA3.2 Non-Perennial Tribs (n=5)                    Non-Perennial Tr…
+##  4 MCA     MCA3.3 Non-Perennial Tribs (n=4)                    Non-Perennial Tr…
+##  5 MTN     MTN2   Non-Perennial Tribs (n=2)                    Non-Perennial Tr…
+##  6 NBO     NBO3   Non-Perennial Tribs (n=4); Perennial Tribs … Non-Perennial Tr…
+##  7 BSL     BSL4.1 Perennial Tribs (n=4); Main Stem (n=2); Per… Perennial Tribs  
+##  8 BSL     BSL4.2 Perennial Tribs (n=4)                        Perennial Tribs  
+##  9 BSL     BSL4.3 Perennial Tribs (n=3); Main Stem (n=1)       Perennial Tribs  
+## 10 BSL     BSL5.1 Perennial Tribs (n=1)                        Perennial Tribs  
+## # ℹ 36 more rows</code></pre>
+<pre class="r"><code># Save
+library(openxlsx)
 
-
-# View
-d_tribs_plot
-
-# Save
-ggsave(
-  filename = file.path(out_dir, &quot;Bioavailability_developed_tribs.png&quot;),
-  plot     = d_tribs_plot,
-  width    = 10,
-  height   = 6,
-  dpi      = 300
+write.xlsx(
+  nested_table,
+  file = file.path(out_dir, &quot;Sites_by_network_typology.xlsx&quot;),
+  overwrite = TRUE
 )</code></pre>
-</div>
 </div>
 
 

@@ -1,5 +1,6 @@
 ---
 title: "Exploratory Data Analysis Zn BLM"
+author: "Cecilia Albert-Black"
 output:
   html_document:
     df_print: paged

@@ -27,7 +27,7 @@ Upload Bioavailability_Master_Spreadsheet.xlsx
 library(readxl) 
 
 dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/2. Dataset merging/Bioavailability_Master_Spreadsheet.xlsx", 
-    sheet = "HA 10% Closed System")
+    sheet = "HA 10% Open System")
 
 str(dat)
 ```
@@ -308,7 +308,7 @@ Save to excel as a clean version of the Bioavailability Master Spreadsheet
 library(openxlsx)
 
 file_path  <- "Bioavailability_Master_Spreadsheet_Clean.xlsx"
-sheet_name <- "HA 10% Closed System"
+sheet_name <- "HA 10% Open System"
 
 # ---------------------------------------------------------
 # Create workbook if it doesn't exist, otherwise load it

@@ -15,7 +15,7 @@ Variables selected: sample ID, site, date, inherent characteristics, developed l
 
 2.  **WaDE Synoptic Survey dataset** (WaDE_Synoptic_Summary.xlsx, "SITE INFO" tab)
 
-Variables selected: network, regime, elevation, upstream distance from main stem, drainage area, developed land cover by site
+Variables selected: network, regime, upstream distance from main stem, relative elevation, and developed land cover by site
 
 3.  **BLM Speciation Mode** (Zn_Speciation.det.xlsx)
 
@@ -28,7 +28,7 @@ Variable selected: total Zn concentration to cause certain type of toxicity to t
 ## Set the working directory
 
 ```{r}
-setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Zinc/2. Dataset merging")
+setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/2. Dataset merging")
 ```
 
 # HA 10% Closed System
@@ -38,7 +38,7 @@ setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailab
 ```{r}
 library(readxl)
 
-WaDE_Synoptic_Summary_Clean <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/WaDE Dataset Cleaning/WaDE_Synoptic_Summary_Clean.xlsx")
+WaDE_Synoptic_Summary_Clean <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/WaDE Dataset Cleaning/WaDE_Synoptic_Summary_Clean.xlsx")
 
 head(WaDE_Synoptic_Summary_Clean)
 ```
@@ -86,7 +86,7 @@ Import the original (pre-cleaning) WaDE Synoptic Survey dataset "SITE_INFO" tab 
 ```{r}
 library(readxl)
 
-WaDE_Site_Info <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/WaDE Dataset Cleaning/WaDE_Synoptic_Summary.xlsx", 
+WaDE_Site_Info <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/WaDE Dataset Cleaning/WaDE_Synoptic_Summary.xlsx", 
     sheet = "SITE INFO")
 
 head(WaDE_Site_Info)
@@ -98,7 +98,7 @@ Inspect the structure
 str(WaDE_Site_Info)
 ```
 
-From WaDE_Site_Info we'll select network, regime, elevation, upstream distance from main stem, drainage area, developed land cover by site and apply it to all samples by site
+From WaDE_Site_Info we'll select network, regime, relative elevation, upstream distance from main stem, and developed land cover by site and apply it to all samples by site
 
 ```{r}
 library(dplyr)
@@ -108,23 +108,27 @@ bio_ms <- bio_ms %>%
     WaDE_Site_Info %>%
       rename(
         Relative_elevation_m = `Relative elevation from main stem (m)`,
+        Upstream_from_main_stem_km = `Upstream of EFK_KM`,
         Developed_lulc       = `lulc_developed_%`
       ) %>%
       dplyr::select(
         Site,
         Network,
         Relative_elevation_m,
+        Upstream_from_main_stem_km,
         Developed_lulc
       ),
     by = "Site"
   ) %>%
   mutate(
     Relative_elevation_m = as.numeric(Relative_elevation_m),
-    Developed_lulc       = as.numeric(Developed_lulc)
+    Developed_lulc       = as.numeric(Developed_lulc),
+    Upstream_from_main_stem_km = as.numeric(Upstream_from_main_stem_km)
   ) %>%
    relocate(
     Network,
     Relative_elevation_m,
+    Upstream_from_main_stem_km,
     Developed_lulc,
     .after = Flow_state
   )
@@ -148,7 +152,7 @@ Import dataset
 ```{r}
 library(readxl)
 
-Zn_Speciation_ha10_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Zinc/1. Running BLM/Data outputs/Speciation Mode/Zn_speciation_ha10_cs.det.xlsx")
+Zn_Speciation_ha10_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/1. Running BLM/Data outputs/Speciation Mode/Zn_speciation_ha10_cs.det.xlsx")
 
 head(Zn_Speciation_ha10_cs)
 ```
@@ -327,7 +331,7 @@ Import the Zn Toxicity on C. dubia.det.xlsx
 ```{r}
 library(readxl)
 
-Zn_Toxicity_on_C_dubia_ha10_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Zinc/1. Running BLM/Data outputs/Toxicity Mode/Zn_toxicity_ha10_cs.det.xlsx")
+Zn_Toxicity_on_C_dubia_ha10_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/1. Running BLM/Data outputs/Toxicity Mode/Zn_toxicity_ha10_cs.det.xlsx")
 
 head(Zn_Toxicity_on_C_dubia_ha10_cs)
 ```
@@ -458,7 +462,7 @@ Import dataset
 ```{r}
 library(readxl)
 
-Zn_Speciation_ha10_os <-  read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Zinc/1. Running BLM/Data outputs/Speciation Mode/Zn_speciation_ha10_os.det.xlsx")
+Zn_Speciation_ha10_os <-  read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/1. Running BLM/Data outputs/Speciation Mode/Zn_speciation_ha10_os.det.xlsx")
 
 head(Zn_Speciation_ha10_os)
 ```
@@ -637,7 +641,7 @@ Import the Zn Toxicity on C. dubia.det.xlsx
 ```{r}
 library(readxl)
 
-Zn_Toxicity_on_C_dubia_ha10_os <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Zinc/1. Running BLM/Data outputs/Toxicity Mode/Zn_toxicity_ha10_os.det.xlsx")
+Zn_Toxicity_on_C_dubia_ha10_os <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/1. Running BLM/Data outputs/Toxicity Mode/Zn_toxicity_ha10_os.det.xlsx")
 
 head(Zn_Toxicity_on_C_dubia_ha10_os)
 ```
@@ -768,7 +772,7 @@ Import dataset
 ```{r}
 library(readxl)
 
-Zn_Speciation_ha80_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Zinc/1. Running BLM/Data outputs/Speciation Mode/Zn_speciation_ha80_cs.det.xlsx")
+Zn_Speciation_ha80_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/1. Running BLM/Data outputs/Speciation Mode/Zn_speciation_ha80_cs.det.xlsx")
 
 head(Zn_Speciation_ha80_cs)
 ```
@@ -947,7 +951,7 @@ Import the Zn Toxicity on C. dubia.det.xlsx
 ```{r}
 library(readxl)
 
-Zn_Toxicity_on_C_dubia_ha80_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Zinc/1. Running BLM/Data outputs/Toxicity Mode/Zn_toxicity_ha80_cs.det.xlsx")
+Zn_Toxicity_on_C_dubia_ha80_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/1. Running BLM/Data outputs/Toxicity Mode/Zn_toxicity_ha80_cs.det.xlsx")
 
 head(Zn_Toxicity_on_C_dubia_ha80_cs)
 ```

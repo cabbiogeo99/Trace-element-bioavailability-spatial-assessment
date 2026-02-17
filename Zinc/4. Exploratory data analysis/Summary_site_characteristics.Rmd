@@ -13,7 +13,7 @@ The objectives of this notebook will be to conduct exploratory data analyses on 
 Set the working directory
 
 ```{r}
-setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Zinc/4. Exploratory data analysis")
+setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/4. Exploratory data analysis")
 ```
 
 Upload the Bioavailability Master Spreadsheet dataset
@@ -25,10 +25,10 @@ dat <- read_excel("Bioavailability_Master_Spreadsheet_Clean2.xlsx",
     sheet = "HA 10% Closed System")
 
 # Preview
-head(dat)
+str(dat)
 ```
 
-# Site Characteristics
+# Categorical Site Characteristics
 
 Nested
 
@@ -42,6 +42,7 @@ sites_by_characteristics <- dat %>%
     Site,
     Type,
     Regime,
+    Flow_state,
     Development
   ) %>%
   
@@ -50,8 +51,9 @@ sites_by_characteristics <- dat %>%
   
   # Group by inherent characteristics
   group_by(
-    Type,
+   Type,
     Regime,
+    Flow_state,
     Development
   ) %>%
   
