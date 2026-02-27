@@ -36,14 +36,14 @@ library(readxl)
 # -------------------------------------------------
 # 1) Set working directory
 # -------------------------------------------------
-setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Copper/6. Sensitivity analyses")
+setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/6. Sensitivity analyses")
 
 # -------------------------------------------------
 # 2) Store file paths once (so you don't repeat them)
 # -------------------------------------------------
-file_master3 <- "C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Copper/5. Statistical data analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx"
+file_master3 <- "C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/5. Statistical data analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx"
 
-file_master2 <- "C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Copper/4. Exploratory data analysis/Bioavailability_Master_Spreadsheet_Clean2.xlsx"
+file_master2 <- "C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/4. Exploratory data analysis/Bioavailability_Master_Spreadsheet_Clean2.xlsx"
 ```
 
 Now we'll read each file and create the following scenarios as their own objects

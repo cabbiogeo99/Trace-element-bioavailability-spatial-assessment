@@ -503,46 +503,40 @@ str(dat$cluster)</code></pre>
 <pre class="r"><code>library(factoextra)</code></pre>
 <pre><code>## Welcome! Want to learn more? See two factoextra-related books at https://goo.gl/ve3WBa</code></pre>
 <pre class="r"><code>library(ggplot2)
+library(dplyr)
 
+#-------------------------------------------------
+# 0) Force cluster order + set cluster colors
+#-------------------------------------------------
+cluster_colors &lt;- c(
+  &quot;1&quot; = &quot;#56B4E9&quot;,
+  &quot;2&quot; = &quot;#D55E00&quot;,
+  &quot;4&quot; = &quot;#009E73&quot;,
+  &quot;3&quot; = &quot;#999999&quot;
+)
+
+# Make sure habillage is a factor with the order you want
+cluster_for_plot &lt;- dat$cluster %&gt;%
+  factor(levels = c(&quot;1&quot;, &quot;2&quot;, &quot;4&quot;, &quot;3&quot;))
+
+#-------------------------------------------------
+# 1) PCA (same as your original)
+#-------------------------------------------------
 pca_result &lt;- prcomp(scaled_blm_predict, center = TRUE, scale. = TRUE)
-pca_result</code></pre>
-<pre><code>## Standard deviations (1, .., p=10):
-##  [1] 2.1215785 1.4034418 1.0472114 0.9264820 0.8806137 0.5467239 0.5204591
-##  [8] 0.3585196 0.2491594 0.1958389
-## 
-## Rotation (n x k) = (10 x 10):
-##                    PC1         PC2         PC3         PC4         PC5
-## log_Temp_C -0.04638955 -0.16610798  0.77528550  0.53920848 -0.09767023
-## pH         -0.21825907 -0.08423432 -0.35745323  0.66507285  0.54854959
-## log_DOC_uM -0.09838842 -0.55845304  0.28297650 -0.33855030  0.27469203
-## log_DIC_uM -0.33136192  0.39621298  0.24271207 -0.20322927  0.26429157
-## log_Cl_uM  -0.38311538 -0.03351223 -0.07839494  0.12729612 -0.57822934
-## log_Ca_uM  -0.38552086  0.26762450  0.20217512 -0.24007485  0.21800423
-## log_Mg_uM  -0.33403877  0.42790696  0.07882191  0.09210356  0.01798327
-## log_SO4_uM -0.37583890 -0.22919981 -0.25293479 -0.09711133  0.03456602
-## log_Na_uM  -0.42033601 -0.15664151 -0.12114499  0.05198763 -0.37496236
-## log_K_uM   -0.32528006 -0.40439928  0.01700520 -0.12867499  0.14233110
-##                   PC6         PC7         PC8          PC9         PC10
-## log_Temp_C -0.2324974  0.11348185  0.03311126  0.029347135 -0.003532654
-## pH          0.0928583 -0.22972320 -0.10930315 -0.027099241 -0.013756501
-## log_DOC_uM  0.2476824 -0.49943891  0.29094103 -0.082940758  0.077398554
-## log_DIC_uM -0.1258838 -0.02766075 -0.23334951 -0.697178475  0.077663174
-## log_Cl_uM   0.1818624 -0.34876105 -0.08007668 -0.174165411 -0.551313199
-## log_Ca_uM  -0.1449693 -0.20786969 -0.29973429  0.676625981 -0.147732722
-## log_Mg_uM   0.4263183  0.18013166  0.67511047  0.109448524  0.091359343
-## log_SO4_uM -0.7091293  0.15654382  0.43078817 -0.035324391 -0.131964247
-## log_Na_uM   0.0116653 -0.05367271 -0.19935124  0.063887307  0.770691990
-## log_K_uM    0.3482688  0.67783962 -0.26553975 -0.001641125 -0.205615512</code></pre>
-<pre class="r"><code>pca_summary &lt;- summary(pca_result)
 
-# PCA biplot
+pca_summary &lt;- summary(pca_result)
+
+#-------------------------------------------------
+# 2) PCA biplot (same depiction as your original)
+#-------------------------------------------------
 pca_cluster &lt;- fviz_pca_biplot(
   pca_result,
-  geom.ind     = &quot;point&quot;,          # points for sites
-  col.var      = &quot;black&quot;,          # arrows in black
-  habillage    = dat$cluster,      # color by cluster
-  addEllipses  = TRUE,             # cluster ellipses
-  legend.title = &quot;Cluster&quot;
+  geom.ind     = &quot;point&quot;,          
+  col.var      = &quot;black&quot;,          
+  habillage    = cluster_for_plot, 
+  addEllipses  = TRUE,             
+  legend.title = &quot;Cluster&quot;,
+  palette      = cluster_colors    
 ) +
   labs(title = &quot;PCA Biplot of All Sites by Cluster&quot;)
 
@@ -710,23 +704,22 @@ dat &lt;- dat %&gt;%
   mutate(cluster = as.character(cluster)) %&gt;%
   mutate(cluster = dplyr::recode(
     cluster,
-    `1` = &quot;Perennial Tribs&quot;,
-    `2` = &quot;Perennial Developed Tribs&quot;,
+    `1` = &quot;P Tribs&quot;,
+    `2` = &quot;PD Tribs&quot;,
     `3` = &quot;Main Stem&quot;,
-    `4` = &quot;Non-Perennial Tribs&quot;
+    `4` = &quot;NP Tribs&quot;
   )) %&gt;%
   dplyr::rename(Typology = cluster) %&gt;%
   dplyr::mutate(Typology = as.factor(Typology)) %&gt;%
   dplyr::mutate(Typology = factor(Typology, 
-                          levels = c(&quot;Non-Perennial Tribs&quot;,
-                                     &quot;Perennial Tribs&quot;,
-                                     &quot;Perennial Developed Tribs&quot;,
+                          levels = c(&quot;NP Tribs&quot;,
+                                     &quot;P Tribs&quot;,
+                                     &quot;PD Tribs&quot;,
                                      &quot;Main Stem&quot;)))
 
 # check
 levels(dat$Typology)</code></pre>
-<pre><code>## [1] &quot;Non-Perennial Tribs&quot;       &quot;Perennial Tribs&quot;          
-## [3] &quot;Perennial Developed Tribs&quot; &quot;Main Stem&quot;</code></pre>
+<pre><code>## [1] &quot;NP Tribs&quot;  &quot;P Tribs&quot;   &quot;PD Tribs&quot;  &quot;Main Stem&quot;</code></pre>
 <p>Save to Bioavailability_Master_Spreadsheet_Clean3.xlsx</p>
 <pre class="r"><code>library(openxlsx)
 
@@ -1160,31 +1153,31 @@ flagged_obs_clusters &lt;- bind_rows(compare_typ, compare_site, compare_dev)
 
 # 7. Check result
 flagged_obs_clusters</code></pre>
-<pre><code>##                        Value n.x prop_flagged n.y prop_overall
-## 1        Non-Perennial Tribs  12      0.37500  19  0.049222798
-## 2            Perennial Tribs  13      0.40625 109  0.282383420
-## 3  Perennial Developed Tribs   1      0.03125 126  0.326424870
-## 4                  Main Stem   6      0.18750 132  0.341968912
-## 5                     BSL3.2   1      0.03125  11  0.028497409
-## 6                     BSL3.3   1      0.03125  10  0.025906736
-## 7                     BSL4.2   1      0.03125   4  0.010362694
-## 8                     BSL4.3   1      0.03125   4  0.010362694
-## 9                     BSL5.1   1      0.03125   1  0.002590674
-## 10                   EFK13.8   1      0.03125  11  0.028497409
-## 11                   EFK23.5   5      0.15625  11  0.028497409
-## 12                    MCA3.2   5      0.15625   5  0.012953368
-## 13                    MCA3.3   2      0.06250   4  0.010362694
-## 14                      MCA4   1      0.03125  11  0.028497409
-## 15                      MTN2   2      0.06250   2  0.005181347
-## 16                      MTN4   1      0.03125  11  0.028497409
-## 17                      NBO3   3      0.09375   6  0.015544041
-## 18                      NBO5   2      0.06250   6  0.015544041
-## 19            Pinhook Branch   2      0.06250  10  0.025906736
-## 20                      WBK2   1      0.03125   5  0.012953368
-## 21                      WBK3   2      0.06250   8  0.020725389
-## 22                      High   8      0.25000 131  0.339378238
-## 23                       Low   9      0.28125 110  0.284974093
-## 24                    Medium  15      0.46875 145  0.375647668</code></pre>
+<pre><code>##             Value n.x prop_flagged n.y prop_overall
+## 1        NP Tribs  12      0.37500  19  0.049222798
+## 2         P Tribs  13      0.40625 109  0.282383420
+## 3        PD Tribs   1      0.03125 126  0.326424870
+## 4       Main Stem   6      0.18750 132  0.341968912
+## 5          BSL3.2   1      0.03125  11  0.028497409
+## 6          BSL3.3   1      0.03125  10  0.025906736
+## 7          BSL4.2   1      0.03125   4  0.010362694
+## 8          BSL4.3   1      0.03125   4  0.010362694
+## 9          BSL5.1   1      0.03125   1  0.002590674
+## 10        EFK13.8   1      0.03125  11  0.028497409
+## 11        EFK23.5   5      0.15625  11  0.028497409
+## 12         MCA3.2   5      0.15625   5  0.012953368
+## 13         MCA3.3   2      0.06250   4  0.010362694
+## 14           MCA4   1      0.03125  11  0.028497409
+## 15           MTN2   2      0.06250   2  0.005181347
+## 16           MTN4   1      0.03125  11  0.028497409
+## 17           NBO3   3      0.09375   6  0.015544041
+## 18           NBO5   2      0.06250   6  0.015544041
+## 19 Pinhook Branch   2      0.06250  10  0.025906736
+## 20           WBK2   1      0.03125   5  0.012953368
+## 21           WBK3   2      0.06250   8  0.020725389
+## 22           High   8      0.25000 131  0.339378238
+## 23            Low   9      0.28125 110  0.284974093
+## 24         Medium  15      0.46875 145  0.375647668</code></pre>
 <pre class="r"><code># 8. Save
 library(openxlsx)
 
@@ -1248,18 +1241,18 @@ summary_table &lt;- dat %&gt;%
 
 summary_table</code></pre>
 <pre><code>## # A tibble: 1,092 × 7
-##    Variable      Typology               Mean   Median     Mode Variance       SE
-##    &lt;chr&gt;         &lt;fct&gt;                 &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;
-##  1 BL_Ca_mol_kg  Non-Perennial Tri… 1.92e-10 2.08e-10 2.79e-10 6.08e-21 1.79e-11
-##  2 BL_Ca_mol_kg  Perennial Tribs    3.71e-10 3.83e-10 2.56e-10 2.29e-21 4.59e-12
-##  3 BL_Ca_mol_kg  Perennial Develop… 3.91e-10 3.95e-10 4.15e-10 6.86e-22 2.33e-12
-##  4 BL_Ca_mol_kg  Main Stem          3.98e-10 3.96e-10 4.20e-10 3.18e-22 1.55e-12
-##  5 BL_Ca_nmol_g  Non-Perennial Tri… 1.92e- 4 2.08e- 4 2.79e- 4 6.08e- 9 1.79e- 5
-##  6 BL_Ca_nmol_g  Perennial Tribs    3.71e- 4 3.83e- 4 2.56e- 4 2.29e- 9 4.59e- 6
-##  7 BL_Ca_nmol_g  Perennial Develop… 3.91e- 4 3.95e- 4 4.15e- 4 6.86e-10 2.33e- 6
-##  8 BL_Ca_nmol_g  Main Stem          3.98e- 4 3.96e- 4 4.20e- 4 3.18e-10 1.55e- 6
-##  9 BL_Ca_nmol_kg Non-Perennial Tri… 1.92e- 1 2.08e- 1 2.79e- 1 6.08e- 3 1.79e- 2
-## 10 BL_Ca_nmol_kg Perennial Tribs    3.71e- 1 3.83e- 1 2.56e- 1 2.29e- 3 4.59e- 3
+##    Variable      Typology      Mean   Median     Mode Variance       SE
+##    &lt;chr&gt;         &lt;fct&gt;        &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;
+##  1 BL_Ca_mol_kg  NP Tribs  1.92e-10 2.08e-10 2.79e-10 6.08e-21 1.79e-11
+##  2 BL_Ca_mol_kg  P Tribs   3.71e-10 3.83e-10 2.56e-10 2.29e-21 4.59e-12
+##  3 BL_Ca_mol_kg  PD Tribs  3.91e-10 3.95e-10 4.15e-10 6.86e-22 2.33e-12
+##  4 BL_Ca_mol_kg  Main Stem 3.98e-10 3.96e-10 4.20e-10 3.18e-22 1.55e-12
+##  5 BL_Ca_nmol_g  NP Tribs  1.92e- 4 2.08e- 4 2.79e- 4 6.08e- 9 1.79e- 5
+##  6 BL_Ca_nmol_g  P Tribs   3.71e- 4 3.83e- 4 2.56e- 4 2.29e- 9 4.59e- 6
+##  7 BL_Ca_nmol_g  PD Tribs  3.91e- 4 3.95e- 4 4.15e- 4 6.86e-10 2.33e- 6
+##  8 BL_Ca_nmol_g  Main Stem 3.98e- 4 3.96e- 4 4.20e- 4 3.18e-10 1.55e- 6
+##  9 BL_Ca_nmol_kg NP Tribs  1.92e- 1 2.08e- 1 2.79e- 1 6.08e- 3 1.79e- 2
+## 10 BL_Ca_nmol_kg P Tribs   3.71e- 1 3.83e- 1 2.56e- 1 2.29e- 3 4.59e- 3
 ## # ℹ 1,082 more rows</code></pre>
 <p>Export to excel</p>
 <pre class="r"><code>library(openxlsx)
@@ -1806,7 +1799,7 @@ combined_kruskal &lt;- bind_rows(combined_list)
 # View
 str(combined_kruskal)</code></pre>
 <pre><code>## &#39;data.frame&#39;:    1092 obs. of  8 variables:
-##  $ Typology   : chr  &quot;Non-Perennial Tribs&quot; &quot;Perennial Tribs&quot; &quot;Perennial Developed Tribs&quot; &quot;Main Stem&quot; ...
+##  $ Typology   : chr  &quot;NP Tribs&quot; &quot;P Tribs&quot; &quot;PD Tribs&quot; &quot;Main Stem&quot; ...
 ##  $ dat[[v]]   : num  352.5 246.1 228.9 93.3 302 ...
 ##  $ groups     : chr  &quot;a&quot; &quot;b&quot; &quot;b&quot; &quot;c&quot; ...
 ##  $ Variable   : chr  &quot;Relative_elevation_m&quot; &quot;Relative_elevation_m&quot; &quot;Relative_elevation_m&quot; &quot;Relative_elevation_m&quot; ...
@@ -1844,17 +1837,17 @@ letters_df &lt;- combined_kruskal %&gt;%
 
 dat$Typology &lt;- as.factor(dat$Typology)
 
-dat$Typology &lt;- factor(dat$Typology, levels = c(&quot;Non-Perennial Tribs&quot;,
-                                     &quot;Perennial Tribs&quot;,
-                                     &quot;Perennial Developed Tribs&quot;,
+dat$Typology &lt;- factor(dat$Typology, levels = c(&quot;NP Tribs&quot;,
+                                     &quot;P Tribs&quot;,
+                                     &quot;PD Tribs&quot;,
                                      &quot;Main Stem&quot;))
 
 # 3. Colors for each Typology
 typology_colors &lt;- c(
-  &quot;Perennial Tribs&quot;                  = &quot;#56B4E9&quot;,
-  &quot;Perennial Developed Tribs&quot;        = &quot;#D55E00&quot;,
-  &quot;Non-Perennial Tribs&quot;              = &quot;#009E73&quot;,
-  &quot;Main Stem&quot;                        = &quot;#999999&quot;
+  &quot;P Tribs&quot;         = &quot;#56B4E9&quot;,
+  &quot;PD Tribs&quot;        = &quot;#D55E00&quot;,
+  &quot;NP Tribs&quot;        = &quot;#009E73&quot;,
+  &quot;Main Stem&quot;       = &quot;#999999&quot;
 )</code></pre>
 <div id="a.-blm-predictors" class="section level3">
 <h3>a. BLM predictors</h3>
@@ -2054,43 +2047,49 @@ all_vars_panel</code></pre>
 </div>
 <div id="b.-trace-element-fractions" class="section level3">
 <h3>b. Trace element fractions</h3>
-<p>Response variables (Zn and Cu species) - fix</p>
 <pre class="r"><code>library(dplyr)
 library(tidyr)
 library(ggplot2)
 
 #-------------------------------------------------
-# 1. Colors by response variable (your mapping)
+# 1. Colors by response variable (Zn - keep blues)
 #-------------------------------------------------
 response_colors &lt;- c(
-  &quot;Total Zn (uM)&quot;                              = &quot;slategray&quot;,
-  &quot;Bioavailable Zn (nmol/g wet weight)&quot;        = &quot;darkslategray3&quot;,
-  &quot;Proportion of Bioavailable Zn (Free/Total)&quot; = &quot;turquoise&quot;
+  &quot;Total Zn (uM)&quot;                       = &quot;slategray&quot;,
+  &quot;Free Zn (uM)&quot;                        = &quot;darkslategray3&quot;,
+  &quot;Bioavailable Zn (nmol/g wet weight)&quot; = &quot;turquoise3&quot;
+)
+
+# Left-to-right facet order
+response_order &lt;- c(
+  &quot;Total Zn (uM)&quot;,
+  &quot;Free Zn (uM)&quot;,
+  &quot;Bioavailable Zn (nmol/g wet weight)&quot;
 )
 
 #-------------------------------------------------
-# 2. Map variable names -&gt; response labels
+# 2. Define letter nudges
+#-------------------------------------------------
+letter_nudge &lt;- c(
+  &quot;Total Zn (uM)&quot;                       = 1,
+  &quot;Free Zn (uM)&quot;                        = 1,
+  &quot;Bioavailable Zn (nmol/g wet weight)&quot; = 2
+)
+
+#-------------------------------------------------
+# 3. Map variable names -&gt; response labels
+#    Replace log_Free_Zn_uM if needed
 #-------------------------------------------------
 response_lookup &lt;- c(
-  &quot;log_Zn_uM&quot;         = &quot;Total Zn (uM)&quot;,
-  &quot;log_TBL_Zn_nmol_g&quot; = &quot;Bioavailable Zn (nmol/g wet weight)&quot;,
-  &quot;log_rel_prop_Zn&quot;   = &quot;Proportion of Bioavailable Zn (Free/Total)&quot;
+  &quot;log_Zn_uM&quot;           = &quot;Total Zn (uM)&quot;,
+  &quot;log_Free_Zn_uM&quot;      = &quot;Free Zn (uM)&quot;,  # &lt;-- confirm name
+  &quot;log_TBL_Zn_nmol_g&quot;   = &quot;Bioavailable Zn (nmol/g wet weight)&quot;
 )
 
 vars_trace &lt;- names(response_lookup)
 
 #-------------------------------------------------
-# 3. Custom multipliers for letter heights per plot
-#    (names must match Response labels)
-#-------------------------------------------------
-letter_nudge &lt;- c(
-  &quot;Total Zn (uM)&quot;                              = 1,
-  &quot;Bioavailable Zn (nmol/g wet weight)&quot;        = 2,
-  &quot;Proportion of Bioavailable Zn (Free/Total)&quot; = 1
-)
-
-#-------------------------------------------------
-# 4. Long data for plotting (use Typology)
+# 4. Long data
 #-------------------------------------------------
 dat_long_trace &lt;- dat %&gt;%
   dplyr::select(Typology, all_of(vars_trace)) %&gt;%
@@ -2099,28 +2098,27 @@ dat_long_trace &lt;- dat %&gt;%
     names_to  = &quot;Variable&quot;,
     values_to = &quot;Log10(Value)&quot;
   ) %&gt;%
-  dplyr::filter(!is.na(`Log10(Value)`)) %&gt;%   # &lt;-- backticks + no quotes
-  dplyr::mutate(
+  filter(!is.na(`Log10(Value)`)) %&gt;%
+  mutate(
     Response = response_lookup[Variable],
-    Response = factor(Response, levels = names(response_colors))
+    Response = factor(Response, levels = response_order)
   )
 
 #-------------------------------------------------
-# 5. Letters (from letters_df) for all variables
-#-------------------------------------------------
-
 # 5a. Max y per Variable x Typology
+#-------------------------------------------------
 y_pos_df &lt;- dat_long_trace %&gt;%
   group_by(Variable, Typology) %&gt;%
-  summarise(y_max = max(`Log10(Value)`, na.rm = TRUE), .groups = &quot;drop&quot;)  # &lt;-- backticks
+  summarise(y_max = max(`Log10(Value)`, na.rm = TRUE), .groups = &quot;drop&quot;)
 
-# 5b. Attach Response + y positions + nudges to letters_df
-#     letters_df must have: Variable, Typology, Letters
+#-------------------------------------------------
+# 5b. Attach letters
+#-------------------------------------------------
 letters_long_trace &lt;- letters_df %&gt;%
   filter(Variable %in% vars_trace) %&gt;%
   mutate(
     Response = response_lookup[Variable],
-    Response = factor(Response, levels = names(response_colors))
+    Response = factor(Response, levels = response_order)
   ) %&gt;%
   left_join(
     y_pos_df,
@@ -2131,53 +2129,52 @@ letters_long_trace &lt;- letters_df %&gt;%
   )
 
 #-------------------------------------------------
-# 6. One faceted trace element panel (x = Typology)
+# 6. Plot (IDENTICAL styling to Cu)
 #-------------------------------------------------
 bioavail_panel &lt;- ggplot(
   dat_long_trace,
   aes(
     x     = Typology,
-    y     = `Log10(Value)`,   # &lt;-- backticks + no quotes
-    color = Response
+    y     = `Log10(Value)`,
+    color = Response,
+    fill  = Response
   )
 ) +
-  geom_boxplot(fill = NA, width = 0.6) +
+  geom_boxplot(width = 0.6, alpha = 0.5) +
   geom_jitter(width = 0.15, size = 1, alpha = 0.7) +
   geom_text(
     data = letters_long_trace,
-    aes(
-      x     = Typology,
-      y     = y_pos,
-      label = Letters
-    ),
+    aes(x = Typology, y = y_pos, label = Letters),
     inherit.aes = FALSE,
     size = 3.5
   ) +
-  scale_color_manual(values = response_colors) +
+  scale_color_manual(values = response_colors, breaks = response_order) +
+  scale_fill_manual(values = response_colors, breaks = response_order) +
   facet_wrap(~ Response, scales = &quot;free_y&quot;, ncol = 3) +
-  labs(
-    title = &quot;Trace Elements by Stream Typology&quot;,
-    x     = &quot;Stream Typology&quot;,
-    y     = &quot;Log(Value)&quot;   
-  ) +
   theme_minimal(base_size = 12) +
   theme(
     legend.position = &quot;none&quot;,
-    axis.text.x  = element_text(size = 10, angle = 30, hjust = 1),
-    axis.text.y  = element_text(size = 10),
-    strip.text   = element_text(size = 11),
-    plot.title   = element_text(size = 14)
+    axis.text.x = element_text(size = 10, angle = 30, hjust = 1),
+    strip.text  = element_text(size = 8),
+    plot.title  = element_text(size = 14)
+  ) +
+  labs(
+    title = &quot;Trace Elements by Stream Typology&quot;,
+    x     = &quot;Stream Typology&quot;,
+    y     = &quot;Log10(Value)&quot;
   )
 
-# View
 bioavail_panel
 
 # Save
+out_dir &lt;- &quot;Plots by typology&quot;
+if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+
 ggsave(
-  filename = file.path(&quot;Plots by typology&quot;, &quot;Trace_elements_panel_square.png&quot;),
+  filename = file.path(out_dir, &quot;Trace_elements_panel_Zn.png&quot;),
   plot     = bioavail_panel,
-  width    = 10,
-  height   = 4,
+  width    = 8,
+  height   = 3,
   dpi      = 300
 )</code></pre>
 </div>
@@ -2580,7 +2577,7 @@ toxicity_plot
 ggsave(
   filename = file.path(&quot;Plots by typology&quot;, &quot;Probability_of_toxicity.png&quot;),
   plot     = toxicity_plot,
-  width    = 10,
+  width    = 12,
   height   = 6,
   dpi      = 300
 )</code></pre>
@@ -2623,12 +2620,12 @@ overlap_Zn_by_typology &lt;- dat %&gt;%
 # View results
 overlap_Zn_by_typology</code></pre>
 <pre><code>## # A tibble: 4 × 2
-##   Typology                  Overlap_Daphnia
-##   &lt;fct&gt;                               &lt;dbl&gt;
-## 1 Non-Perennial Tribs                     0
-## 2 Perennial Tribs                         0
-## 3 Perennial Developed Tribs               0
-## 4 Main Stem                               0</code></pre>
+##   Typology  Overlap_Daphnia
+##   &lt;fct&gt;               &lt;dbl&gt;
+## 1 NP Tribs                0
+## 2 P Tribs                 0
+## 3 PD Tribs                0
+## 4 Main Stem               0</code></pre>
 <pre class="r"><code># Save
 library(openxlsx)
 
@@ -2963,16 +2960,16 @@ nested_table</code></pre>
 <pre><code>## # A tibble: 46 × 4
 ##    Network Site   Typologies_Observed                          Dominant_Typology
 ##    &lt;chr&gt;   &lt;chr&gt;  &lt;chr&gt;                                        &lt;fct&gt;            
-##  1 BSL     BSL7   Non-Perennial Tribs (n=1)                    Non-Perennial Tr…
-##  2 BSL     BSL8   Non-Perennial Tribs (n=1)                    Non-Perennial Tr…
-##  3 MCA     MCA3.2 Non-Perennial Tribs (n=5)                    Non-Perennial Tr…
-##  4 MCA     MCA3.3 Non-Perennial Tribs (n=4)                    Non-Perennial Tr…
-##  5 MTN     MTN2   Non-Perennial Tribs (n=2)                    Non-Perennial Tr…
-##  6 NBO     NBO3   Non-Perennial Tribs (n=4); Perennial Tribs … Non-Perennial Tr…
-##  7 BSL     BSL4.1 Perennial Tribs (n=4); Main Stem (n=2); Per… Perennial Tribs  
-##  8 BSL     BSL4.2 Perennial Tribs (n=4)                        Perennial Tribs  
-##  9 BSL     BSL4.3 Perennial Tribs (n=3); Main Stem (n=1)       Perennial Tribs  
-## 10 BSL     BSL5.1 Perennial Tribs (n=1)                        Perennial Tribs  
+##  1 BSL     BSL7   NP Tribs (n=1)                               NP Tribs         
+##  2 BSL     BSL8   NP Tribs (n=1)                               NP Tribs         
+##  3 MCA     MCA3.2 NP Tribs (n=5)                               NP Tribs         
+##  4 MCA     MCA3.3 NP Tribs (n=4)                               NP Tribs         
+##  5 MTN     MTN2   NP Tribs (n=2)                               NP Tribs         
+##  6 NBO     NBO3   NP Tribs (n=4); P Tribs (n=2)                NP Tribs         
+##  7 BSL     BSL4.1 P Tribs (n=4); Main Stem (n=2); PD Tribs (n… P Tribs          
+##  8 BSL     BSL4.2 P Tribs (n=4)                                P Tribs          
+##  9 BSL     BSL4.3 P Tribs (n=3); Main Stem (n=1)               P Tribs          
+## 10 BSL     BSL5.1 P Tribs (n=1)                                P Tribs          
 ## # ℹ 36 more rows</code></pre>
 <pre class="r"><code># Save
 library(openxlsx)

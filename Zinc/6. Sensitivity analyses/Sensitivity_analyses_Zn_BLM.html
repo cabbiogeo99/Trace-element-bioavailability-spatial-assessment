@@ -389,14 +389,14 @@ it’s own object</p>
 # -------------------------------------------------
 # 1) Set working directory
 # -------------------------------------------------
-setwd(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Zinc/6. Sensitivity analyses&quot;)
+setwd(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/6. Sensitivity analyses&quot;)
 
 # -------------------------------------------------
 # 2) Store file paths once (so you don&#39;t repeat them)
 # -------------------------------------------------
-file_master3 &lt;- &quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Zinc/5. Statistical data analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx&quot;
+file_master3 &lt;- &quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/5. Statistical data analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx&quot;
 
-file_master2 &lt;- &quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Zinc/4. Exploratory data analysis/Bioavailability_Master_Spreadsheet_Clean2.xlsx&quot;</code></pre>
+file_master2 &lt;- &quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/4. Exploratory data analysis/Bioavailability_Master_Spreadsheet_Clean2.xlsx&quot;</code></pre>
 <p>Now we’ll read each file and create the following scenarios as their
 own objects</p>
 <ul>
@@ -1385,7 +1385,7 @@ pc_plot &lt;- ggplot(long_percent_change_ha, aes(y = Variable, x = median)) +
   geom_vline(xintercept = 0, linetype = &quot;dashed&quot;, color = &quot;grey40&quot;) +
   scale_fill_gradient2(
     low = &quot;red3&quot;, mid = &quot;grey95&quot;, high = &quot;steelblue4&quot;, midpoint = 0) +
-  labs(x = &quot;Percent Change (Median)&quot;, y = NULL, 
+  labs(x = &quot;Percent Change (Median ± IQR)&quot;, y = NULL, 
        title = &quot;Percent Change Summary for Zn BLM&quot;,
        subtitle = &quot;Low (10%) to high (80%) humic acid content of DOC&quot;) +
   theme_bw() +
