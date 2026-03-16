@@ -382,8 +382,8 @@ site</p>
 <p>Variables selected: free ion, biotic ligand (BL) bound elements,
 inorganic complexes, and organic complexes.</p>
 <ol start="4" style="list-style-type: decimal">
-<li><strong>BLM Toxicity Mode</strong> (Zn Toxicity on C.
-dubia.det.xlsx)</li>
+<li><strong>BLM Toxicity Mode</strong> (Zn acute toxicity.det.xlsx and
+Zn chronic toxicity.det.xlsx)</li>
 </ol>
 <p>Variable selected: total Zn concentration to cause certain type of
 toxicity to the given organism</p>
@@ -935,10 +935,12 @@ str(bio_ms_ha10_cs)</code></pre>
 </div>
 <div id="blm-toxicity-mode" class="section level2">
 <h2>4. BLM Toxicity Mode</h2>
-<p>Import the Zn Toxicity on C. dubia.det.xlsx</p>
+<div id="i.-chronic" class="section level3">
+<h3>i. Chronic</h3>
+<p>Import the Zn Toxicity on Zn_chronic_toxicity.det.xlsx</p>
 <pre class="r"><code>library(readxl)
 
-Zn_Toxicity_on_C_dubia_ha10_cs &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/1. Running BLM/Data outputs/Toxicity Mode/Zn_toxicity_ha10_cs.det.xlsx&quot;)</code></pre>
+Zn_chronic_toxicity &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/1. Running BLM/Data outputs/Toxicity Mode/Zn_chronic_toxicity.det.xlsx&quot;)</code></pre>
 <pre><code>## New names:
 ## • `` -&gt; `...2`
 ## • `` -&gt; `...3`
@@ -1000,7 +1002,7 @@ Zn_Toxicity_on_C_dubia_ha10_cs &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oa
 ## • `` -&gt; `...59`
 ## • `` -&gt; `...60`
 ## • `` -&gt; `...61`</code></pre>
-<pre class="r"><code>head(Zn_Toxicity_on_C_dubia_ha10_cs)</code></pre>
+<pre class="r"><code>head(Zn_chronic_toxicity)</code></pre>
 <pre><code>## # A tibble: 6 × 61
 ##   Ver 3.41.2.45, build 2…¹ ...2  ...3  ...4  ...5  ...6  ...7  ...8  ...9  ...10
 ##   &lt;chr&gt;                    &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt;
@@ -1009,7 +1011,7 @@ Zn_Toxicity_on_C_dubia_ha10_cs &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oa
 ## 3 &quot;/S C:\\USERS\\Q4Q\\ONE…  &lt;NA&gt; &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt; 
 ## 4 &quot;Site Label&quot;             &quot;Sam… H     Zn    DOC   Ca    Mg    Na    K     SO4  
 ## 5  &lt;NA&gt;                     &lt;NA&gt; mol … mol … mol … mol … mol … mol … mol … mol …
-## 6 &quot;\&quot;WaDE_62             … &quot;\&quot;M… 6.69… 5.80… 1.82… 1.44… 4.41… 2.11… 3.69… 3.21…
+## 6 &quot;\&quot;WaDE_62             … &quot;\&quot;M… 6.69… 4.42… 1.82… 1.44… 4.41… 2.11… 3.69… 3.21…
 ## # ℹ abbreviated name: ¹​`Ver 3.41.2.45, build 2018-11-20`
 ## # ℹ 51 more variables: ...11 &lt;chr&gt;, ...12 &lt;chr&gt;, ...13 &lt;chr&gt;, ...14 &lt;chr&gt;,
 ## #   ...15 &lt;chr&gt;, ...16 &lt;chr&gt;, ...17 &lt;chr&gt;, ...18 &lt;chr&gt;, ...19 &lt;chr&gt;,
@@ -1021,7 +1023,7 @@ Zn_Toxicity_on_C_dubia_ha10_cs &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oa
 <pre class="r"><code>library(dplyr)
 library(stringr)
 
-Zn_Toxicity_on_C_dubia_ha10_cs_clean &lt;- Zn_Toxicity_on_C_dubia_ha10_cs %&gt;%
+Zn_chronic_toxicity_clean &lt;- Zn_chronic_toxicity %&gt;%
   # 1) Drop rows 1–3
   slice(-(1:3)) %&gt;%
   
@@ -1050,16 +1052,16 @@ Zn_Toxicity_on_C_dubia_ha10_cs_clean &lt;- Zn_Toxicity_on_C_dubia_ha10_cs %&gt;%
   )
 
 # Preview
-head(Zn_Toxicity_on_C_dubia_ha10_cs_clean)</code></pre>
+head(Zn_chronic_toxicity_clean)</code></pre>
 <pre><code>## # A tibble: 6 × 61
 ##   Sample_ID Site               H      Zn     DOC      Ca      Mg      Na       K
 ##   &lt;chr&gt;     &lt;chr&gt;          &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;
-## 1 WaDE_62   &quot;\&quot;MTN1.1  … 6.70e-8 5.80e-6 1.82e-3 1.44e-3 4.41e-4 2.12e-4 3.70e-5
-## 2 WaDE_63   &quot;\&quot;EFK13.8 … 5.63e-9 1.60e-6 3.84e-3 1.30e-3 3.23e-4 2.95e-4 5.40e-5
-## 3 WaDE_64   &quot;\&quot;MTN4    … 5.43e-9 5.06e-7 8.60e-4 2.56e-4 1.73e-4 8.99e-5 2.48e-5
-## 4 WaDE_65   &quot;\&quot;MTN2    … 4.98e-9 4.72e-7 1.27e-2 2.81e-4 6.97e-5 6.92e-6 4.59e-5
-## 5 WaDE_66   &quot;\&quot;MCA3.3  … 2.21e-8 9.05e-7 2.86e-3 1.58e-4 7.72e-5 8.77e-5 2.11e-5
-## 6 WaDE_67   &quot;\&quot;MCA3.2  … 3.31e-8 6.98e-7 1.96e-3 4.37e-5 2.35e-5 6.55e-5 1.21e-5
+## 1 WaDE_62   &quot;\&quot;MTN1.1  … 6.70e-8 4.42e-7 1.82e-3 1.44e-3 4.41e-4 2.12e-4 3.70e-5
+## 2 WaDE_63   &quot;\&quot;EFK13.8 … 5.63e-9 1.22e-7 3.84e-3 1.29e-3 3.23e-4 2.95e-4 5.40e-5
+## 3 WaDE_64   &quot;\&quot;MTN4    … 5.43e-9 3.86e-8 8.60e-4 2.55e-4 1.73e-4 8.99e-5 2.48e-5
+## 4 WaDE_65   &quot;\&quot;MTN2    … 4.98e-9 3.58e-8 1.27e-2 2.79e-4 6.93e-5 6.92e-6 4.59e-5
+## 5 WaDE_66   &quot;\&quot;MCA3.3  … 2.21e-8 6.89e-8 2.86e-3 1.58e-4 7.71e-5 8.77e-5 2.11e-5
+## 6 WaDE_67   &quot;\&quot;MCA3.2  … 3.31e-8 5.31e-8 1.96e-3 4.34e-5 2.33e-5 6.55e-5 1.21e-5
 ## # ℹ 52 more variables: SO4 &lt;dbl&gt;, Cl &lt;dbl&gt;, CO3 &lt;dbl&gt;, S &lt;dbl&gt;, BL &lt;dbl&gt;,
 ## #   `BL-Zn` &lt;dbl&gt;, `BL-Ca` &lt;dbl&gt;, `BL-H` &lt;dbl&gt;, `BL-Mg` &lt;dbl&gt;, `BL-Na` &lt;dbl&gt;,
 ## #   `BL-ZnOH` &lt;dbl&gt;, HCO3 &lt;dbl&gt;, H2CO3 &lt;dbl&gt;, HS &lt;dbl&gt;, H2S &lt;dbl&gt;,
@@ -1070,7 +1072,7 @@ head(Zn_Toxicity_on_C_dubia_ha10_cs_clean)</code></pre>
 <pre class="r"><code># Sanity check: match count vs Bioavailability Master Spreadsheet (bio_ms)
 bio_ms %&gt;%
   inner_join(
-    Zn_Toxicity_on_C_dubia_ha10_cs_clean %&gt;% dplyr::select(Sample_ID),
+    Zn_chronic_toxicity_clean %&gt;% dplyr::select(Sample_ID),
     by = &quot;Sample_ID&quot;
   ) %&gt;%
   summarise(n_matched = dplyr::n())</code></pre>
@@ -1084,20 +1086,20 @@ the organism) and add to bio_ms</p>
 
 bio_ms_ha10_cs &lt;- bio_ms_ha10_cs %&gt;%
   left_join(
-    Zn_Toxicity_on_C_dubia_ha10_cs_clean %&gt;%
+    Zn_chronic_toxicity_clean %&gt;%
       dplyr::rename(
-        Zn_Toxicity_Daphnia_M = T.Zn
+        Zn_chronic_tox_M = T.Zn
       ) %&gt;%
       dplyr::select(
         Sample_ID,
-        Zn_Toxicity_Daphnia_M
+        Zn_chronic_tox_M
       ),
     by = &quot;Sample_ID&quot;
   )
 
 
 # Make sure they&#39;re numeric
-zn_new_vars &lt;- c(&quot;Zn_Toxicity_Daphnia_M&quot;)
+zn_new_vars &lt;- c(&quot;Zn_chronic_tox_M&quot;)
 
 # Convert them to numeric
 bio_ms_ha10_cs &lt;- bio_ms_ha10_cs %&gt;%
@@ -1158,7 +1160,236 @@ str(bio_ms_ha10_cs)</code></pre>
 ##  $ TOrg_Mg_M                 : num [1:386] 1.01e-06 1.93e-06 8.56e-07 6.28e-06 2.13e-06 ...
 ##  $ TOrg_Na_M                 : num [1:386] 1.03e-07 4.14e-07 8.14e-08 1.68e-07 6.72e-07 ...
 ##  $ TOrg_K_M                  : num [1:386] 1.80e-08 7.58e-08 2.24e-08 1.11e-06 1.62e-07 ...
-##  $ Zn_Toxicity_Daphnia_M     : num [1:386] 1.53e-05 4.68e-06 2.08e-06 5.82e-06 2.29e-06 ...</code></pre>
+##  $ Zn_chronic_tox_M          : num [1:386] 1.28e-06 6.90e-07 2.11e-07 1.36e-06 3.55e-07 ...</code></pre>
+</div>
+<div id="ii.-acute" class="section level3">
+<h3>ii. Acute</h3>
+<p>Import the Zn Toxicity on Zn_acute_toxicity.det.xlsx</p>
+<pre class="r"><code>library(readxl)
+
+Zn_acute_toxicity &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/1. Running BLM/Data outputs/Toxicity Mode/Zn_acute_toxicity.det.xlsx&quot;)</code></pre>
+<pre><code>## New names:
+## • `` -&gt; `...2`
+## • `` -&gt; `...3`
+## • `` -&gt; `...4`
+## • `` -&gt; `...5`
+## • `` -&gt; `...6`
+## • `` -&gt; `...7`
+## • `` -&gt; `...8`
+## • `` -&gt; `...9`
+## • `` -&gt; `...10`
+## • `` -&gt; `...11`
+## • `` -&gt; `...12`
+## • `` -&gt; `...13`
+## • `` -&gt; `...14`
+## • `` -&gt; `...15`
+## • `` -&gt; `...16`
+## • `` -&gt; `...17`
+## • `` -&gt; `...18`
+## • `` -&gt; `...19`
+## • `` -&gt; `...20`
+## • `` -&gt; `...21`
+## • `` -&gt; `...22`
+## • `` -&gt; `...23`
+## • `` -&gt; `...24`
+## • `` -&gt; `...25`
+## • `` -&gt; `...26`
+## • `` -&gt; `...27`
+## • `` -&gt; `...28`
+## • `` -&gt; `...29`
+## • `` -&gt; `...30`
+## • `` -&gt; `...31`
+## • `` -&gt; `...32`
+## • `` -&gt; `...33`
+## • `` -&gt; `...34`
+## • `` -&gt; `...35`
+## • `` -&gt; `...36`
+## • `` -&gt; `...37`
+## • `` -&gt; `...38`
+## • `` -&gt; `...39`
+## • `` -&gt; `...40`
+## • `` -&gt; `...41`
+## • `` -&gt; `...42`
+## • `` -&gt; `...43`
+## • `` -&gt; `...44`
+## • `` -&gt; `...45`
+## • `` -&gt; `...46`
+## • `` -&gt; `...47`
+## • `` -&gt; `...48`
+## • `` -&gt; `...49`
+## • `` -&gt; `...50`
+## • `` -&gt; `...51`
+## • `` -&gt; `...52`
+## • `` -&gt; `...53`
+## • `` -&gt; `...54`
+## • `` -&gt; `...55`
+## • `` -&gt; `...56`
+## • `` -&gt; `...57`
+## • `` -&gt; `...58`
+## • `` -&gt; `...59`
+## • `` -&gt; `...60`
+## • `` -&gt; `...61`</code></pre>
+<pre class="r"><code>head(Zn_acute_toxicity)</code></pre>
+<pre><code>## # A tibble: 6 × 61
+##   Ver 3.41.2.45, build 2…¹ ...2  ...3  ...4  ...5  ...6  ...7  ...8  ...9  ...10
+##   &lt;chr&gt;                    &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt;
+## 1 &quot;C:\\Program Files (x86…  &lt;NA&gt; &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt; 
+## 2 &quot;C:\\Users\\q4q\\OneDri…  &lt;NA&gt; &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt; 
+## 3 &quot;/S C:\\USERS\\Q4Q\\ONE…  &lt;NA&gt; &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt; 
+## 4 &quot;Site Label&quot;             &quot;Sam… H     Zn    DOC   Ca    Mg    Na    K     SO4  
+## 5  &lt;NA&gt;                     &lt;NA&gt; mol … mol … mol … mol … mol … mol … mol … mol …
+## 6 &quot;\&quot;WaDE_62             … &quot;\&quot;M… 1.77… 1.19… 1.82… 2.89… 8.91… 2.11… 3.69… 3.81…
+## # ℹ abbreviated name: ¹​`Ver 3.41.2.45, build 2018-11-20`
+## # ℹ 51 more variables: ...11 &lt;chr&gt;, ...12 &lt;chr&gt;, ...13 &lt;chr&gt;, ...14 &lt;chr&gt;,
+## #   ...15 &lt;chr&gt;, ...16 &lt;chr&gt;, ...17 &lt;chr&gt;, ...18 &lt;chr&gt;, ...19 &lt;chr&gt;,
+## #   ...20 &lt;chr&gt;, ...21 &lt;chr&gt;, ...22 &lt;chr&gt;, ...23 &lt;chr&gt;, ...24 &lt;chr&gt;,
+## #   ...25 &lt;chr&gt;, ...26 &lt;chr&gt;, ...27 &lt;chr&gt;, ...28 &lt;chr&gt;, ...29 &lt;chr&gt;,
+## #   ...30 &lt;chr&gt;, ...31 &lt;chr&gt;, ...32 &lt;chr&gt;, ...33 &lt;chr&gt;, ...34 &lt;chr&gt;,
+## #   ...35 &lt;chr&gt;, ...36 &lt;chr&gt;, ...37 &lt;chr&gt;, ...38 &lt;chr&gt;, ...39 &lt;chr&gt;, …</code></pre>
+<p>Data cleaning</p>
+<pre class="r"><code>library(dplyr)
+library(stringr)
+
+Zn_acute_toxicity_clean &lt;- Zn_acute_toxicity %&gt;%
+  # 1) Drop rows 1–3
+  slice(-(1:3)) %&gt;%
+  
+  # 2) Set first remaining row as column names (and make them unique)
+  {
+    nm &lt;- as.character(.[1, ])
+    nm &lt;- make.unique(nm)
+    out &lt;- .[-1, ]
+    names(out) &lt;- nm
+    out
+  } %&gt;%
+  
+  # 3) Remove units row (now the first row)
+  slice(-1) %&gt;%
+  
+  # 4) Rename ID columns
+  rename(
+    Sample_ID = `Site Label`,
+    Site      = `Sample Label`
+  ) %&gt;%
+  
+  # 5) Clean Sample_ID + strip quotes + convert everything else to numeric
+  mutate(
+    Sample_ID = str_extract(Sample_ID, &quot;WaDE_\\d+&quot;),
+    across(-c(Sample_ID, Site), ~ as.numeric(str_replace_all(.x, &#39;&quot;&#39;, &quot;&quot;)))
+  )
+
+# Preview
+head(Zn_acute_toxicity_clean)</code></pre>
+<pre><code>## # A tibble: 6 × 61
+##   Sample_ID Site               H      Zn     DOC      Ca      Mg      Na       K
+##   &lt;chr&gt;     &lt;chr&gt;          &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;
+## 1 WaDE_62   &quot;\&quot;MTN1.1  … 1.78e-7 1.19e-6 1.82e-3 2.90e-7 8.91e-8 2.12e-4 3.70e-5
+## 2 WaDE_63   &quot;\&quot;EFK13.8 … 1.52e-8 4.89e-7 3.84e-3 8.59e-7 2.42e-7 2.95e-4 5.40e-5
+## 3 WaDE_64   &quot;\&quot;MTN4    … 1.48e-8 4.46e-7 8.60e-4 5.41e-8 3.98e-8 9.00e-5 2.48e-5
+## 4 WaDE_65   &quot;\&quot;MTN2    … 1.39e-8 4.18e-7 1.27e-2 2.07e-7 5.84e-8 6.98e-6 4.63e-5
+## 5 WaDE_66   &quot;\&quot;MCA3.3  … 6.17e-8 8.09e-7 2.86e-3 2.25e-7 1.12e-7 8.80e-5 2.12e-5
+## 6 WaDE_67   &quot;\&quot;MCA3.2  … 9.34e-8 9.17e-7 1.96e-3 1.28e-7 6.99e-8 6.60e-5 1.22e-5
+## # ℹ 52 more variables: SO4 &lt;dbl&gt;, Cl &lt;dbl&gt;, CO3 &lt;dbl&gt;, S &lt;dbl&gt;, BL &lt;dbl&gt;,
+## #   `BL-Zn` &lt;dbl&gt;, `BL-Ca` &lt;dbl&gt;, `BL-H` &lt;dbl&gt;, `BL-Mg` &lt;dbl&gt;, `BL-Na` &lt;dbl&gt;,
+## #   `BL-ZnOH` &lt;dbl&gt;, HCO3 &lt;dbl&gt;, H2CO3 &lt;dbl&gt;, HS &lt;dbl&gt;, H2S &lt;dbl&gt;,
+## #   MgHCO3 &lt;dbl&gt;, MgCO3 &lt;dbl&gt;, MgSO4 &lt;dbl&gt;, CaHCO3 &lt;dbl&gt;, CaCO3 &lt;dbl&gt;,
+## #   CaSO4 &lt;dbl&gt;, ZnOH &lt;dbl&gt;, `Zn(OH)2` &lt;dbl&gt;, ZnSO4 &lt;dbl&gt;, ZnCO3 &lt;dbl&gt;,
+## #   ZnCl &lt;dbl&gt;, ZnHCO3 &lt;dbl&gt;, ZnS &lt;dbl&gt;, TOrg.H &lt;dbl&gt;, TOrg.Zn &lt;dbl&gt;,
+## #   TOrg.Ca &lt;dbl&gt;, TOrg.Mg &lt;dbl&gt;, TOrg.Na &lt;dbl&gt;, TOrg.K &lt;dbl&gt;, Charge &lt;dbl&gt;, …</code></pre>
+<pre class="r"><code># Sanity check: match count vs Bioavailability Master Spreadsheet (bio_ms)
+bio_ms %&gt;%
+  inner_join(
+    Zn_acute_toxicity_clean %&gt;% dplyr::select(Sample_ID),
+    by = &quot;Sample_ID&quot;
+  ) %&gt;%
+  summarise(n_matched = dplyr::n())</code></pre>
+<pre><code>## # A tibble: 1 × 1
+##   n_matched
+##       &lt;int&gt;
+## 1       386</code></pre>
+<p>Select the T.Zn variable (total amount of Zn to cause the toxicity to
+the organism) and add to bio_ms</p>
+<pre class="r"><code>library(dplyr)
+
+bio_ms_ha10_cs &lt;- bio_ms_ha10_cs %&gt;%
+  left_join(
+    Zn_acute_toxicity_clean %&gt;%
+      dplyr::rename(
+        Zn_acute_tox_M = T.Zn
+      ) %&gt;%
+      dplyr::select(
+        Sample_ID,
+        Zn_acute_tox_M
+      ),
+    by = &quot;Sample_ID&quot;
+  )
+
+
+# Make sure they&#39;re numeric
+zn_new_vars &lt;- c(&quot;Zn_acute_tox_M&quot;)
+
+# Convert them to numeric
+bio_ms_ha10_cs &lt;- bio_ms_ha10_cs %&gt;%
+  mutate(across(all_of(zn_new_vars), ~ as.numeric(.)))
+
+# Check
+str(bio_ms_ha10_cs)</code></pre>
+<pre><code>## tibble [386 × 54] (S3: tbl_df/tbl/data.frame)
+##  $ Sample_ID                 : chr [1:386] &quot;WaDE_62&quot; &quot;WaDE_63&quot; &quot;WaDE_64&quot; &quot;WaDE_65&quot; ...
+##  $ Site                      : chr [1:386] &quot;MTN1.1&quot; &quot;EFK13.8&quot; &quot;MTN4&quot; &quot;MTN2&quot; ...
+##  $ Date                      : POSIXct[1:386], format: &quot;2023-06-23&quot; &quot;2023-06-23&quot; ...
+##  $ Regime                    : chr [1:386] &quot;NonPerennial&quot; &quot;Perennial&quot; &quot;Perennial&quot; &quot;NonPerennial&quot; ...
+##  $ Flow_state                : chr [1:386] &quot;Flowing&quot; &quot;Flowing&quot; &quot;Flowing&quot; &quot;Pooled&quot; ...
+##  $ Network                   : chr [1:386] &quot;MTN&quot; &quot;EFK&quot; &quot;MTN&quot; &quot;MTN&quot; ...
+##  $ Elevation_m               : num [1:386] 248 245 277 257 280 ...
+##  $ Relative_elevation_m      : num [1:386] 3.83 0 33.18 12.87 30.45 ...
+##  $ Upstream_from_main_stem_km: num [1:386] 0.205 0 1.255 0.673 0.995 ...
+##  $ Developed_lulc            : num [1:386] 63.6 64.7 41.2 54.4 58.5 ...
+##  $ pH                        : num [1:386] 7.21 8.28 8.29 8.32 7.67 7.49 7.62 7.55 8.13 8.17 ...
+##  $ Temp_C                    : num [1:386] 16.5 18.6 15.8 18.7 16.2 16.5 17.3 16.8 17.3 19 ...
+##  $ DOC_uM                    : num [1:386] 75.8 160 35.8 527.5 119.2 ...
+##  $ Ca_uM                     : num [1:386] 1498 1338 271 306 164 ...
+##  $ Mg_uM                     : num [1:386] 458 333 182 75.6 79.9 24.7 172 237 210 439 ...
+##  $ Na_uM                     : num [1:386] 212 295 90 7 88 66 95 134 115 398 ...
+##  $ K_uM                      : num [1:386] 37 54 24.8 46.4 21.2 12.2 22.5 28.1 24.5 60.2 ...
+##  $ SO4_uM                    : num [1:386] 38.2 139 29.7 7.5 54.3 37.1 21.8 38.8 31.2 203 ...
+##  $ Cl_uM                     : num [1:386] 174 172 80 16 87 77 80 93 90 246 ...
+##  $ DIC_uM                    : num [1:386] 4352 955 3223 878 568 ...
+##  $ Zn_uM                     : num [1:386] 0.036 0.0282 0.115 0.0707 0.0316 0.0819 0.000627 0.0129 0.00762 0.0823 ...
+##  $ Cu_uM                     : num [1:386] 0.0026 0.0174 0.000488 0.0352 0.000834 0.00335 0.00216 0.00708 0.00359 0.0168 ...
+##  $ Free_Zn_M                 : num [1:386] 1.19e-08 3.59e-09 1.98e-08 1.26e-09 4.79e-09 ...
+##  $ ZnOH_M                    : num [1:386] 8.59e-11 3.71e-10 1.73e-09 1.57e-10 1.10e-10 ...
+##  $ Zn_OH_2_M                 : num [1:386] 7.48e-12 4.54e-10 1.76e-09 2.19e-10 2.83e-11 ...
+##  $ ZnCO3_M                   : num [1:386] 1.10e-09 1.05e-09 2.04e-08 4.46e-10 2.28e-10 ...
+##  $ ZnHCO3_M                  : num [1:386] 1.69e-08 1.35e-09 2.54e-08 5.08e-10 1.16e-09 ...
+##  $ ZnSO4_M                   : num [1:386] 4.60e-11 5.63e-11 8.04e-11 1.53e-12 4.28e-11 ...
+##  $ ZnCl_M                    : num [1:386] 3.58e-12 1.13e-12 2.99e-12 4.21e-14 8.58e-13 ...
+##  $ ZnS_M                     : num [1:386] 9.99e-17 1.00e-16 1.00e-16 1.00e-16 1.00e-16 ...
+##  $ TOrg_Zn_M                 : num [1:386] 5.90e-09 2.13e-08 4.58e-08 6.81e-08 2.53e-08 ...
+##  $ BL_Zn_mol_kg              : num [1:386] 1.33e-13 4.53e-14 7.73e-13 4.92e-14 2.46e-13 ...
+##  $ BL_Ca_mol_kg              : num [1:386] 4.15e-10 4.20e-10 2.56e-10 2.79e-10 2.08e-10 ...
+##  $ BL_H_mol_kg               : num [1:386] 9.72e-12 9.14e-13 2.59e-12 2.54e-12 1.37e-11 ...
+##  $ BL_Mg_mol_kg              : num [1:386] 3.92e-11 3.24e-11 5.37e-11 2.14e-11 3.14e-11 ...
+##  $ BL_Na_mol_kg              : num [1:386] 4.87e-12 7.58e-12 6.81e-12 5.59e-13 8.58e-12 ...
+##  $ BL_ZnOH_mol_kg            : num [1:386] 3.42e-14 1.38e-13 2.40e-12 1.70e-13 1.86e-13 ...
+##  $ HCO3_M                    : num [1:386] 0.003751 0.000912 0.003134 0.000865 0.000539 ...
+##  $ H2_CO3_M                  : num [1:386] 5.35e-04 1.09e-05 3.85e-05 9.72e-06 2.81e-05 ...
+##  $ HS_M                      : num [1:386] 3.11e-20 8.34e-21 1.38e-21 1.86e-20 2.15e-20 ...
+##  $ H2S_M                     : num [1:386] 1.77e-20 4.08e-22 6.71e-23 8.58e-22 4.45e-21 ...
+##  $ MgHCO3_M                  : num [1:386] 1.37e-05 2.58e-06 4.93e-06 5.88e-07 4.11e-07 ...
+##  $ MgCO3_M                   : num [1:386] 5.91e-07 1.41e-06 2.56e-06 3.66e-07 5.29e-08 ...
+##  $ MgSO4_M                   : num [1:386] 1.42e-06 4.40e-06 5.81e-07 7.32e-08 5.74e-07 ...
+##  $ CaHCO3_M                  : num [1:386] 4.47e-05 1.05e-05 7.19e-06 2.42e-06 8.36e-07 ...
+##  $ CaCO3_M                   : num [1:386] 3.21e-06 9.52e-06 6.26e-06 2.48e-06 1.80e-07 ...
+##  $ CaSO4_M                   : num [1:386] 4.59e-06 1.68e-05 8.56e-07 2.80e-07 1.17e-06 ...
+##  $ TOrg_H_M                  : num [1:386] 2.55e-07 3.37e-08 3.41e-08 3.09e-07 2.30e-07 ...
+##  $ TOrg_Ca_M                 : num [1:386] 3.35e-06 7.94e-06 1.29e-06 2.59e-05 4.45e-06 ...
+##  $ TOrg_Mg_M                 : num [1:386] 1.01e-06 1.93e-06 8.56e-07 6.28e-06 2.13e-06 ...
+##  $ TOrg_Na_M                 : num [1:386] 1.03e-07 4.14e-07 8.14e-08 1.68e-07 6.72e-07 ...
+##  $ TOrg_K_M                  : num [1:386] 1.80e-08 7.58e-08 2.24e-08 1.11e-06 1.62e-07 ...
+##  $ Zn_chronic_tox_M          : num [1:386] 1.28e-06 6.90e-07 2.11e-07 1.36e-06 3.55e-07 ...
+##  $ Zn_acute_tox_M            : num [1:386] 0.2818 0.0339 0.0999 0.0273 0.0267 ...</code></pre>
+</div>
 </div>
 <div id="export-to-bioavailability-master-spreadsheet" class="section level2">
 <h2>5. Export to Bioavailability Master Spreadsheet</h2>
@@ -1202,7 +1433,7 @@ if (!file.exists(file_path)) {
 <div id="ha-10-open-system" class="section level1">
 <h1>HA 10% Open System</h1>
 <div id="blm-speciation-mode-1" class="section level2">
-<h2>3. BLM Speciation Mode</h2>
+<h2>1. BLM Speciation Mode</h2>
 <p>If you haven’t already, convert the Zn_Speciation.det.xlsx to the
 newest Excel Workbook version before importing them.</p>
 <p>Import dataset</p>
@@ -1520,235 +1751,8 @@ str(bio_ms_ha10_os)</code></pre>
 ##  $ TOrg_Na_M                 : num [1:386] 1.22e-07 3.90e-07 9.07e-08 1.30e-07 6.76e-07 ...
 ##  $ TOrg_K_M                  : num [1:386] 2.14e-08 7.13e-08 2.50e-08 8.65e-07 1.63e-07 ...</code></pre>
 </div>
-<div id="blm-toxicity-mode-1" class="section level2">
-<h2>4. BLM Toxicity Mode</h2>
-<p>Import the Zn Toxicity on C. dubia.det.xlsx</p>
-<pre class="r"><code>library(readxl)
-
-Zn_Toxicity_on_C_dubia_ha10_os &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/1. Running BLM/Data outputs/Toxicity Mode/Zn_toxicity_ha10_os.det.xlsx&quot;)</code></pre>
-<pre><code>## New names:
-## • `` -&gt; `...2`
-## • `` -&gt; `...3`
-## • `` -&gt; `...4`
-## • `` -&gt; `...5`
-## • `` -&gt; `...6`
-## • `` -&gt; `...7`
-## • `` -&gt; `...8`
-## • `` -&gt; `...9`
-## • `` -&gt; `...10`
-## • `` -&gt; `...11`
-## • `` -&gt; `...12`
-## • `` -&gt; `...13`
-## • `` -&gt; `...14`
-## • `` -&gt; `...15`
-## • `` -&gt; `...16`
-## • `` -&gt; `...17`
-## • `` -&gt; `...18`
-## • `` -&gt; `...19`
-## • `` -&gt; `...20`
-## • `` -&gt; `...21`
-## • `` -&gt; `...22`
-## • `` -&gt; `...23`
-## • `` -&gt; `...24`
-## • `` -&gt; `...25`
-## • `` -&gt; `...26`
-## • `` -&gt; `...27`
-## • `` -&gt; `...28`
-## • `` -&gt; `...29`
-## • `` -&gt; `...30`
-## • `` -&gt; `...31`
-## • `` -&gt; `...32`
-## • `` -&gt; `...33`
-## • `` -&gt; `...34`
-## • `` -&gt; `...35`
-## • `` -&gt; `...36`
-## • `` -&gt; `...37`
-## • `` -&gt; `...38`
-## • `` -&gt; `...39`
-## • `` -&gt; `...40`
-## • `` -&gt; `...41`
-## • `` -&gt; `...42`
-## • `` -&gt; `...43`
-## • `` -&gt; `...44`
-## • `` -&gt; `...45`
-## • `` -&gt; `...46`
-## • `` -&gt; `...47`
-## • `` -&gt; `...48`
-## • `` -&gt; `...49`
-## • `` -&gt; `...50`
-## • `` -&gt; `...51`
-## • `` -&gt; `...52`
-## • `` -&gt; `...53`
-## • `` -&gt; `...54`
-## • `` -&gt; `...55`
-## • `` -&gt; `...56`
-## • `` -&gt; `...57`
-## • `` -&gt; `...58`
-## • `` -&gt; `...59`
-## • `` -&gt; `...60`
-## • `` -&gt; `...61`</code></pre>
-<pre class="r"><code>head(Zn_Toxicity_on_C_dubia_ha10_os)</code></pre>
-<pre><code>## # A tibble: 6 × 61
-##   Ver 3.41.2.45, build 2…¹ ...2  ...3  ...4  ...5  ...6  ...7  ...8  ...9  ...10
-##   &lt;chr&gt;                    &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt;
-## 1 &quot;C:\\Program Files (x86…  &lt;NA&gt; &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt; 
-## 2 &quot;C:\\Users\\q4q\\OneDri…  &lt;NA&gt; &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt; 
-## 3 &quot;/S C:\\USERS\\Q4Q\\ONE…  &lt;NA&gt; &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt; 
-## 4 &quot;Site Label&quot;             &quot;Sam… H     Zn    DOC   Ca    Mg    Na    K     SO4  
-## 5  &lt;NA&gt;                     &lt;NA&gt; mol … mol … mol … mol … mol … mol … mol … mol …
-## 6 &quot;\&quot;WaDE_62             … &quot;\&quot;M… 6.61… 5.91… 1.82… 1.48… 4.54… 2.11… 3.69… 3.15…
-## # ℹ abbreviated name: ¹​`Ver 3.41.2.45, build 2018-11-20`
-## # ℹ 51 more variables: ...11 &lt;chr&gt;, ...12 &lt;chr&gt;, ...13 &lt;chr&gt;, ...14 &lt;chr&gt;,
-## #   ...15 &lt;chr&gt;, ...16 &lt;chr&gt;, ...17 &lt;chr&gt;, ...18 &lt;chr&gt;, ...19 &lt;chr&gt;,
-## #   ...20 &lt;chr&gt;, ...21 &lt;chr&gt;, ...22 &lt;chr&gt;, ...23 &lt;chr&gt;, ...24 &lt;chr&gt;,
-## #   ...25 &lt;chr&gt;, ...26 &lt;chr&gt;, ...27 &lt;chr&gt;, ...28 &lt;chr&gt;, ...29 &lt;chr&gt;,
-## #   ...30 &lt;chr&gt;, ...31 &lt;chr&gt;, ...32 &lt;chr&gt;, ...33 &lt;chr&gt;, ...34 &lt;chr&gt;,
-## #   ...35 &lt;chr&gt;, ...36 &lt;chr&gt;, ...37 &lt;chr&gt;, ...38 &lt;chr&gt;, ...39 &lt;chr&gt;, …</code></pre>
-<p>Data cleaning</p>
-<pre class="r"><code>library(dplyr)
-library(stringr)
-
-Zn_Toxicity_on_C_dubia_ha10_os_clean &lt;- Zn_Toxicity_on_C_dubia_ha10_os %&gt;%
-  # 1) Drop rows 1–3
-  slice(-(1:3)) %&gt;%
-  
-  # 2) Set first remaining row as column names (and make them unique)
-  {
-    nm &lt;- as.character(.[1, ])
-    nm &lt;- make.unique(nm)
-    out &lt;- .[-1, ]
-    names(out) &lt;- nm
-    out
-  } %&gt;%
-  
-  # 3) Remove units row (now the first row)
-  slice(-1) %&gt;%
-  
-  # 4) Rename ID columns
-  rename(
-    Sample_ID = `Site Label`,
-    Site      = `Sample Label`
-  ) %&gt;%
-  
-  # 5) Clean Sample_ID + strip quotes + convert everything else to numeric
-  mutate(
-    Sample_ID = str_extract(Sample_ID, &quot;WaDE_\\d+&quot;),
-    across(-c(Sample_ID, Site), ~ as.numeric(str_replace_all(.x, &#39;&quot;&#39;, &quot;&quot;)))
-  )
-
-# Preview
-head(Zn_Toxicity_on_C_dubia_ha10_os_clean)</code></pre>
-<pre><code>## # A tibble: 6 × 61
-##   Sample_ID Site               H      Zn     DOC      Ca      Mg      Na       K
-##   &lt;chr&gt;     &lt;chr&gt;          &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;
-## 1 WaDE_62   &quot;\&quot;MTN1.1  … 6.62e-8 5.92e-6 1.82e-3 1.49e-3 4.55e-4 2.12e-4 3.70e-5
-## 2 WaDE_63   &quot;\&quot;EFK13.8 … 5.66e-9 1.58e-6 3.84e-3 1.27e-3 3.18e-4 2.95e-4 5.40e-5
-## 3 WaDE_64   &quot;\&quot;MTN4    … 5.40e-9 5.07e-7 8.60e-4 2.59e-4 1.75e-4 8.99e-5 2.48e-5
-## 4 WaDE_65   &quot;\&quot;MTN2    … 5.02e-9 4.69e-7 1.27e-2 2.72e-4 6.79e-5 6.92e-6 4.59e-5
-## 5 WaDE_66   &quot;\&quot;MCA3.3  … 2.21e-8 9.05e-7 2.86e-3 1.59e-4 7.73e-5 8.77e-5 2.11e-5
-## 6 WaDE_67   &quot;\&quot;MCA3.2  … 3.32e-8 6.99e-7 1.96e-3 4.36e-5 2.34e-5 6.55e-5 1.21e-5
-## # ℹ 52 more variables: SO4 &lt;dbl&gt;, Cl &lt;dbl&gt;, CO3 &lt;dbl&gt;, S &lt;dbl&gt;, BL &lt;dbl&gt;,
-## #   `BL-Zn` &lt;dbl&gt;, `BL-Ca` &lt;dbl&gt;, `BL-H` &lt;dbl&gt;, `BL-Mg` &lt;dbl&gt;, `BL-Na` &lt;dbl&gt;,
-## #   `BL-ZnOH` &lt;dbl&gt;, HCO3 &lt;dbl&gt;, H2CO3 &lt;dbl&gt;, HS &lt;dbl&gt;, H2S &lt;dbl&gt;,
-## #   MgHCO3 &lt;dbl&gt;, MgCO3 &lt;dbl&gt;, MgSO4 &lt;dbl&gt;, CaHCO3 &lt;dbl&gt;, CaCO3 &lt;dbl&gt;,
-## #   CaSO4 &lt;dbl&gt;, ZnOH &lt;dbl&gt;, `Zn(OH)2` &lt;dbl&gt;, ZnSO4 &lt;dbl&gt;, ZnCO3 &lt;dbl&gt;,
-## #   ZnCl &lt;dbl&gt;, ZnHCO3 &lt;dbl&gt;, ZnS &lt;dbl&gt;, TOrg.H &lt;dbl&gt;, TOrg.Zn &lt;dbl&gt;,
-## #   TOrg.Ca &lt;dbl&gt;, TOrg.Mg &lt;dbl&gt;, TOrg.Na &lt;dbl&gt;, TOrg.K &lt;dbl&gt;, Charge &lt;dbl&gt;, …</code></pre>
-<pre class="r"><code># Sanity check: match count vs Bioavailability Master Spreadsheet (bio_ms)
-bio_ms %&gt;%
-  inner_join(
-    Zn_Toxicity_on_C_dubia_ha10_os_clean %&gt;% dplyr::select(Sample_ID),
-    by = &quot;Sample_ID&quot;
-  ) %&gt;%
-  summarise(n_matched = dplyr::n())</code></pre>
-<pre><code>## # A tibble: 1 × 1
-##   n_matched
-##       &lt;int&gt;
-## 1       386</code></pre>
-<p>Select the T.Zn variable (total amount of Zn to cause the toxicity to
-the organism) and add to bio_ms</p>
-<pre class="r"><code>library(dplyr)
-
-bio_ms_ha10_os &lt;- bio_ms_ha10_os %&gt;%
-  left_join(
-    Zn_Toxicity_on_C_dubia_ha10_os_clean %&gt;%
-      dplyr::rename(
-        Zn_Toxicity_Daphnia_M = T.Zn
-      ) %&gt;%
-      dplyr::select(
-        Sample_ID,
-        Zn_Toxicity_Daphnia_M
-      ),
-    by = &quot;Sample_ID&quot;
-  )
-
-
-# Make sure they&#39;re numeric
-zn_new_vars &lt;- c(&quot;Zn_Toxicity_Daphnia_M&quot;)
-
-# Convert them to numeric
-bio_ms_ha10_os &lt;- bio_ms_ha10_os %&gt;%
-  mutate(across(all_of(zn_new_vars), ~ as.numeric(.)))
-
-# Check
-str(bio_ms_ha10_os)</code></pre>
-<pre><code>## tibble [386 × 53] (S3: tbl_df/tbl/data.frame)
-##  $ Sample_ID                 : chr [1:386] &quot;WaDE_62&quot; &quot;WaDE_63&quot; &quot;WaDE_64&quot; &quot;WaDE_65&quot; ...
-##  $ Site                      : chr [1:386] &quot;MTN1.1&quot; &quot;EFK13.8&quot; &quot;MTN4&quot; &quot;MTN2&quot; ...
-##  $ Date                      : POSIXct[1:386], format: &quot;2023-06-23&quot; &quot;2023-06-23&quot; ...
-##  $ Regime                    : chr [1:386] &quot;NonPerennial&quot; &quot;Perennial&quot; &quot;Perennial&quot; &quot;NonPerennial&quot; ...
-##  $ Flow_state                : chr [1:386] &quot;Flowing&quot; &quot;Flowing&quot; &quot;Flowing&quot; &quot;Pooled&quot; ...
-##  $ Network                   : chr [1:386] &quot;MTN&quot; &quot;EFK&quot; &quot;MTN&quot; &quot;MTN&quot; ...
-##  $ Elevation_m               : num [1:386] 248 245 277 257 280 ...
-##  $ Relative_elevation_m      : num [1:386] 3.83 0 33.18 12.87 30.45 ...
-##  $ Upstream_from_main_stem_km: num [1:386] 0.205 0 1.255 0.673 0.995 ...
-##  $ Developed_lulc            : num [1:386] 63.6 64.7 41.2 54.4 58.5 ...
-##  $ pH                        : num [1:386] 7.21 8.28 8.29 8.32 7.67 7.49 7.62 7.55 8.13 8.17 ...
-##  $ Temp_C                    : num [1:386] 16.5 18.6 15.8 18.7 16.2 16.5 17.3 16.8 17.3 19 ...
-##  $ DOC_uM                    : num [1:386] 75.8 160 35.8 527.5 119.2 ...
-##  $ Ca_uM                     : num [1:386] 1498 1338 271 306 164 ...
-##  $ Mg_uM                     : num [1:386] 458 333 182 75.6 79.9 24.7 172 237 210 439 ...
-##  $ Na_uM                     : num [1:386] 212 295 90 7 88 66 95 134 115 398 ...
-##  $ K_uM                      : num [1:386] 37 54 24.8 46.4 21.2 12.2 22.5 28.1 24.5 60.2 ...
-##  $ SO4_uM                    : num [1:386] 38.2 139 29.7 7.5 54.3 37.1 21.8 38.8 31.2 203 ...
-##  $ Cl_uM                     : num [1:386] 174 172 80 16 87 77 80 93 90 246 ...
-##  $ DIC_uM                    : num [1:386] 4352 955 3223 878 568 ...
-##  $ Zn_uM                     : num [1:386] 0.036 0.0282 0.115 0.0707 0.0316 0.0819 0.000627 0.0129 0.00762 0.0823 ...
-##  $ Cu_uM                     : num [1:386] 0.0026 0.0174 0.000488 0.0352 0.000834 0.00335 0.00216 0.00708 0.00359 0.0168 ...
-##  $ Free_Zn_M                 : num [1:386] 2.24e-08 3.26e-09 2.22e-08 1.31e-09 4.79e-09 ...
-##  $ ZnOH_M                    : num [1:386] 1.66e-10 3.33e-10 1.97e-09 1.58e-10 1.10e-10 ...
-##  $ Zn_OH_2_M                 : num [1:386] 1.47e-11 4.07e-10 2.01e-09 2.19e-10 2.84e-11 ...
-##  $ ZnCO3_M                   : num [1:386] 1.08e-10 2.14e-09 1.66e-08 1.14e-09 2.19e-10 ...
-##  $ ZnHCO3_M                  : num [1:386] 1.64e-09 2.77e-09 2.06e-08 1.31e-09 1.11e-09 ...
-##  $ ZnSO4_M                   : num [1:386] 9.23e-11 5.00e-11 9.35e-11 1.48e-12 4.29e-11 ...
-##  $ ZnCl_M                    : num [1:386] 7.02e-12 1.01e-12 3.42e-12 4.19e-14 8.59e-13 ...
-##  $ ZnS_M                     : num [1:386] 1e-16 1e-16 1e-16 1e-16 1e-16 ...
-##  $ TOrg_Zn_M                 : num [1:386] 1.16e-08 1.92e-08 5.15e-08 6.66e-08 2.53e-08 ...
-##  $ BL_Zn_mol_kg              : num [1:386] 2.45e-13 4.18e-14 8.65e-13 5.15e-14 2.46e-13 ...
-##  $ BL_Ca_mol_kg              : num [1:386] 4.18e-10 4.18e-10 2.59e-10 2.73e-10 2.09e-10 ...
-##  $ BL_H_mol_kg               : num [1:386] 9.17e-12 9.38e-13 2.55e-12 2.61e-12 1.37e-11 ...
-##  $ BL_Mg_mol_kg              : num [1:386] 3.95e-11 3.23e-11 5.41e-11 2.11e-11 3.14e-11 ...
-##  $ BL_Na_mol_kg              : num [1:386] 4.65e-12 7.75e-12 6.73e-12 5.71e-13 8.57e-12 ...
-##  $ BL_ZnOH_mol_kg            : num [1:386] 6.30e-14 1.27e-13 2.69e-12 1.77e-13 1.86e-13 ...
-##  $ HCO3_M                    : num [1:386] 0.000185 0.002087 0.002215 0.002224 0.000518 ...
-##  $ H2_CO3_M                  : num [1:386] 2.67e-05 2.48e-05 2.74e-05 2.48e-05 2.70e-05 ...
-##  $ HS_M                      : num [1:386] 1.57e-20 9.35e-21 1.20e-21 1.88e-20 2.15e-20 ...
-##  $ H2S_M                     : num [1:386] 9.02e-21 4.55e-22 5.86e-23 8.58e-22 4.44e-21 ...
-##  $ MgHCO3_M                  : num [1:386] 7.29e-07 5.73e-06 3.59e-06 1.42e-06 3.95e-07 ...
-##  $ MgCO3_M                   : num [1:386] 3.17e-08 3.12e-06 1.87e-06 8.76e-07 5.08e-08 ...
-##  $ MgSO4_M                   : num [1:386] 1.57e-06 4.24e-06 6.08e-07 6.64e-08 5.75e-07 ...
-##  $ CaHCO3_M                  : num [1:386] 2.37e-06 2.33e-05 5.25e-06 5.82e-06 8.03e-07 ...
-##  $ CaCO3_M                   : num [1:386] 1.73e-07 2.10e-05 4.59e-06 5.91e-06 1.73e-07 ...
-##  $ CaSO4_M                   : num [1:386] 5.06e-06 1.61e-05 8.98e-07 2.53e-07 1.17e-06 ...
-##  $ TOrg_H_M                  : num [1:386] 1.90e-08 6.82e-08 3.00e-08 4.71e-07 2.24e-07 ...
-##  $ TOrg_Ca_M                 : num [1:386] 3.33e-06 7.95e-06 1.29e-06 2.60e-05 4.45e-06 ...
-##  $ TOrg_Mg_M                 : num [1:386] 1.00e-06 1.94e-06 8.51e-07 6.34e-06 2.13e-06 ...
-##  $ TOrg_Na_M                 : num [1:386] 1.22e-07 3.90e-07 9.07e-08 1.30e-07 6.76e-07 ...
-##  $ TOrg_K_M                  : num [1:386] 2.14e-08 7.13e-08 2.50e-08 8.65e-07 1.63e-07 ...
-##  $ Zn_Toxicity_Daphnia_M     : num [1:386] 7.15e-06 5.94e-06 1.76e-06 6.21e-06 2.28e-06 ...</code></pre>
-</div>
 <div id="export-to-bioavailability-master-spreadsheet-1" class="section level2">
-<h2>5. Export to Bioavailability Master Spreadsheet</h2>
+<h2>2. Export to Bioavailability Master Spreadsheet</h2>
 <p>Since we’re saving the data from BLM run as a <strong>open system
 assuming HA at 10%</strong>, we’ll save it to the Bioavailability Master
 Spreadsheet into a tab called HA 10% Closed System:</p>
@@ -1789,7 +1793,7 @@ if (!file.exists(file_path)) {
 <div id="ha-80-closed-system" class="section level1">
 <h1>HA 80% Closed System</h1>
 <div id="blm-speciation-mode-2" class="section level2">
-<h2>3. BLM Speciation Mode</h2>
+<h2>1. BLM Speciation Mode</h2>
 <p>If you haven’t already, convert the Zn_Speciation.det.xlsx to the
 newest Excel Workbook version before importing them.</p>
 <p>Import dataset</p>
@@ -2111,235 +2115,8 @@ str(bio_ms_ha80_cs)</code></pre>
 ##  $ TOrg_Na_M                 : num [1:386] 4.48e-08 1.70e-07 3.35e-08 6.76e-08 2.72e-07 ...
 ##  $ TOrg_K_M                  : num [1:386] 7.81e-09 3.12e-08 9.23e-09 4.48e-07 6.56e-08 ...</code></pre>
 </div>
-<div id="blm-toxicity-mode-2" class="section level2">
-<h2>4. BLM Toxicity Mode</h2>
-<p>Import the Zn Toxicity on C. dubia.det.xlsx</p>
-<pre class="r"><code>library(readxl)
-
-Zn_Toxicity_on_C_dubia_ha80_cs &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/1. Running BLM/Data outputs/Toxicity Mode/Zn_toxicity_ha80_cs.det.xlsx&quot;)</code></pre>
-<pre><code>## New names:
-## • `` -&gt; `...2`
-## • `` -&gt; `...3`
-## • `` -&gt; `...4`
-## • `` -&gt; `...5`
-## • `` -&gt; `...6`
-## • `` -&gt; `...7`
-## • `` -&gt; `...8`
-## • `` -&gt; `...9`
-## • `` -&gt; `...10`
-## • `` -&gt; `...11`
-## • `` -&gt; `...12`
-## • `` -&gt; `...13`
-## • `` -&gt; `...14`
-## • `` -&gt; `...15`
-## • `` -&gt; `...16`
-## • `` -&gt; `...17`
-## • `` -&gt; `...18`
-## • `` -&gt; `...19`
-## • `` -&gt; `...20`
-## • `` -&gt; `...21`
-## • `` -&gt; `...22`
-## • `` -&gt; `...23`
-## • `` -&gt; `...24`
-## • `` -&gt; `...25`
-## • `` -&gt; `...26`
-## • `` -&gt; `...27`
-## • `` -&gt; `...28`
-## • `` -&gt; `...29`
-## • `` -&gt; `...30`
-## • `` -&gt; `...31`
-## • `` -&gt; `...32`
-## • `` -&gt; `...33`
-## • `` -&gt; `...34`
-## • `` -&gt; `...35`
-## • `` -&gt; `...36`
-## • `` -&gt; `...37`
-## • `` -&gt; `...38`
-## • `` -&gt; `...39`
-## • `` -&gt; `...40`
-## • `` -&gt; `...41`
-## • `` -&gt; `...42`
-## • `` -&gt; `...43`
-## • `` -&gt; `...44`
-## • `` -&gt; `...45`
-## • `` -&gt; `...46`
-## • `` -&gt; `...47`
-## • `` -&gt; `...48`
-## • `` -&gt; `...49`
-## • `` -&gt; `...50`
-## • `` -&gt; `...51`
-## • `` -&gt; `...52`
-## • `` -&gt; `...53`
-## • `` -&gt; `...54`
-## • `` -&gt; `...55`
-## • `` -&gt; `...56`
-## • `` -&gt; `...57`
-## • `` -&gt; `...58`
-## • `` -&gt; `...59`
-## • `` -&gt; `...60`
-## • `` -&gt; `...61`</code></pre>
-<pre class="r"><code>head(Zn_Toxicity_on_C_dubia_ha80_cs)</code></pre>
-<pre><code>## # A tibble: 6 × 61
-##   Ver 3.41.2.45, build 2…¹ ...2  ...3  ...4  ...5  ...6  ...7  ...8  ...9  ...10
-##   &lt;chr&gt;                    &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt;
-## 1 &quot;C:\\Program Files (x86…  &lt;NA&gt; &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt; 
-## 2 &quot;C:\\Users\\q4q\\OneDri…  &lt;NA&gt; &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt; 
-## 3 &quot;/S C:\\USERS\\Q4Q\\ONE…  &lt;NA&gt; &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt; 
-## 4 &quot;Site Label&quot;             &quot;Sam… H     Zn    DOC   Ca    Mg    Na    K     SO4  
-## 5  &lt;NA&gt;                     &lt;NA&gt; mol … mol … mol … mol … mol … mol … mol … mol …
-## 6 &quot;\&quot;WaDE_62             … &quot;\&quot;M… 6.69… 5.80… 1.82… 1.44… 4.41… 2.11… 3.69… 3.21…
-## # ℹ abbreviated name: ¹​`Ver 3.41.2.45, build 2018-11-20`
-## # ℹ 51 more variables: ...11 &lt;chr&gt;, ...12 &lt;chr&gt;, ...13 &lt;chr&gt;, ...14 &lt;chr&gt;,
-## #   ...15 &lt;chr&gt;, ...16 &lt;chr&gt;, ...17 &lt;chr&gt;, ...18 &lt;chr&gt;, ...19 &lt;chr&gt;,
-## #   ...20 &lt;chr&gt;, ...21 &lt;chr&gt;, ...22 &lt;chr&gt;, ...23 &lt;chr&gt;, ...24 &lt;chr&gt;,
-## #   ...25 &lt;chr&gt;, ...26 &lt;chr&gt;, ...27 &lt;chr&gt;, ...28 &lt;chr&gt;, ...29 &lt;chr&gt;,
-## #   ...30 &lt;chr&gt;, ...31 &lt;chr&gt;, ...32 &lt;chr&gt;, ...33 &lt;chr&gt;, ...34 &lt;chr&gt;,
-## #   ...35 &lt;chr&gt;, ...36 &lt;chr&gt;, ...37 &lt;chr&gt;, ...38 &lt;chr&gt;, ...39 &lt;chr&gt;, …</code></pre>
-<p>Data cleaning</p>
-<pre class="r"><code>library(dplyr)
-library(stringr)
-
-Zn_Toxicity_on_C_dubia_ha80_cs_clean &lt;- Zn_Toxicity_on_C_dubia_ha80_cs %&gt;%
-  # 1) Drop rows 1–3
-  slice(-(1:3)) %&gt;%
-  
-  # 2) Set first remaining row as column names (and make them unique)
-  {
-    nm &lt;- as.character(.[1, ])
-    nm &lt;- make.unique(nm)
-    out &lt;- .[-1, ]
-    names(out) &lt;- nm
-    out
-  } %&gt;%
-  
-  # 3) Remove units row (now the first row)
-  slice(-1) %&gt;%
-  
-  # 4) Rename ID columns
-  rename(
-    Sample_ID = `Site Label`,
-    Site      = `Sample Label`
-  ) %&gt;%
-  
-  # 5) Clean Sample_ID + strip quotes + convert everything else to numeric
-  mutate(
-    Sample_ID = str_extract(Sample_ID, &quot;WaDE_\\d+&quot;),
-    across(-c(Sample_ID, Site), ~ as.numeric(str_replace_all(.x, &#39;&quot;&#39;, &quot;&quot;)))
-  )
-
-# Preview
-head(Zn_Toxicity_on_C_dubia_ha80_cs_clean)</code></pre>
-<pre><code>## # A tibble: 6 × 61
-##   Sample_ID Site               H      Zn     DOC      Ca      Mg      Na       K
-##   &lt;chr&gt;     &lt;chr&gt;          &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;
-## 1 WaDE_62   &quot;\&quot;MTN1.1  … 6.70e-8 5.81e-6 1.82e-3 1.44e-3 4.42e-4 2.12e-4 3.70e-5
-## 2 WaDE_63   &quot;\&quot;EFK13.8 … 5.63e-9 1.60e-6 3.84e-3 1.30e-3 3.24e-4 2.95e-4 5.40e-5
-## 3 WaDE_64   &quot;\&quot;MTN4    … 5.43e-9 5.07e-7 8.60e-4 2.56e-4 1.73e-4 9.00e-5 2.48e-5
-## 4 WaDE_65   &quot;\&quot;MTN2    … 4.98e-9 4.76e-7 1.27e-2 2.84e-4 7.11e-5 6.96e-6 4.61e-5
-## 5 WaDE_66   &quot;\&quot;MCA3.3  … 2.21e-8 9.06e-7 2.86e-3 1.59e-4 7.77e-5 8.78e-5 2.12e-5
-## 6 WaDE_67   &quot;\&quot;MCA3.2  … 3.31e-8 6.99e-7 1.96e-3 4.40e-5 2.37e-5 6.57e-5 1.22e-5
-## # ℹ 52 more variables: SO4 &lt;dbl&gt;, Cl &lt;dbl&gt;, CO3 &lt;dbl&gt;, S &lt;dbl&gt;, BL &lt;dbl&gt;,
-## #   `BL-Zn` &lt;dbl&gt;, `BL-Ca` &lt;dbl&gt;, `BL-H` &lt;dbl&gt;, `BL-Mg` &lt;dbl&gt;, `BL-Na` &lt;dbl&gt;,
-## #   `BL-ZnOH` &lt;dbl&gt;, HCO3 &lt;dbl&gt;, H2CO3 &lt;dbl&gt;, HS &lt;dbl&gt;, H2S &lt;dbl&gt;,
-## #   MgHCO3 &lt;dbl&gt;, MgCO3 &lt;dbl&gt;, MgSO4 &lt;dbl&gt;, CaHCO3 &lt;dbl&gt;, CaCO3 &lt;dbl&gt;,
-## #   CaSO4 &lt;dbl&gt;, ZnOH &lt;dbl&gt;, `Zn(OH)2` &lt;dbl&gt;, ZnSO4 &lt;dbl&gt;, ZnCO3 &lt;dbl&gt;,
-## #   ZnCl &lt;dbl&gt;, ZnHCO3 &lt;dbl&gt;, ZnS &lt;dbl&gt;, TOrg.H &lt;dbl&gt;, TOrg.Zn &lt;dbl&gt;,
-## #   TOrg.Ca &lt;dbl&gt;, TOrg.Mg &lt;dbl&gt;, TOrg.Na &lt;dbl&gt;, TOrg.K &lt;dbl&gt;, Charge &lt;dbl&gt;, …</code></pre>
-<pre class="r"><code># Sanity check: match count vs Bioavailability Master Spreadsheet (bio_ms)
-bio_ms %&gt;%
-  inner_join(
-    Zn_Toxicity_on_C_dubia_ha80_cs_clean %&gt;% dplyr::select(Sample_ID),
-    by = &quot;Sample_ID&quot;
-  ) %&gt;%
-  summarise(n_matched = dplyr::n())</code></pre>
-<pre><code>## # A tibble: 1 × 1
-##   n_matched
-##       &lt;int&gt;
-## 1       386</code></pre>
-<p>Select the T.Zn variable (total amount of Zn to cause the toxicity to
-the organism) and add to bio_ms</p>
-<pre class="r"><code>library(dplyr)
-
-bio_ms_ha80_cs &lt;- bio_ms_ha80_cs %&gt;%
-  left_join(
-    Zn_Toxicity_on_C_dubia_ha80_cs_clean %&gt;%
-      dplyr::rename(
-        Zn_Toxicity_Daphnia_M = T.Zn
-      ) %&gt;%
-      dplyr::select(
-        Sample_ID,
-        Zn_Toxicity_Daphnia_M
-      ),
-    by = &quot;Sample_ID&quot;
-  )
-
-
-# Make sure they&#39;re numeric
-zn_new_vars &lt;- c(&quot;Zn_Toxicity_Daphnia_M&quot;)
-
-# Convert them to numeric
-bio_ms_ha80_cs &lt;- bio_ms_ha80_cs %&gt;%
-  mutate(across(all_of(zn_new_vars), ~ as.numeric(.)))
-
-# Check
-str(bio_ms_ha80_cs)</code></pre>
-<pre><code>## tibble [386 × 53] (S3: tbl_df/tbl/data.frame)
-##  $ Sample_ID                 : chr [1:386] &quot;WaDE_62&quot; &quot;WaDE_63&quot; &quot;WaDE_64&quot; &quot;WaDE_65&quot; ...
-##  $ Site                      : chr [1:386] &quot;MTN1.1&quot; &quot;EFK13.8&quot; &quot;MTN4&quot; &quot;MTN2&quot; ...
-##  $ Date                      : POSIXct[1:386], format: &quot;2023-06-23&quot; &quot;2023-06-23&quot; ...
-##  $ Regime                    : chr [1:386] &quot;NonPerennial&quot; &quot;Perennial&quot; &quot;Perennial&quot; &quot;NonPerennial&quot; ...
-##  $ Flow_state                : chr [1:386] &quot;Flowing&quot; &quot;Flowing&quot; &quot;Flowing&quot; &quot;Pooled&quot; ...
-##  $ Network                   : chr [1:386] &quot;MTN&quot; &quot;EFK&quot; &quot;MTN&quot; &quot;MTN&quot; ...
-##  $ Elevation_m               : num [1:386] 248 245 277 257 280 ...
-##  $ Relative_elevation_m      : num [1:386] 3.83 0 33.18 12.87 30.45 ...
-##  $ Upstream_from_main_stem_km: num [1:386] 0.205 0 1.255 0.673 0.995 ...
-##  $ Developed_lulc            : num [1:386] 63.6 64.7 41.2 54.4 58.5 ...
-##  $ pH                        : num [1:386] 7.21 8.28 8.29 8.32 7.67 7.49 7.62 7.55 8.13 8.17 ...
-##  $ Temp_C                    : num [1:386] 16.5 18.6 15.8 18.7 16.2 16.5 17.3 16.8 17.3 19 ...
-##  $ DOC_uM                    : num [1:386] 75.8 160 35.8 527.5 119.2 ...
-##  $ Ca_uM                     : num [1:386] 1498 1338 271 306 164 ...
-##  $ Mg_uM                     : num [1:386] 458 333 182 75.6 79.9 24.7 172 237 210 439 ...
-##  $ Na_uM                     : num [1:386] 212 295 90 7 88 66 95 134 115 398 ...
-##  $ K_uM                      : num [1:386] 37 54 24.8 46.4 21.2 12.2 22.5 28.1 24.5 60.2 ...
-##  $ SO4_uM                    : num [1:386] 38.2 139 29.7 7.5 54.3 37.1 21.8 38.8 31.2 203 ...
-##  $ Cl_uM                     : num [1:386] 174 172 80 16 87 77 80 93 90 246 ...
-##  $ DIC_uM                    : num [1:386] 4352 955 3223 878 568 ...
-##  $ Zn_uM                     : num [1:386] 0.036 0.0282 0.115 0.0707 0.0316 0.0819 0.000627 0.0129 0.00762 0.0823 ...
-##  $ Cu_uM                     : num [1:386] 0.0026 0.0174 0.000488 0.0352 0.000834 0.00335 0.00216 0.00708 0.00359 0.0168 ...
-##  $ Free_Zn_M                 : num [1:386] 1.05e-08 3.76e-09 1.64e-08 1.02e-09 2.42e-09 ...
-##  $ ZnOH_M                    : num [1:386] 7.55e-11 3.88e-10 1.44e-09 1.26e-10 5.57e-11 ...
-##  $ Zn_OH_2_M                 : num [1:386] 6.58e-12 4.75e-10 1.46e-09 1.77e-10 1.43e-11 ...
-##  $ ZnCO3_M                   : num [1:386] 9.70e-10 1.10e-09 1.70e-08 3.56e-10 1.15e-10 ...
-##  $ ZnHCO3_M                  : num [1:386] 1.49e-08 1.42e-09 2.11e-08 4.06e-10 5.83e-10 ...
-##  $ ZnSO4_M                   : num [1:386] 4.04e-11 5.89e-11 6.67e-11 1.23e-12 2.16e-11 ...
-##  $ ZnCl_M                    : num [1:386] 3.15e-12 1.18e-12 2.48e-12 3.37e-14 4.32e-13 ...
-##  $ ZnS_M                     : num [1:386] 9.99e-17 1.00e-16 1.00e-16 1.00e-16 9.99e-17 ...
-##  $ TOrg_Zn_M                 : num [1:386] 9.53e-09 2.10e-08 5.75e-08 6.86e-08 2.84e-08 ...
-##  $ BL_Zn_mol_kg              : num [1:386] 1.17e-13 4.74e-14 6.42e-13 3.95e-14 1.24e-13 ...
-##  $ BL_Ca_mol_kg              : num [1:386] 4.15e-10 4.20e-10 2.57e-10 2.79e-10 2.09e-10 ...
-##  $ BL_H_mol_kg               : num [1:386] 9.71e-12 9.14e-13 2.59e-12 2.53e-12 1.37e-11 ...
-##  $ BL_Mg_mol_kg              : num [1:386] 3.92e-11 3.24e-11 5.38e-11 2.17e-11 3.15e-11 ...
-##  $ BL_Na_mol_kg              : num [1:386] 4.87e-12 7.59e-12 6.82e-12 5.61e-13 8.59e-12 ...
-##  $ BL_ZnOH_mol_kg            : num [1:386] 3.00e-14 1.44e-13 1.99e-12 1.37e-13 9.38e-14 ...
-##  $ HCO3_M                    : num [1:386] 0.00375 0.000912 0.003133 0.000858 0.000538 ...
-##  $ H2_CO3_M                  : num [1:386] 5.35e-04 1.09e-05 3.85e-05 9.64e-06 2.80e-05 ...
-##  $ HS_M                      : num [1:386] 3.54e-20 7.97e-21 1.67e-21 2.31e-20 4.26e-20 ...
-##  $ H2S_M                     : num [1:386] 2.01e-20 3.90e-22 8.08e-23 1.06e-21 8.80e-21 ...
-##  $ MgHCO3_M                  : num [1:386] 1.37e-05 2.58e-06 4.94e-06 5.94e-07 4.11e-07 ...
-##  $ MgCO3_M                   : num [1:386] 5.91e-07 1.41e-06 2.56e-06 3.69e-07 5.30e-08 ...
-##  $ MgSO4_M                   : num [1:386] 1.42e-06 4.41e-06 5.81e-07 7.39e-08 5.75e-07 ...
-##  $ CaHCO3_M                  : num [1:386] 4.47e-05 1.05e-05 7.19e-06 2.41e-06 8.34e-07 ...
-##  $ CaCO3_M                   : num [1:386] 3.22e-06 9.52e-06 6.26e-06 2.47e-06 1.80e-07 ...
-##  $ CaSO4_M                   : num [1:386] 4.59e-06 1.68e-05 8.56e-07 2.78e-07 1.16e-06 ...
-##  $ TOrg_H_M                  : num [1:386] 8.75e-08 1.25e-08 1.18e-08 1.03e-07 7.16e-08 ...
-##  $ TOrg_Ca_M                 : num [1:386] 2.80e-06 7.10e-06 1.15e-06 2.25e-05 3.85e-06 ...
-##  $ TOrg_Mg_M                 : num [1:386] 7.13e-07 1.36e-06 6.22e-07 4.48e-06 1.56e-06 ...
-##  $ TOrg_Na_M                 : num [1:386] 4.48e-08 1.70e-07 3.35e-08 6.76e-08 2.72e-07 ...
-##  $ TOrg_K_M                  : num [1:386] 7.81e-09 3.12e-08 9.23e-09 4.48e-07 6.56e-08 ...
-##  $ Zn_Toxicity_Daphnia_M     : num [1:386] 1.57e-05 5.35e-06 2.25e-06 8.39e-06 2.93e-06 ...</code></pre>
-</div>
 <div id="export-to-bioavailability-master-spreadsheet-2" class="section level2">
-<h2>5. Export to Bioavailability Master Spreadsheet</h2>
+<h2>2. Export to Bioavailability Master Spreadsheet</h2>
 <p>Since we’re saving the data from BLM run as a <strong>open system
 assuming HA at 10%</strong>, we’ll save it to the Bioavailability Master
 Spreadsheet into a tab called HA 10% Closed System:</p>

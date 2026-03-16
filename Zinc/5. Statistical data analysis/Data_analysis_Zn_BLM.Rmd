@@ -34,6 +34,17 @@ dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Researc
 head(dat)
 ```
 
+First, we'll omit pooled samples
+
+```{r}
+library(dplyr)
+
+dat <- dat %>%
+  filter(Flow_state != "Pooled")
+
+str(dat$Flow_state)
+```
+
 ## 1. Select variables
 
 We'll use the scaled, log-transformed BLM predictors to conduct a PCA
@@ -223,7 +234,7 @@ library(dplyr)
 library(tidyr)
 
 # inherent characteristics 
-site_char <- c("Type", "Regime", "Flow_state", "Development")
+site_char <- c("Type", "Regime", "Development")
 
 cluster_summary_table_pct <- dat %>%
   dplyr::select(all_of(site_char), cluster) %>%  
@@ -273,9 +284,6 @@ cluster_summary_table_pct$Value_labeled <- factor(
     "Development: Medium",
     "Development: High",
     
-    "Flow_state: Pooled",
-    "Flow_state: Flowing",
-    
     "Regime: NonPerennial",
     "Regime: Perennial"
   )
@@ -290,9 +298,6 @@ color_map <- c(
   "Development: Low" = "#fdd49e",
   "Development: Medium" = "orange2",
   "Development: High" = "red3",
-  
-  "Flow_state: Pooled" = "#a6d854",
-  "Flow_state: Flowing" = "#1b7837",
   
   "Regime: NonPerennial" = "lightblue",
   "Regime: Perennial" = "#1f78a4"
@@ -337,13 +342,13 @@ ggsave(
 )
 ```
 
--   Cluster 1: Mostly perennial less developed tributary sites
+-   Cluster 1: Perennial tributary sites
 
--   Cluster 2: Mostly perennial highly developed tributary sites
+-   Cluster 2: Highly developed perennial tributary sites
 
 -   Cluster 3: Mostly main stem sites
 
--   Cluster 4: Mostly non-perennial tributary sites
+-   Cluster 4: Non-perennial tributary sites
 
 ### iii. Rename clusters to typologies
 
@@ -1809,50 +1814,66 @@ ggsave(
 
 ### f. Toxicity
 
-Zinc toxicity to daphnia
+Acute Zn toxicity
 
 ```{r}
 library(dplyr)
+library(tidyr)
 library(ggplot2)
 
-toxicity_plot <- ggplot(dat, aes(x = log_Zn_nM)) +
-
-  # Measured Zinc density
-  geom_density(
-    aes(fill = "Measured Zinc"),
-    alpha = 0.5,
-    linewidth = 0.6,
-    na.rm = TRUE
-  ) +
-
-  # Zn toxicity density
-  geom_density(
-    aes(x = log_Zn_Toxicity_Daphnia_nM, fill = "Toxic to Daphnia"),
-    alpha = 0.5,
-    linewidth = 0.6,
-    na.rm = TRUE
-  ) +
-
-  # Facet by Typology
-  facet_wrap(~ Typology, ncol = 2) +
-
-  # Manual fill colors + legend title
-  scale_fill_manual(
-    name   = "Zinc Concentration",
-    values = c(
-      "Measured Zinc"    = "slategray",
-      "Toxic to Daphnia" = "maroon"
+# 1. Pivot Zn data to long format
+dat_zn_tox <- dat %>%
+  dplyr::select(
+    Typology,
+    log_Zn_nM,
+    log_Zn_chronic_tox_nM,
+    log_Zn_acute_tox_nM
+  ) %>%
+  pivot_longer(
+    cols = c(
+      log_Zn_nM,
+      log_Zn_chronic_tox_nM,
+      log_Zn_acute_tox_nM
+    ),
+    names_to = "Zinc_Concentrations",
+    values_to = "Value"
+  ) %>%
+  mutate(
+    Zinc_Concentrations = dplyr::recode(
+      Zinc_Concentrations,
+      "log_Zn_nM"              = "Measured Zinc",
+      "log_Zn_chronic_tox_nM"  = "Chronically Toxic",
+      "log_Zn_acute_tox_nM"    = "Acutely Toxic"
+    ),
+    Zinc_Concentrations = factor(
+      Zinc_Concentrations,
+      levels = c(
+        "Measured Zinc",
+        "Chronically Toxic",
+        "Acutely Toxic"
+      )
     )
-  ) +
+  ) %>%
+  filter(!is.na(Value))
 
-  # Labels
+# 2. Density plot faceted by Typology
+p_zn_tox_density <- ggplot(
+  dat_zn_tox,
+  aes(x = Value, fill = Zinc_Concentrations)
+) +
+  geom_density(alpha = 0.5, linewidth = 0.6) +
+  facet_wrap(~ Typology, ncol = 2) +
+  scale_fill_manual(values = c(
+    "Measured Zinc"     = "slategray",
+    "Chronically Toxic" = "maroon",
+    "Acutely Toxic"     = "red"
+  )) +
   labs(
-    title = "Total Zinc Toxicity vs Measured",
+    title = "Zinc Toxicity Thresholds",
     x     = "Log Zn (nM)",
-    y     = "Density"
+    y     = "Density",
+    fill  = "Zinc Concentration"
   ) +
-
-  # Clean theme
   theme_minimal(base_size = 12) +
   theme(
     legend.position = "bottom",
@@ -1865,28 +1886,31 @@ toxicity_plot <- ggplot(dat, aes(x = log_Zn_nM)) +
   )
 
 # Print plot
-toxicity_plot
+p_zn_tox_density
 
-# Save
+# 3. Save plot
+out_dir <- "Toxicity plots"
+if (!dir.exists(out_dir)) {
+  dir.create(out_dir, recursive = TRUE)
+}
+
 ggsave(
-  filename = file.path("Plots by typology", "Probability_of_toxicity.png"),
-  plot     = toxicity_plot,
-  width    = 12,
-  height   = 6,
-  dpi      = 300
+  filename = file.path(out_dir, "Zn_toxicity_thresholds.png"),
+  plot = p_zn_tox_density,
+  width = 10,
+  height = 6,
+  units = "in",
+  dpi = 300
 )
 ```
 
 Calculate probability of overlapping measured zinc with toxic levels of zinc by stream typology
 
 ```{r}
-#Quantify overlapping area of measured zinc with toxic concentrations by typology
-
-# Extract the two vectors
-x1 <- dat$log_Zn_nM
-x2 <- dat$log_Zn_Toxicity_Daphnia_nM
+# Quantify overlapping area of measured zinc with chronic and acute toxic concentrations by typology
 
 library(dplyr)
+library(openxlsx)
 
 # --- Define overlap function ---
 overlap_area <- function(x, y, n = 512) {
@@ -1896,7 +1920,7 @@ overlap_area <- function(x, y, n = 512) {
   x_start <- max(min(d1$x), min(d2$x))
   x_end   <- min(max(d1$x), max(d2$x))
   
-  if(x_start >= x_end) return(0)  # No overlap
+  if (x_start >= x_end) return(0)  # No overlap
   
   x_common <- seq(x_start, x_end, length.out = n)
   y1 <- approx(d1$x, d1$y, x_common)$y
@@ -1905,12 +1929,12 @@ overlap_area <- function(x, y, n = 512) {
   sum(pmin(y1, y2)) * diff(x_common[1:2])
 }
 
-
 # --- Compute overlaps by Typology ---
 overlap_Zn_by_typology <- dat %>%
   group_by(Typology) %>%
   summarise(
-    Overlap_Daphnia = overlap_area(log_Zn_nM, log_Zn_Toxicity_Daphnia_nM)
+    Overlap_Zn_Chronic = overlap_area(log_Zn_nM, log_Zn_chronic_tox_nM),
+    Overlap_Zn_Acute   = overlap_area(log_Zn_nM, log_Zn_acute_tox_nM)
   ) %>%
   ungroup()
 
@@ -1918,11 +1942,12 @@ overlap_Zn_by_typology <- dat %>%
 overlap_Zn_by_typology
 
 # Save
-library(openxlsx)
+out_dir <- "Toxicity plots"
+if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
 
 write.xlsx(
   overlap_Zn_by_typology,
-  file = file.path(out_dir, "Probability_of_toxicity.xlsx"),
+  file = file.path(out_dir, "Probability_of_Zn_toxicity.xlsx"),
   overwrite = TRUE
 )
 ```
