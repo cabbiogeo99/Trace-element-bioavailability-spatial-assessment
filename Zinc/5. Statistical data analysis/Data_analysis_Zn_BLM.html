@@ -2043,7 +2043,20 @@ all_vars_panel &lt;- ggplot(
     plot.title   = element_text(size = 14)
   )
 
-all_vars_panel</code></pre>
+all_vars_panel
+
+
+# Save
+out_dir &lt;- &quot;Plots by typology&quot;
+if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+
+ggsave(
+  filename = file.path(out_dir, &quot;BLM_predictors_panel_Zn.png&quot;),
+  plot     = all_vars_panel,
+  width    = 8,
+  height   = 8,
+  dpi      = 300
+)</code></pre>
 </div>
 <div id="b.-trace-element-fractions" class="section level3">
 <h3>b. Trace element fractions</h3>
@@ -2052,28 +2065,28 @@ library(tidyr)
 library(ggplot2)
 
 #-------------------------------------------------
-# 1. Colors by response variable (Zn - keep blues)
+# 1. Colors by response variable
 #-------------------------------------------------
 response_colors &lt;- c(
-  &quot;Total Zn (uM)&quot;                       = &quot;slategray&quot;,
-  &quot;Free Zn (uM)&quot;                        = &quot;darkslategray3&quot;,
-  &quot;Bioavailable Zn (nmol/g wet weight)&quot; = &quot;turquoise3&quot;
+  &quot;Total Zn (nM)&quot;                       = &quot;slategray&quot;,
+  &quot;Free Zn (nM)&quot;                        = &quot;darkslategray3&quot;,
+  &quot;Bioavailable Zn (nmol g-1 wet weight)&quot; = &quot;turquoise3&quot;
 )
 
 # Left-to-right facet order
 response_order &lt;- c(
-  &quot;Total Zn (uM)&quot;,
-  &quot;Free Zn (uM)&quot;,
-  &quot;Bioavailable Zn (nmol/g wet weight)&quot;
+  &quot;Total Zn (nM)&quot;,
+  &quot;Free Zn (nM)&quot;,
+  &quot;Bioavailable Zn (nmol g-1 wet weight)&quot;
 )
 
 #-------------------------------------------------
 # 2. Define letter nudges
 #-------------------------------------------------
 letter_nudge &lt;- c(
-  &quot;Total Zn (uM)&quot;                       = 1,
-  &quot;Free Zn (uM)&quot;                        = 1,
-  &quot;Bioavailable Zn (nmol/g wet weight)&quot; = 2
+  &quot;Total Zn (nM)&quot;                       = 1,
+  &quot;Free Zn (nM)&quot;                        = 1,
+  &quot;Bioavailable Zn (nmol g-1 wet weight)&quot; = 2
 )
 
 #-------------------------------------------------
@@ -2081,9 +2094,9 @@ letter_nudge &lt;- c(
 #    Replace log_Free_Zn_uM if needed
 #-------------------------------------------------
 response_lookup &lt;- c(
-  &quot;log_Zn_uM&quot;           = &quot;Total Zn (uM)&quot;,
-  &quot;log_Free_Zn_uM&quot;      = &quot;Free Zn (uM)&quot;,  # &lt;-- confirm name
-  &quot;log_TBL_Zn_nmol_g&quot;   = &quot;Bioavailable Zn (nmol/g wet weight)&quot;
+  &quot;log_Zn_nM&quot;           = &quot;Total Zn (nM)&quot;,
+  &quot;log_Free_Zn_nM&quot;      = &quot;Free Zn (nM)&quot;,  
+  &quot;log_TBL_Zn_nmol_g&quot;   = &quot;Bioavailable Zn (nmol g-1 wet weight)&quot;
 )
 
 vars_trace &lt;- names(response_lookup)
@@ -2129,7 +2142,7 @@ letters_long_trace &lt;- letters_df %&gt;%
   )
 
 #-------------------------------------------------
-# 6. Plot (IDENTICAL styling to Cu)
+# 6. Plot
 #-------------------------------------------------
 bioavail_panel &lt;- ggplot(
   dat_long_trace,
@@ -2188,22 +2201,22 @@ library(ggplot2)
 # 1) Zn species variables you want in the panel
 # ------------------------------------------------------------------
 vars_spec &lt;- c(
-  &quot;log_ZnOH_uM&quot;,
-  &quot;log_Zn_OH_2_uM&quot;,
-  &quot;log_ZnCO3_uM&quot;,
-  &quot;log_ZnHCO3_uM&quot;,
-  &quot;log_ZnSO4_uM&quot;,
-  &quot;log_ZnCl_uM&quot;
+  &quot;log_ZnOH_nM&quot;,
+  &quot;log_Zn_OH_2_nM&quot;,
+  &quot;log_ZnCO3_nM&quot;,
+  &quot;log_ZnHCO3_nM&quot;,
+  &quot;log_ZnSO4_nM&quot;,
+  &quot;log_ZnCl_nM&quot;
 )
 
 # Facet titles
 title_lookup &lt;- c(
-  &quot;log_ZnOH_uM&quot;     = &quot;ZnOH&quot;,
-  &quot;log_Zn_OH_2_uM&quot;  = &quot;Zn(OH)2&quot;,
-  &quot;log_ZnCO3_uM&quot;    = &quot;ZnCO3&quot;,
-  &quot;log_ZnHCO3_uM&quot;   = &quot;ZnHCO3&quot;,
-  &quot;log_ZnSO4_uM&quot;    = &quot;ZnSO4&quot;,
-  &quot;log_ZnCl_uM&quot;     = &quot;ZnCl&quot;
+  &quot;log_ZnOH_nM&quot;     = &quot;ZnOH&quot;,
+  &quot;log_Zn_OH_2_nM&quot;  = &quot;Zn(OH)2&quot;,
+  &quot;log_ZnCO3_nM&quot;    = &quot;ZnCO3&quot;,
+  &quot;log_ZnHCO3_nM&quot;   = &quot;ZnHCO3&quot;,
+  &quot;log_ZnSO4_nM&quot;    = &quot;ZnSO4&quot;,
+  &quot;log_ZnCl_nM&quot;     = &quot;ZnCl&quot;
 )
 
 facet_labels &lt;- as_labeller(title_lookup)
@@ -2270,9 +2283,9 @@ spec_panel &lt;- ggplot(dat_long_spec, aes(x = Typology, y = Value)) +
     labeller = facet_labels
   ) +
   labs(
-    title = &quot;Zn Species by Stream Typology&quot;,
+    title = &quot;Inorganic Zn Complexes by Stream Typology&quot;,
     x     = &quot;Stream Typology&quot;,
-    y     = &quot;Log Concentration (uM)&quot;
+    y     = &quot;Log10(Concentration) (nM)&quot;
   ) +
   theme_minimal(base_size = 12) +
   theme(
@@ -2384,7 +2397,7 @@ spec_panel2 &lt;- ggplot(dat_long_spec, aes(x = Typology, y = Value)) +
   labs(
     title = &quot;Organic Complexes by Stream Typology&quot;,
     x     = &quot;Stream Typology&quot;,
-    y     = &quot;Log Concentration (nM)&quot;
+    y     = &quot;Log10(Concentration) (nM)&quot;
   ) +
   theme_minimal(base_size = 12) +
   theme(
@@ -2494,7 +2507,7 @@ spec_panel3 &lt;- ggplot(dat_long_spec, aes(x = Typology, y = Value)) +
   labs(
     title = &quot;Biotic Ligand-Bound Cations by Stream Typology&quot;,
     x     = &quot;Stream Typology&quot;,
-    y     = &quot;Log Concentration (nmol/g)&quot;
+    y     = &quot;Log10(Concentration) (nmol g-1)&quot;
   ) +
   theme_minimal(base_size = 12) +
   theme(

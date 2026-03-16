@@ -195,6 +195,25 @@ ggsave(
 )
 ```
 
+Variable loadings
+
+```{r}
+loadings_pc1_pc2 <- as.data.frame(pca_result$rotation[, c("PC1", "PC2")]) %>%
+  tibble::rownames_to_column(var = "Variable")
+
+# View loadings
+loadings_pc1_pc2
+
+# Save 
+library(openxlsx)
+
+write.xlsx(
+  loadings_pc1_pc2,
+  file = file.path(out_dir, "PCA_loadings.xlsx"),
+  overwrite = TRUE
+)
+```
+
 ## 5. Characterizing clusters
 
 ### i. Frequency table
@@ -1293,6 +1312,18 @@ all_vars_panel <- ggplot(
 
 all_vars_panel
 
+
+# Save
+out_dir <- "Plots by typology"
+if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+
+ggsave(
+  filename = file.path(out_dir, "BLM_predictors_panel_Zn.png"),
+  plot     = all_vars_panel,
+  width    = 8,
+  height   = 8,
+  dpi      = 300
+)
 ```
 
 ### b. Trace element fractions
@@ -1303,28 +1334,28 @@ library(tidyr)
 library(ggplot2)
 
 #-------------------------------------------------
-# 1. Colors by response variable (Zn - keep blues)
+# 1. Colors by response variable
 #-------------------------------------------------
 response_colors <- c(
-  "Total Zn (uM)"                       = "slategray",
-  "Free Zn (uM)"                        = "darkslategray3",
-  "Bioavailable Zn (nmol/g wet weight)" = "turquoise3"
+  "Total Zn (nM)"                       = "slategray",
+  "Free Zn (nM)"                        = "darkslategray3",
+  "Bioavailable Zn (nmol g-1 wet weight)" = "turquoise3"
 )
 
 # Left-to-right facet order
 response_order <- c(
-  "Total Zn (uM)",
-  "Free Zn (uM)",
-  "Bioavailable Zn (nmol/g wet weight)"
+  "Total Zn (nM)",
+  "Free Zn (nM)",
+  "Bioavailable Zn (nmol g-1 wet weight)"
 )
 
 #-------------------------------------------------
 # 2. Define letter nudges
 #-------------------------------------------------
 letter_nudge <- c(
-  "Total Zn (uM)"                       = 1,
-  "Free Zn (uM)"                        = 1,
-  "Bioavailable Zn (nmol/g wet weight)" = 2
+  "Total Zn (nM)"                       = 1,
+  "Free Zn (nM)"                        = 1,
+  "Bioavailable Zn (nmol g-1 wet weight)" = 2
 )
 
 #-------------------------------------------------
@@ -1332,9 +1363,9 @@ letter_nudge <- c(
 #    Replace log_Free_Zn_uM if needed
 #-------------------------------------------------
 response_lookup <- c(
-  "log_Zn_uM"           = "Total Zn (uM)",
-  "log_Free_Zn_uM"      = "Free Zn (uM)",  # <-- confirm name
-  "log_TBL_Zn_nmol_g"   = "Bioavailable Zn (nmol/g wet weight)"
+  "log_Zn_nM"           = "Total Zn (nM)",
+  "log_Free_Zn_nM"      = "Free Zn (nM)",  
+  "log_TBL_Zn_nmol_g"   = "Bioavailable Zn (nmol g-1 wet weight)"
 )
 
 vars_trace <- names(response_lookup)
@@ -1380,7 +1411,7 @@ letters_long_trace <- letters_df %>%
   )
 
 #-------------------------------------------------
-# 6. Plot (IDENTICAL styling to Cu)
+# 6. Plot
 #-------------------------------------------------
 bioavail_panel <- ggplot(
   dat_long_trace,
@@ -1441,22 +1472,22 @@ library(ggplot2)
 # 1) Zn species variables you want in the panel
 # ------------------------------------------------------------------
 vars_spec <- c(
-  "log_ZnOH_uM",
-  "log_Zn_OH_2_uM",
-  "log_ZnCO3_uM",
-  "log_ZnHCO3_uM",
-  "log_ZnSO4_uM",
-  "log_ZnCl_uM"
+  "log_ZnOH_nM",
+  "log_Zn_OH_2_nM",
+  "log_ZnCO3_nM",
+  "log_ZnHCO3_nM",
+  "log_ZnSO4_nM",
+  "log_ZnCl_nM"
 )
 
 # Facet titles
 title_lookup <- c(
-  "log_ZnOH_uM"     = "ZnOH",
-  "log_Zn_OH_2_uM"  = "Zn(OH)2",
-  "log_ZnCO3_uM"    = "ZnCO3",
-  "log_ZnHCO3_uM"   = "ZnHCO3",
-  "log_ZnSO4_uM"    = "ZnSO4",
-  "log_ZnCl_uM"     = "ZnCl"
+  "log_ZnOH_nM"     = "ZnOH",
+  "log_Zn_OH_2_nM"  = "Zn(OH)2",
+  "log_ZnCO3_nM"    = "ZnCO3",
+  "log_ZnHCO3_nM"   = "ZnHCO3",
+  "log_ZnSO4_nM"    = "ZnSO4",
+  "log_ZnCl_nM"     = "ZnCl"
 )
 
 facet_labels <- as_labeller(title_lookup)
@@ -1523,9 +1554,9 @@ spec_panel <- ggplot(dat_long_spec, aes(x = Typology, y = Value)) +
     labeller = facet_labels
   ) +
   labs(
-    title = "Zn Species by Stream Typology",
+    title = "Inorganic Zn Complexes by Stream Typology",
     x     = "Stream Typology",
-    y     = "Log Concentration (uM)"
+    y     = "Log10(Concentration) (nM)"
   ) +
   theme_minimal(base_size = 12) +
   theme(
@@ -1640,7 +1671,7 @@ spec_panel2 <- ggplot(dat_long_spec, aes(x = Typology, y = Value)) +
   labs(
     title = "Organic Complexes by Stream Typology",
     x     = "Stream Typology",
-    y     = "Log Concentration (nM)"
+    y     = "Log10(Concentration) (nM)"
   ) +
   theme_minimal(base_size = 12) +
   theme(
@@ -1753,7 +1784,7 @@ spec_panel3 <- ggplot(dat_long_spec, aes(x = Typology, y = Value)) +
   labs(
     title = "Biotic Ligand-Bound Cations by Stream Typology",
     x     = "Stream Typology",
-    y     = "Log Concentration (nmol/g)"
+    y     = "Log10(Concentration) (nmol g-1)"
   ) +
   theme_minimal(base_size = 12) +
   theme(
@@ -1896,7 +1927,128 @@ write.xlsx(
 )
 ```
 
-# Bioavailability by Site within Network
+# Other Plots
+
+## Sites within Each Typology
+
+```{r}
+library(dplyr)
+
+np_tribs <- dat %>%
+  filter(Typology == "NP Tribs") %>%   
+  dplyr::select(Site, Typology) %>%          
+  distinct()  
+
+p_tribs <- dat %>%
+  filter(Typology == "P Tribs") %>%   
+  dplyr::select(Site, Typology) %>%          
+  distinct()  
+
+pd_tribs <- dat %>%
+  filter(Typology == "PD Tribs") %>%   
+  dplyr::select(Site, Typology) %>%          
+  distinct()  
+
+ms <- dat %>%
+  filter(Typology == "Main Stem") %>%   
+  dplyr::select(Site, Typology) %>%          
+  distinct()  
+
+np_tribs
+p_tribs
+pd_tribs
+ms
+
+# Save
+out_dir <- "Sites with several typologies"
+if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+
+library(openxlsx)
+
+# Create workbook
+wb <- createWorkbook()
+
+# Add worksheets and write data
+addWorksheet(wb, "NP Tribs")
+writeData(wb, "NP Tribs", np_tribs)
+
+addWorksheet(wb, "P Tribs")
+writeData(wb, "P Tribs", p_tribs)
+
+addWorksheet(wb, "PD Tribs")
+writeData(wb, "PD Tribs", pd_tribs)
+
+addWorksheet(wb, "Main Stem")
+writeData(wb, "Main Stem", ms)
+
+# Save workbook
+saveWorkbook(
+  wb,
+  file = file.path(out_dir, "Sites_by_typology.xlsx"),
+  overwrite = TRUE
+)
+```
+
+## Identify Sites with \>1 Typology Assignment
+
+```{r}
+# Determine which sites fall into more than 1 typology
+sites_multiple_typology <- dat %>%
+  distinct(Site, Typology) %>%        # unique Site–Typology pairs
+  group_by(Site) %>%                  
+  summarise(
+    n_typologies = n(),               
+    typologies = paste(sort(Typology), collapse = ", ")
+  ) %>%
+  filter(n_typologies > 1)            # keep sites with >1 typology
+
+sites_multiple_typology
+
+# Save
+library(openxlsx)
+
+# Create workbook
+wb <- createWorkbook()
+
+# Add worksheets and write data
+addWorksheet(wb, "Sites")
+writeData(wb, "Sites", sites_multiple_typology)
+
+# Save workbook
+saveWorkbook(
+  wb,
+  file = file.path(out_dir, "Sites_with_many_typologies.xlsx"),
+  overwrite = TRUE)
+```
+
+## Number of Samples per Typology within Sites with \>1 Typology
+
+```{r}
+site_typology_sample_counts <- dat %>%
+  filter(Site %in% sites_multiple_typology$Site) %>% 
+  count(Site, Typology, name = "n_samples") %>%
+  arrange(Site, desc(n_samples))
+
+site_typology_sample_counts
+
+# Save
+library(openxlsx)
+
+# Create workbook
+wb <- createWorkbook()
+
+# Add worksheets and write data
+addWorksheet(wb, "Sites")
+writeData(wb, "Sites", site_typology_sample_counts)
+
+# Save workbook
+saveWorkbook(
+  wb,
+  file = file.path(out_dir, "Site_typology_sample_counts.xlsx"),
+  overwrite = TRUE)
+```
+
+## Bioavailability by Site within Network
 
 ```{r}
 library(dplyr)
@@ -1958,7 +2110,7 @@ ggsave(
 )
 ```
 
-With mean by Network
+## With mean by Network
 
 ```{r}
 library(dplyr)
@@ -2039,7 +2191,7 @@ ggsave(
 
 ```
 
-Colored by typology
+## Colored by typology
 
 ```{r}
 library(dplyr)
@@ -2095,7 +2247,7 @@ ggsave(
 )
 ```
 
-Colored by typology and mean by Network and Typology
+## Colored by typology and mean by Network and Typology
 
 ```{r}
 library(dplyr)
@@ -2194,7 +2346,7 @@ ggsave(
 )
 ```
 
-Table
+## Table
 
 ```{r}
 library(dplyr)
@@ -2243,4 +2395,234 @@ write.xlsx(
   file = file.path(out_dir, "Sites_by_network_typology.xlsx"),
   overwrite = TRUE
 )
+```
+
+## DOC by Developed LC and Elevation
+
+### Main Stem
+
+As a function of Developed LC
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+ggplot(
+  dat %>% filter(Typology == "Main Stem"),
+  aes(x = Developed_lulc, y = log_DOC_uM)
+) +
+  
+  geom_point(size = 2, alpha = 0.7) +
+  
+  geom_smooth(
+    method = "lm",
+    se = TRUE,          # confidence interval
+    color = "steelblue",
+    linewidth = 1
+  ) +
+  
+  labs(
+    x = "Developed Land Cover (%)",
+    y = "Log DOC (µM)",
+    title = "DOC vs Developed Land Cover (Main Stem)"
+  ) +
+  
+  theme_classic(base_size = 14)
+```
+
+As a function of elevation
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+ggplot(
+  dat %>% filter(Typology == "Main Stem"),
+  aes(x = Elevation_m, y = log_DOC_uM)
+) +
+  
+  geom_point(size = 2, alpha = 0.7) +
+  
+  geom_smooth(
+    method = "lm",
+    se = TRUE,          # confidence interval
+    color = "steelblue",
+    linewidth = 1
+  ) +
+  
+  labs(
+    x = "Elevation (m)",
+    y = "Log DOC (µM)",
+    title = "DOC vs Elevation (Main Stem)"
+  ) +
+  
+  theme_classic(base_size = 14)
+```
+
+### PD Tribs
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+ggplot(
+  dat %>% filter(Typology == "PD Tribs"),
+  aes(x = Developed_lulc, y = log_DOC_uM)
+) +
+  
+  geom_point(size = 2, alpha = 0.7) +
+  
+  geom_smooth(
+    method = "lm",
+    se = TRUE,          # confidence interval
+    color = "steelblue",
+    linewidth = 1
+  ) +
+  
+  labs(
+    x = "Developed Land Cover (%)",
+    y = "Log DOC (µM)",
+    title = "DOC vs Developed Land Cover (PD Tribs)"
+  ) +
+  
+  theme_classic(base_size = 14)
+```
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+ggplot(
+  dat %>% filter(Typology == "PD Tribs"),
+  aes(x = Relative_elevation_m, y = log_DOC_uM)
+) +
+  
+  geom_point(size = 2, alpha = 0.7) +
+  
+  geom_smooth(
+    method = "lm",
+    se = TRUE,          # confidence interval
+    color = "steelblue",
+    linewidth = 1
+  ) +
+  
+  labs(
+    x = "Relative Elevation (m)",
+    y = "Log DOC (µM)",
+    title = "DOC vs Relative Elevation (PD Tribs)"
+  ) +
+  
+  theme_classic(base_size = 14)
+```
+
+### Perennial Tribs
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+ggplot(
+  dat %>% filter(Typology == "P Tribs"),
+  aes(x = Developed_lulc, y = log_DOC_uM)
+) +
+  
+  geom_point(size = 2, alpha = 0.7) +
+  
+  geom_smooth(
+    method = "lm",
+    se = TRUE,          # confidence interval
+    color = "steelblue",
+    linewidth = 1
+  ) +
+  
+  labs(
+    x = "Developed Land Cover (%)",
+    y = "Log DOC (µM)",
+    title = "DOC vs Developed Land Cover (P Tribs)"
+  ) +
+  
+  theme_classic(base_size = 14)
+```
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+ggplot(
+  dat %>% filter(Typology == "P Tribs"),
+  aes(x = Relative_elevation_m, y = DOC_uM)
+) +
+  
+  geom_point(size = 2, alpha = 0.7) +
+  
+  geom_smooth(
+    method = "lm",
+    se = TRUE,          # confidence interval
+    color = "steelblue",
+    linewidth = 1
+  ) +
+  
+  labs(
+    x = "Relative Elevation (m)",
+    y = "Log DOC (µM)",
+    title = "DOC vs Relative Elevation (P Tribs)"
+  ) +
+  
+  theme_classic(base_size = 14)
+```
+
+### NP Tribs
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+ggplot(
+  dat %>% filter(Typology == "NP Tribs"),
+  aes(x = Developed_lulc, y = DOC_uM)
+) +
+  
+  geom_point(size = 2, alpha = 0.7) +
+  
+  geom_smooth(
+    method = "lm",
+    se = TRUE,          # confidence interval
+    color = "steelblue",
+    linewidth = 1
+  ) +
+  
+  labs(
+    x = "Developed Land Cover (%)",
+    y = "Log DOC (µM)",
+    title = "DOC vs Developed Land Cover (NP Tribs)"
+  ) +
+  
+  theme_classic(base_size = 14)
+```
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+ggplot(
+  dat %>% filter(Typology == "NP Tribs"),
+  aes(x = Relative_elevation_m, y = DOC_uM)
+) +
+  
+  geom_point(size = 2, alpha = 0.7) +
+  
+  geom_smooth(
+    method = "lm",
+    se = TRUE,          # confidence interval
+    color = "steelblue",
+    linewidth = 1
+  ) +
+  
+  labs(
+    x = "Relative Elevation (m)",
+    y = "Log DOC (µM)",
+    title = "DOC vs Relative Elevation (NP Tribs)"
+  ) +
+  
+  theme_classic(base_size = 14)
 ```

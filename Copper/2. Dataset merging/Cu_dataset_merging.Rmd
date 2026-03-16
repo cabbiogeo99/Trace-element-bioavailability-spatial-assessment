@@ -111,6 +111,7 @@ bio_ms <- bio_ms %>%
   left_join(
     WaDE_Site_Info %>%
       rename(
+        DrainageArea_SqKm = DrainageArea_SqKm,
         Relative_elevation_m = `Relative elevation from main stem (m)`,
         Upstream_from_main_stem_km = `Upstream of EFK_KM`,
         Developed_lulc       = `lulc_developed_%`
@@ -118,6 +119,7 @@ bio_ms <- bio_ms %>%
       dplyr::select(
         Site,
         Network,
+        DrainageArea_SqKm,
         Relative_elevation_m,
         Upstream_from_main_stem_km,
         Developed_lulc
@@ -125,12 +127,14 @@ bio_ms <- bio_ms %>%
     by = "Site"
   ) %>%
   mutate(
+    DrainageArea_SqKm = as.numeric(DrainageArea_SqKm),
     Relative_elevation_m = as.numeric(Relative_elevation_m),
     Developed_lulc       = as.numeric(Developed_lulc),
     Upstream_from_main_stem_km = as.numeric(Upstream_from_main_stem_km)
   ) %>%
    relocate(
     Network,
+    DrainageArea_SqKm,
     Relative_elevation_m,
     Upstream_from_main_stem_km,
     Developed_lulc,

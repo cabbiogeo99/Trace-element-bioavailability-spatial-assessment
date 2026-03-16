@@ -3837,35 +3837,35 @@ library(ggplot2)
 # 1. Colors by response variable
 #-------------------------------------------------
 response_colors &lt;- c(
-  &quot;Total Cu (uM)&quot;                       = &quot;chocolate4&quot;,
-  &quot;Free Cu (uM)&quot;                        = &quot;peru&quot;,
-  &quot;Bioavailable Cu (nmol/g wet weight)&quot; = &quot;chocolate1&quot;
+  &quot;Total Cu (nM)&quot;                       = &quot;chocolate4&quot;,
+  &quot;Free Cu (nM)&quot;                        = &quot;peru&quot;,
+  &quot;Bioavailable Cu (nmol g-1 wet weight)&quot; = &quot;chocolate1&quot;
 )
 
 # Left-to-right facet order
 response_order &lt;- c(
-  &quot;Total Cu (uM)&quot;,
-  &quot;Free Cu (uM)&quot;,
-  &quot;Bioavailable Cu (nmol/g wet weight)&quot;
+  &quot;Total Cu (nM)&quot;,
+  &quot;Free Cu (nM)&quot;,
+  &quot;Bioavailable Cu (nmol g-1 wet weight)&quot;
 )
 
 #-------------------------------------------------
 # 2. Define letter nudges
 #-------------------------------------------------
 letter_nudge &lt;- c(
-  &quot;Total Cu (uM)&quot;                       = 1,
-  &quot;Free Cu (uM)&quot;                        = 1,
-  &quot;Bioavailable Cu (nmol/g wet weight)&quot; = 2
+  &quot;Total Cu (nM)&quot;                       = 1,
+  &quot;Free Cu (nM)&quot;                        = 1,
+  &quot;Bioavailable Cu (nmol g-1 wet weight)&quot; = 2
 )
 
 #-------------------------------------------------
-# 3. Map variable names -&gt; response labels (UPDATED)
+# 3. Map variable names -&gt; response labels 
 #    IMPORTANT: Replace &quot;log_Free_Cu_uM&quot; with your actual Free Cu column name.
 #-------------------------------------------------
 response_lookup &lt;- c(
-  &quot;log_Cu_uM&quot;         = &quot;Total Cu (uM)&quot;,
-  &quot;log_Free_Cu_uM&quot;    = &quot;Free Cu (uM)&quot;,                 # &lt;-- CHANGE THIS NAME
-  &quot;log_TBL_Cu_nmol_g&quot; = &quot;Bioavailable Cu (nmol/g wet weight)&quot;
+  &quot;log_Cu_nM&quot;         = &quot;Total Cu (nM)&quot;,
+  &quot;log_Free_Cu_nM&quot;    = &quot;Free Cu (nM)&quot;,                 
+  &quot;log_TBL_Cu_nmol_g&quot; = &quot;Bioavailable Cu (nmol g-1 wet weight)&quot;
 )
 
 vars_trace &lt;- names(response_lookup)
@@ -3911,7 +3911,7 @@ letters_long_trace &lt;- letters_df %&gt;%
   )
 
 #-------------------------------------------------
-# 6. Plot (filled boxes, no legend)
+# 6. Plot 
 #-------------------------------------------------
 bioavail_panel &lt;- ggplot(
   dat_long_trace,
@@ -4064,7 +4064,7 @@ spec_panel &lt;- ggplot(dat_long_spec, aes(x = Typology, y = Value)) +
   labs(
     title = &quot;Inorganic Cu Species by Stream Typology&quot;,
     x     = &quot;Stream Typology&quot;,
-    y     = &quot;Log Concentration (nM)&quot;
+    y     = &quot;Log10(Concentration) (nM)&quot;
   ) +
   theme_minimal(base_size = 12) +
   theme(
@@ -4178,7 +4178,7 @@ spec_panel2 &lt;- ggplot(dat_long_spec, aes(x = Typology, y = Value)) +
   labs(
     title = &quot;Organic Cu Complexes by Stream Typology&quot;,
     x     = &quot;Stream Typology&quot;,
-    y     = &quot;Log Concentration (nM)&quot;
+    y     = &quot;Log10(Concentration) (nM)&quot;
   ) +
   theme_minimal(base_size = 12) +
   theme(
@@ -4288,7 +4288,7 @@ spec_panel3 &lt;- ggplot(dat_long_spec, aes(x = Typology, y = Value)) +
   labs(
     title = &quot;Biotic Ligand-Bound Cations by Stream Typology&quot;,
     x     = &quot;Stream Typology&quot;,
-    y     = &quot;Log Concentration (nmol/g)&quot;
+    y     = &quot;Log10(Concentration) (nmol g-1)&quot;
   ) +
   theme_minimal(base_size = 12) +
   theme(
@@ -4334,16 +4334,16 @@ dat_cu_daph &lt;- dat %&gt;%
   mutate(
     Copper_Concentrations = dplyr::recode(
       Copper_Concentrations,
-      &quot;log_Cu_nM&quot;                          = &quot;Measured Copper&quot;,
-      &quot;log_Cu_Chronic_Tox_Daphnia_nM&quot; = &quot;Chronically Toxic to Daphnia&quot;,
-      &quot;log_Cu_Acute_Tox_Daphnia_nM&quot;   = &quot;Acutely Toxic to Daphnia&quot;
+      &quot;log_Cu_nM&quot;                     = &quot;Measured Copper&quot;,
+      &quot;log_Cu_Chronic_Tox_Daphnia_nM&quot; = &quot;Chronically Toxic&quot;,
+      &quot;log_Cu_Acute_Tox_Daphnia_nM&quot;   = &quot;Acutely Toxic&quot;
     ),
     Copper_Concentrations = factor(
       Copper_Concentrations,
       levels = c(
         &quot;Measured Copper&quot;,
-        &quot;Chronically Toxic to Daphnia&quot;,
-        &quot;Acutely Toxic to Daphnia&quot;
+        &quot;Chronically Toxic&quot;,
+        &quot;Acutely Toxic&quot;
       )
     )
   ) %&gt;%
@@ -4357,12 +4357,12 @@ p_cu_daph_density &lt;- ggplot(
   geom_density(alpha = 0.5, linewidth = 0.6) +
   facet_wrap(~ Typology, ncol = 2) +
   scale_fill_manual(values = c(
-    &quot;Measured Copper&quot;              = &quot;chocolate4&quot;,
-    &quot;Chronically Toxic to Daphnia&quot; = &quot;maroon&quot;,
-    &quot;Acutely Toxic to Daphnia&quot;     = &quot;red&quot;
+    &quot;Measured Copper&quot;   = &quot;chocolate4&quot;,
+    &quot;Chronically Toxic&quot; = &quot;maroon&quot;,
+    &quot;Acutely Toxic&quot;  = &quot;red&quot;
   )) +
   labs(
-    title = &quot;Copper Toxicity Thresholds vs Measured Cu&quot;,
+    title = &quot;Copper Toxicity Thresholds for C. dubia&quot;,
     x     = &quot;Log Cu (nM)&quot;,
     y     = &quot;Density&quot;,
     fill  = &quot;Copper Concentration&quot;
@@ -4392,7 +4392,7 @@ if (!dir.exists(out_dir)) {
 ggsave(
   filename = file.path(out_dir, &quot;Cu_toxicity_daphnia.png&quot;),
   plot = p_cu_daph_density,
-  width = 12,
+  width = 10,
   height = 6,
   units = &quot;in&quot;,
   dpi = &quot;print&quot;
@@ -4421,16 +4421,16 @@ dat_cu_minn &lt;- dat %&gt;%
   mutate(
     Copper_Concentrations = dplyr::recode(
       Copper_Concentrations,
-      &quot;log_Cu_nM&quot;                          = &quot;Measured Copper&quot;,
-      &quot;log_Cu_Chronic_Tox_Minnow_nM&quot; = &quot;Chronically Toxic to Minnow&quot;,
-      &quot;log_Cu_Acute_Tox_Minnow_nM&quot;   = &quot;Acutely Toxic to Minnow&quot;
+      &quot;log_Cu_nM&quot;                    = &quot;Measured Copper&quot;,
+      &quot;log_Cu_Chronic_Tox_Minnow_nM&quot; = &quot;Chronically Toxic&quot;,
+      &quot;log_Cu_Acute_Tox_Minnow_nM&quot;   = &quot;Acutely Toxic&quot;
     ),
     Copper_Concentrations = factor(
       Copper_Concentrations,
       levels = c(
         &quot;Measured Copper&quot;,
-        &quot;Chronically Toxic to Minnow&quot;,
-        &quot;Acutely Toxic to Minnow&quot;
+        &quot;Chronically Toxic&quot;,
+        &quot;Acutely Toxic&quot;
       )
     )
   ) %&gt;%
@@ -4444,12 +4444,12 @@ p_cu_daph_density_minn &lt;- ggplot(
   geom_density(alpha = 0.5, linewidth = 0.6) +
   facet_wrap(~ Typology, ncol = 2) +
   scale_fill_manual(values = c(
-    &quot;Measured Copper&quot;              = &quot;chocolate4&quot;,
-    &quot;Chronically Toxic to Minnow&quot; = &quot;maroon&quot;,
-    &quot;Acutely Toxic to Minnow&quot;     = &quot;red&quot;
+    &quot;Measured Copper&quot;   = &quot;chocolate4&quot;,
+    &quot;Chronically Toxic&quot; = &quot;maroon&quot;,
+    &quot;Acutely Toxic&quot;     = &quot;red&quot;
   )) +
   labs(
-    title = &quot;Copper Toxicity Thresholds vs Measured Cu&quot;,
+    title = &quot;Copper Toxicity Thresholds to P. promelas&quot;,
     x     = &quot;Log Cu (nM)&quot;,
     y     = &quot;Density&quot;,
     fill  = &quot;Copper Concentration&quot;
@@ -4471,7 +4471,7 @@ p_cu_daph_density_minn
 ggsave(
   filename = file.path(out_dir, &quot;Cu_toxicity_minnow.png&quot;),
   plot = p_cu_daph_density_minn,
-  width = 12,
+  width = 10,
   height = 6,
   units = &quot;in&quot;,
   dpi = &quot;print&quot;

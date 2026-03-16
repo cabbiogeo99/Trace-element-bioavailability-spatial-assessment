@@ -15,7 +15,7 @@ Variables selected: sample ID, site, date, inherent characteristics, developed l
 
 2.  **WaDE Synoptic Survey dataset** (WaDE_Synoptic_Summary.xlsx, "SITE INFO" tab)
 
-Variables selected: network, regime, upstream distance from main stem, relative elevation, and developed land cover by site
+Variables selected: network, regime, upstream distance from main stem, elevation, relative elevation, and developed land cover by site
 
 3.  **BLM Speciation Mode** (Zn_Speciation.det.xlsx)
 
@@ -98,7 +98,7 @@ Inspect the structure
 str(WaDE_Site_Info)
 ```
 
-From WaDE_Site_Info we'll select network, regime, relative elevation, upstream distance from main stem, and developed land cover by site and apply it to all samples by site
+From WaDE_Site_Info we'll select network, regime, elevation, relative elevation, upstream distance from main stem, and developed land cover by site and apply it to all samples by site
 
 ```{r}
 library(dplyr)
@@ -107,6 +107,7 @@ bio_ms <- bio_ms %>%
   left_join(
     WaDE_Site_Info %>%
       rename(
+        Elevation_m = `elevation (m) (USGS 3DEP)`,
         Relative_elevation_m = `Relative elevation from main stem (m)`,
         Upstream_from_main_stem_km = `Upstream of EFK_KM`,
         Developed_lulc       = `lulc_developed_%`
@@ -114,6 +115,7 @@ bio_ms <- bio_ms %>%
       dplyr::select(
         Site,
         Network,
+        Elevation_m,
         Relative_elevation_m,
         Upstream_from_main_stem_km,
         Developed_lulc
@@ -121,12 +123,14 @@ bio_ms <- bio_ms %>%
     by = "Site"
   ) %>%
   mutate(
+    Elevation_m = as.numeric(Elevation_m),
     Relative_elevation_m = as.numeric(Relative_elevation_m),
     Developed_lulc       = as.numeric(Developed_lulc),
     Upstream_from_main_stem_km = as.numeric(Upstream_from_main_stem_km)
   ) %>%
    relocate(
     Network,
+    Elevation_m,
     Relative_elevation_m,
     Upstream_from_main_stem_km,
     Developed_lulc,

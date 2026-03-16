@@ -1,0 +1,2376 @@
+---
+title: "Data analysis Zn BLM V2"
+author: "Cecilia Albert-Black"
+output:
+  html_document:
+    self_contained: true
+output_file: "Data_analysis_Zn_BLM.html"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.show = "hide", fig.keep = "none")
+```
+
+The objectives of this notebook will be to conduct data and statistical analyses on the Bioavailability Master Spreadsheet Clean version 2 using only the baseline BLM assumptions (HA 10% Closed System)
+
+First, set the working directory
+
+```{r}
+setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt")
+```
+
+# Identifying Stream Typologies by site average
+
+Cluster analysis of all sites in WaDE Synoptic Survey
+
+Import dataset
+
+```{r}
+library(readxl)
+
+dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/4. Exploratory data analysis/Bioavailability_Master_Spreadsheet_Clean2.xlsx", 
+    sheet = "HA 10% Closed System")
+
+head(dat)
+```
+
+## 1. Select variables by site
+
+We'll use the scaled, log-transformed BLM predictors to conduct a PCA
+
+```{r}
+library(dplyr)
+library(cluster)
+
+# Variables to select
+vars_to_select <- c("log_Temp_C", "pH", "log_DOC_uM",
+                    "log_DIC_uM", "log_Cl_uM", "log_Ca_uM", 
+                    "log_Mg_uM", "log_SO4_uM", "log_Na_uM", 
+                    "log_K_uM")
+
+# ---------------------------------------------------------
+# 1. Scale sample-level chemistry variables
+# ---------------------------------------------------------
+scaled_blm_predict <- as.data.frame(
+  scale(dat[vars_to_select])
+)
+
+# Add Site back in
+scaled_blm_predict$Site <- dat$Site
+
+# ---------------------------------------------------------
+# 2. Average scaled values by Site
+# ---------------------------------------------------------
+site_means_scaled <- scaled_blm_predict %>%
+  group_by(Site) %>%
+  summarise(
+    across(all_of(vars_to_select), ~ mean(.x, na.rm = TRUE))
+  ) %>%
+  ungroup()
+
+
+```
+
+## 3. K-means clustering
+
+### i. Identifying the number of clusters
+
+Run k-means using 2-10 and identify which number of clusters minimizes the overlap
+
+```{r}
+# ---------------------------------------------------------
+# 3. Create numeric clustering dataset
+#    (remove Site before k-means)
+# ---------------------------------------------------------
+cluster_dat <- site_means_scaled %>%
+  dplyr::select(-Site)
+
+# Optional safety check
+sum(is.na(cluster_dat))
+sum(!is.finite(as.matrix(cluster_dat)))
+
+# ---------------------------------------------------------
+# 4. Silhouette check for k = 2:10
+# ---------------------------------------------------------
+set.seed(123)
+
+sil_df <- lapply(2:10, function(k) {
+  
+  km <- kmeans(
+    cluster_dat,
+    centers = k,
+    nstart = 50
+  )
+  
+  sil <- silhouette(km$cluster, dist(cluster_dat))
+  
+  data.frame(
+    k = k,
+    mean_silhouette = mean(sil[, 3])
+  )
+}) %>%
+  bind_rows()
+
+sil_df
+
+```
+
+### ii. Clustering
+
+Run k-means using 4 clusters
+
+```{r}
+# ---------------------------------------------------------
+# 5. Fit final k-means model
+# ---------------------------------------------------------
+set.seed(123)
+
+final_k <- 3
+
+km_final <- kmeans(
+  cluster_dat,
+  centers = final_k,
+  nstart = 50
+)
+
+# ---------------------------------------------------------
+# 6. Make a Site-level cluster lookup table
+# ---------------------------------------------------------
+site_clusters <- site_means_scaled %>%
+  dplyr::select(Site) %>%
+  mutate(Cluster = factor(km_final$cluster))
+
+site_clusters
+```
+
+```{r}
+# ---------------------------------------------------------
+# 7. Join Site-level clusters back to sample-level dat
+# ---------------------------------------------------------
+dat_clustered <- dat %>%
+  left_join(site_clusters, by = "Site")
+
+# Check result
+head(dat_clustered)
+table(dat_clustered$Cluster, useNA = "ifany")
+```
+
+Assign Cluster to samples in dat
+
+```{r}
+library(dplyr)
+
+dat <- dat %>%
+  left_join(site_clusters, by = "Site")
+
+# Check that every sample received a cluster
+sum(is.na(dat$Cluster))
+
+# Look at distribution
+table(dat$Cluster)
+
+# Confirm clusters are consistent by site
+dat %>%
+  group_by(Site) %>%
+  summarise(n_clusters = n_distinct(Cluster))
+```
+
+## 4. Plot of clusters on PCA
+
+Overlay clusters on PCA
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(factoextra)
+
+#-------------------------------------------------
+# 0) Build Site-level table with clusters
+#-------------------------------------------------
+site_pca_df <- site_means_scaled %>%
+  mutate(Cluster = factor(km_final$cluster))
+
+#-------------------------------------------------
+# 1) Force cluster order + set cluster colors
+#-------------------------------------------------
+cluster_colors <- c(
+  "1" = "#56B4E9",
+  "2" = "#D55E00",
+  "3" = "#009E73"
+)
+
+site_pca_df$Cluster <- factor(site_pca_df$Cluster, levels = c("1", "2", "4", "3"))
+
+#-------------------------------------------------
+# 2) Create numeric matrix for PCA
+#    (remove Site and Cluster columns)
+#-------------------------------------------------
+pca_input <- site_pca_df %>%
+  dplyr::select(-Site, -Cluster)
+
+#-------------------------------------------------
+# 3) Run PCA on Site-level chemistry
+#-------------------------------------------------
+pca_result <- prcomp(pca_input, center = TRUE, scale. = TRUE)
+
+pca_summary <- summary(pca_result)
+
+# Optional: view variance explained
+pca_summary
+
+#-------------------------------------------------
+# 4) Make PCA biplot colored by Site-level cluster
+#-------------------------------------------------
+pca_cluster <- fviz_pca_biplot(
+  pca_result,
+  geom.ind     = "point",
+  col.var      = "black",
+  habillage    = site_pca_df$Cluster,
+  addEllipses  = TRUE,
+  legend.title = "Cluster",
+  palette      = cluster_colors
+) +
+  labs(
+    title = "PCA Biplot of Sites by Cluster"
+  ) +
+  theme_classic(base_size = 14)
+
+# View plot
+pca_cluster
+
+#-------------------------------------------------
+# 5) Save plot
+#-------------------------------------------------
+out_dir <- "Identifying stream Cluster plots"
+
+if (!dir.exists(out_dir)) {
+  dir.create(out_dir, recursive = TRUE)
+}
+
+ggsave(
+  filename = file.path(out_dir, "PCA_Biplot_Sites_by_Cluster.png"),
+  plot     = pca_cluster,
+  width    = 8,
+  height   = 6,
+  dpi      = 300
+)
+```
+
+## 5. Characterizing clusters
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+#-------------------------------------------------
+# 0) Define inherent site characteristics
+#-------------------------------------------------
+site_char <- c("Type", "Regime", "Flow_state", "Development")
+
+#-------------------------------------------------
+# 1) Make a SITE-LEVEL dataframe
+#    Keep one row per Site with its cluster
+#-------------------------------------------------
+site_level_chars <- dat_clustered %>%
+  dplyr::select(Site, all_of(site_char), Cluster) %>%
+  distinct()
+
+# Quick check:
+# each Site should appear only once here
+site_level_chars %>%
+  count(Site) %>%
+  count(n)
+
+#-------------------------------------------------
+# 2) Count frequencies and compute relative frequency
+#    within each Variable x Cluster combination
+#-------------------------------------------------
+cluster_summary_table_pct <- site_level_chars %>%
+  pivot_longer(
+    cols = all_of(site_char),
+    names_to = "Variable",
+    values_to = "Value"
+  ) %>%
+  count(Variable, Cluster, Value, name = "Freq") %>%
+  group_by(Variable, Cluster) %>%
+  mutate(RelFreq = Freq / sum(Freq) * 100) %>%
+  ungroup()
+
+cluster_summary_table_pct
+```
+
+Plot
+
+```{r}
+#-------------------------------------------------
+# 3) Combine variable + value for fill labels
+#-------------------------------------------------
+cluster_summary_table_pct <- cluster_summary_table_pct %>%
+  mutate(Value_labeled = paste0(Variable, ": ", Value))
+
+#-------------------------------------------------
+# 4) Set plotting order
+#-------------------------------------------------
+cluster_summary_table_pct$Value_labeled <- factor(
+  cluster_summary_table_pct$Value_labeled,
+  levels = c(
+    "Type: Tributaries",
+    "Type: Main Stem",
+    
+    "Development: Low",
+    "Development: Medium",
+    "Development: High",
+    
+    "Flow_state: Pooled",
+    "Flow_state: Flowing",
+    
+    "Regime: NonPerennial",
+    "Regime: Perennial"
+  )
+)
+
+cluster_summary_table_pct$Variable <- factor(
+  cluster_summary_table_pct$Variable,
+  levels = c("Type", "Development", "Flow_state", "Regime")
+)
+
+cluster_summary_table_pct$Cluster <- factor(
+  cluster_summary_table_pct$Cluster,
+  levels = c("1", "2", "4", "3")
+)
+
+#-------------------------------------------------
+# 5) Define colors
+#-------------------------------------------------
+color_map <- c(
+  "Type: Tributaries" = "#dadaeb",
+  "Type: Main Stem" = "#756bb1",
+  
+  "Development: Low" = "#fdd49e",
+  "Development: Medium" = "orange2",
+  "Development: High" = "red3",
+  
+  "Flow_state: Pooled" = "#a6d854",
+  "Flow_state: Flowing" = "#1b7837",
+  
+  "Regime: NonPerennial" = "lightblue",
+  "Regime: Perennial" = "#1f78a4"
+)
+
+# Legend labels without the variable prefix
+legend_labels <- gsub("^.*: ", "", levels(cluster_summary_table_pct$Value_labeled))
+
+#-------------------------------------------------
+# 6) Plot relative frequencies by cluster
+#-------------------------------------------------
+rel_freq <- ggplot(
+  cluster_summary_table_pct,
+  aes(y = Variable, x = RelFreq, fill = Value_labeled)
+) +
+  geom_bar(
+    stat = "identity",
+    position = "fill",
+    color = "white",
+    linewidth = 0.2
+  ) +
+  facet_wrap(~ Cluster, ncol = 1, strip.position = "left") +
+  scale_x_continuous(labels = scales::percent_format(scale = 1)) +
+  scale_fill_manual(
+    values = color_map,
+    labels = legend_labels
+  ) +
+  labs(
+    x = "Relative Frequency (%)",
+    y = NULL,
+    fill = "Category"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    strip.placement = "outside",
+    strip.text.y.left = element_text(angle = 0, face = "bold"),
+    panel.spacing = unit(0.6, "lines"),
+    legend.position = "right",
+    legend.box = "vertical",
+    legend.direction = "vertical"
+  ) +
+  guides(fill = guide_legend(ncol = 1))
+
+rel_freq
+
+# Save 
+ggsave(
+  filename = file.path(out_dir, "Relative_freq_plots_by_cluster.png"),
+  plot     = rel_freq,
+  width    = 8,
+  height   = 6,
+  dpi      = 300
+)
+```
+
+-   Cluster 1: main stem and similarly behaving tributaries
+
+-    Cluster 2: non-perennial and perennial tributaries
+
+-    Cluster 3: only non-perennial tributary sites
+
+Add back to dat
+
+```{r}
+library(dplyr)
+
+site_cluster <- site_means_scaled %>%
+  mutate(cluster = km_final$cluster) %>%  
+  mutate(
+    Cluster = case_when(
+      cluster == 1 ~ "Main Stem",
+      cluster == 2 ~ "Tributaries",
+      cluster == 3 ~ "NP Tributaries"
+    )
+  ) %>%
+  dplyr::select(Site, cluster, Cluster)
+
+library(dplyr)
+library(stringr)
+
+# Make sure Site matches in both tables
+dat <- dat %>%
+  mutate(Site = str_trim(as.character(Site)))
+
+site_cluster <- site_cluster %>%
+  mutate(Site = str_trim(as.character(Site)))
+
+# Join cluster names to each sample
+dat <- dat %>%
+  dplyr::select(-any_of("Cluster")) %>%
+  left_join(
+    site_cluster %>% dplyr::select(Site, Cluster),
+    by = "Site"
+  )
+
+# Check result
+grep("Cluster|cluster", names(dat), value = TRUE)
+table(dat$Cluster, useNA = "ifany")
+
+# Optional: order factor levels
+dat <- dat %>%
+  mutate(
+    Cluster = factor(
+      Cluster,
+      levels = c(
+        "Main Stem",
+        "Tributaries",
+        "NP Tributaries"
+      )
+    )
+  )
+```
+
+Plots by cluster
+
+```{r}
+boxplot(dat$log_Zn_uM ~ dat$Cluster)
+```
+
+Save
+
+```{r}
+library(openxlsx)
+
+# 1. Create a brand-new workbook
+wb <- createWorkbook()
+
+# 2. Add your sheet
+addWorksheet(wb, "HA 10% Closed System")
+
+# 3. Write your updated dat to the sheet
+writeData(wb, sheet = "HA 10% Closed System", dat)
+
+# 4. Save — overwrite the entire file
+saveWorkbook(wb, "Bioavailability_Master_Spreadsheet_Clean3_V2.xlsx", overwrite = TRUE)
+```
+
+# Identifying Important Predictors of Bioavailability
+
+To determine the relative importance of each BLM predictor on trace element bioavailability, we will conduct a multiple linear regressions (MLR), use step wise selection of the most important predictors, and determine their standardized beta coefficients using the formula:
+
+total bioavailable element = sum of BLM predictors (as standardized log-transformed variables)
+
+## 1. Assess correlation
+
+```{r}
+# Spearman correlation matrix of all BLM predictors
+BLM_predict <- c("log_Zn_nM", "log_Cu_nM", "log_Temp_C", 
+                    "pH", "log_DOC_nM", "log_DIC_nM", "log_Cl_nM", 
+                    "log_Ca_nM", "log_Mg_nM", "log_SO4_nM", 
+                    "log_Na_nM", "log_K_nM")
+
+library(dplyr)
+
+cor_df_std <- dat %>%
+  dplyr::select(all_of(BLM_predict)) %>%
+  mutate(across(everything(), as.numeric)) %>%
+  mutate(across(everything(), scale)) %>%
+  as.data.frame()
+
+cor_mat <- cor(
+  cor_df_std,
+  method = "spearman",
+  use    = "pairwise.complete.obs"
+)
+
+# Plot & save
+library(corrplot)
+
+out_dir <- "Multiple linear regression"
+if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+
+png(
+  filename = file.path(out_dir, "Spearman_correlation_BLM_predictors.png"),
+  width    = 2400,
+  height   = 2000,
+  res      = 300
+)
+
+corrplot(
+  cor_mat,
+  method      = "color",
+  type        = "upper",
+  order       = "hclust",
+  tl.col      = "black",
+  tl.cex      = 0.8,
+  addCoef.col = "black",
+  number.cex  = 0.7,
+  diag        = FALSE
+)
+
+dev.off()
+
+```
+
+## 2. Build MLR
+
+Use log-transformed and standardized variables to build a large model, stepwise select a better model, calculate standardized beta coefficients, variance inflation factors (VIF), and relative importance on bioavailability
+
+```{r}
+library(MASS)
+library(car)
+library(relaimpo)
+library(dplyr)
+library(openxlsx)
+library(corrplot)
+
+vars_to_select <- c("log_Zn_nM", "log_Temp_C", 
+                    "pH", "log_DOC_nM", "log_DIC_nM", "log_Cl_nM", 
+                    "log_Ca_nM", "log_Mg_nM", "log_SO4_nM", 
+                    "log_Na_nM", "log_K_nM")
+
+# 0. Standardize variables
+std_vars <- dat %>%
+  dplyr::select(log_TBL_Zn_nmol_g, all_of(vars_to_select)) %>%
+  mutate(across(everything(), as.numeric)) %>%
+  mutate(across(everything(), ~ as.numeric(scale(.x)), .names = "{.col}_std")) %>%
+  dplyr::select(ends_with("_std")) %>%
+  as.data.frame()
+
+# Define the standardized predictor names + standardized response
+vars_to_select_std <- paste0(vars_to_select, "_std")
+response_std <- "log_TBL_Zn_nmol_g_std"
+
+# Model formula using standardized columns
+form_std <- reformulate(vars_to_select_std, response = response_std)
+
+# 1. Full MLR
+full_mod <- lm(form_std, data = std_vars)
+
+# 2. Estimates (standardized partial slopes) + p-values
+coef_table <- summary(full_mod)$coefficients
+
+est_df <- data.frame(
+  Predictor = rownames(coef_table),
+  Estimate  = coef_table[, "Estimate"],
+  p_value   = coef_table[, "Pr(>|t|)"]
+) %>%
+  filter(Predictor != "(Intercept)")
+
+# 3. VIF
+vif_vals <- vif(full_mod)
+
+vif_df <- data.frame(
+  Predictor = names(vif_vals),
+  VIF       = as.numeric(vif_vals)
+)
+
+# 4. Relative importance (lmg)
+rel_imp <- calc.relimp(full_mod, type = "lmg", rela = TRUE)
+
+rel_df <- data.frame(
+  Predictor = names(rel_imp$lmg),
+  Rel_Importance = as.numeric(rel_imp$lmg)
+)
+
+# 5. Combine summary table
+final_table <- est_df %>%
+  left_join(vif_df, by = "Predictor") %>%
+  left_join(rel_df, by = "Predictor") %>%
+  arrange(desc(Rel_Importance))
+
+final_table
+
+# 6. Save
+library(openxlsx)
+
+out_dir <- "Multiple linear regression"
+dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+
+write.xlsx(
+  final_table,
+  file = file.path(out_dir, "MLR.xlsx"),
+  overwrite = TRUE
+)
+```
+
+## 2. Check of residuals
+
+Homoscedasticity of fitted vs. residual plots and Normality of residuals on the dependent variable
+
+```{r}
+# Save as png inside the folder
+png(
+  file.path(out_dir, "Quality_checks_MLR.png"),
+  width = 2000,
+  height = 2000,
+  res = 300
+)
+
+# Build plot
+par(mfrow = c(2, 2))   # 2 rows, 2 columns
+full_mod_plots <- plot(full_mod)
+
+# View
+full_mod_plots
+
+dev.off()
+```
+
+## 3. Partial slope plots
+
+Partial regression plots of log BLM parameters
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(broom)
+
+# 1. Extract retained predictors from stepwise model
+retained_vars <- names(coef(full_mod))[-1]  # drop intercept
+
+# 2. Function to get partial residuals for each predictor
+get_partial_df <- function(model, data, var) {
+  # Construct model formula terms
+  all_terms <- attr(terms(model), "term.labels")
+  other_terms <- setdiff(all_terms, var)
+  
+  # Get residuals of Y on all predictors except the variable of interest
+  y_formula <- reformulate(other_terms, response = all.vars(formula(model))[1])
+  y_resid <- resid(lm(y_formula, data = data))
+  
+  # Get residuals of X_var on all other predictors
+  x_formula <- reformulate(other_terms, response = var)
+  x_resid <- resid(lm(x_formula, data = data))
+  
+  df <- data.frame(
+    predictor = x_resid,
+    response = y_resid,
+    variable = var
+  )
+  return(df)
+}
+
+# 3. Build combined dataset for all retained predictors
+partial_df <- do.call(rbind, lapply(retained_vars, get_partial_df, 
+                                    model = full_mod, data = std_vars))
+
+# 4. Plot partial regression slopes
+step.mod_partial_slopes <-
+  ggplot(partial_df, aes(x = predictor, y = response)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm", se = TRUE, color = "blue") + #95% CI
+  facet_wrap(~ variable, scales = "free_x") +
+  labs(
+    x = "Predictor (residuals)",
+    y = "Response (residuals)",
+    title = "Standardized Partial Regression Plots of Predictors"
+  ) +
+  theme_minimal(base_size = 12)
+
+step.mod_partial_slopes
+
+# Save
+ggsave(
+  filename = file.path(out_dir, "Partial_slopes_MLR.png"),
+  plot     = step.mod_partial_slopes,
+  width    = 8,
+  height   = 6,
+  dpi      = 300
+)
+```
+
+## 5. Outlier detection
+
+```{r}
+# 1. Get model diagnostics
+model_diag <- influence.measures(full_mod)
+
+# 2. Extract indices of influential points flagged by diagnostics
+infl_points <- which(apply(model_diag$is.inf, 1, any))
+
+# 3. Create a dataframe with their info
+flagged_obs <- data.frame(
+  Sample_ID = dat$Sample_ID[infl_points],
+  Fitted = fitted(full_mod)[infl_points],
+  Residual = residuals(full_mod)[infl_points],
+  Std_Residual = rstandard(full_mod)[infl_points],
+  Leverage = hatvalues(full_mod)[infl_points],
+  Cooks_D = cooks.distance(full_mod)[infl_points])
+
+# View flagged observations
+flagged_obs
+
+# Save
+library(openxlsx)
+
+write.xlsx(
+  flagged_obs,
+  file = file.path(out_dir, "MLR_flagged_obs.xlsx"),
+  overwrite = TRUE
+)
+```
+
+Determine whether these flagged observations are clustered around a certain characteristic
+
+```{r}
+library(dplyr)
+
+# 1. Add descriptive variables from dat to flagged observations (already done)
+flagged_obs <- flagged_obs %>%
+  left_join(dat %>% 
+              dplyr::select(Sample_ID, Site, Date, Cluster, Development), 
+            by = "Sample_ID")
+
+### ---- By Cluster ----
+# 2a. Summarize how many flagged points per cluster
+by_typ <- flagged_obs %>% count(Cluster)
+
+# 2b. Proportion of flagged by cluster
+prop_typ <- flagged_obs %>%
+  count(Cluster) %>%
+  mutate(prop_flagged = n / sum(n))
+
+# 2c. Overall proportions in dataset
+overall_typ <- dat %>%
+  count(Cluster) %>%
+  mutate(prop_overall = n / sum(n))
+
+# 2d. Compare flagged vs overall
+compare_typ <- left_join(prop_typ, overall_typ, by = "Cluster")
+
+
+### ---- By Site ----
+# 3a. Summarize flagged points per site
+by_site <- flagged_obs %>% count(Site)
+
+# 3b. Proportion flagged per site
+prop_site <- flagged_obs %>%
+  count(Site) %>%
+  mutate(prop_flagged = n / sum(n))
+
+# 3c. Overall proportions in dataset
+overall_site <- dat %>%
+  count(Site) %>%
+  mutate(prop_overall = n / sum(n))
+
+# 3d. Compare flagged vs overall
+compare_site <- left_join(prop_site, overall_site, by = "Site")
+
+### ---- By Developed LULC ----
+# 4a. Summarize flagged points per site
+by_dev <- flagged_obs %>% count(Development)
+
+# 4b. Proportion flagged per site
+prop_dev <- flagged_obs %>%
+  count(Development) %>%
+  mutate(prop_flagged = n / sum(n))
+
+# 4c. Overall proportions in dataset
+overall_dev <- dat %>%
+  count(Development) %>%
+  mutate(prop_overall = n / sum(n))
+
+# 4d. Compare flagged vs overall
+compare_dev <- left_join(prop_dev, overall_dev, by = "Development")
+
+
+# 5. Combine plots
+library(dplyr)
+
+compare_typ <- compare_typ %>% 
+  rename(Value = Cluster)
+
+compare_site <- compare_site %>% 
+  rename(Value = Site)
+
+compare_dev <- compare_dev %>% 
+  rename(Value = Development) 
+
+# 6. Now combine all tables
+flagged_obs_clusters <- bind_rows(compare_typ, compare_site, compare_dev)
+
+# 7. Check result
+flagged_obs_clusters
+
+# 8. Save
+library(openxlsx)
+
+# Path to file
+file_path <- file.path(out_dir, "MLR_flagged_obs.xlsx")
+
+# Load existing workbook
+wb <- loadWorkbook(file_path)
+
+# Add new worksheet
+addWorksheet(wb, "Flagged_Obs_Clusters")
+
+# Write data to the new sheet
+writeData(
+  wb,
+  sheet = "Flagged_Obs_Clusters",
+  x = flagged_obs_clusters
+)
+
+# Save workbook (overwrite = TRUE updates the file)
+saveWorkbook(wb, file_path, overwrite = TRUE)
+```
+
+# Assessing Variables by Cluster
+
+## 1. Summary Statistics
+
+Mean and standard error by Cluster
+
+```{r}
+library(dplyr)
+library(tidyr)
+
+# Standard error function
+se <- function(x) {
+  sd(x, na.rm = TRUE) / sqrt(sum(!is.na(x)))
+}
+
+# Mode function (returns the most frequent value)
+get_mode <- function(x) {
+  x <- x[!is.na(x)]
+  if (length(x) == 0) return(NA)
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+summary_table <- dat %>%
+  dplyr::select(Cluster, where(is.numeric)) %>%  # keep Cluster + numeric vars
+  pivot_longer(
+    cols = -Cluster,
+    names_to = "Variable",
+    values_to = "Value"
+  ) %>%
+  group_by(Variable, Cluster) %>%
+  summarise(
+    Mean     = mean(Value, na.rm = TRUE),
+    Median   = median(Value, na.rm = TRUE),
+    Mode     = get_mode(Value),
+    Variance = var(Value, na.rm = TRUE),
+    SE       = se(Value),
+    .groups = "drop"
+  )
+
+summary_table
+```
+
+Export to excel
+
+```{r}
+library(openxlsx)
+
+# File name
+file_path <- "Statistical_analyses_by_Cluster.xlsx"
+
+# Load workbook if exists, otherwise create a new one
+if (file.exists(file_path)) {
+  wb <- loadWorkbook(file_path)
+} else {
+  wb <- createWorkbook()
+}
+
+
+# Create sheet if it does NOT exist
+if (!"Summary Stats" %in% names(wb)) {
+  addWorksheet(wb, "Summary Stats")
+}
+
+# Write data to the sheet
+writeData(wb, "Summary Stats", summary_table)
+
+# Save workbook (overwrite = TRUE allows updating)
+saveWorkbook(wb, file_path, overwrite = TRUE)
+
+```
+
+## 2. Check of ANOVA Assumptions
+
+To determine whether variables significantly differ by Cluster, we could use a parametric ANOVA which assumes variables are normally distributed and have homogeneity of variance by Cluster. We already determined that most variables were not normally distributed, even after log-transforming them. Now we will assess homogeneity of variance by Cluster.
+
+### a. Homogeneity of Variance
+
+Using the Levene Test
+
+```{r}
+library(car)  # for leveneTest()
+library(dplyr)
+
+# Set alpha for homogeneity check
+alpha <- 0.05
+
+# Identify all numeric variables EXCEPT Cluster
+numeric_vars <- dat %>%
+  dplyr::select(where(is.numeric)) %>%
+  names()
+
+# Initialize results dataframe
+levene_results <- data.frame(
+  Variable = character(),
+  F_value = numeric(),
+  p_value = numeric(),
+  Homogeneous = logical(),
+  stringsAsFactors = FALSE
+)
+
+# Loop over all numeric variables
+for (var in numeric_vars) {
+  
+  # Run Levene's test
+  test <- car::leveneTest(as.formula(paste(var, "~ Cluster")), data = dat)
+  
+  # Extract F and p-values
+  F_val <- test[1, "F value"]
+  p_val <- test[1, "Pr(>F)"]
+  
+  # Determine homogeneity
+  homogeneous <- p_val > alpha
+  
+  # Add results to dataframe
+  levene_results <- rbind(
+    levene_results, 
+    data.frame(
+      Variable = var,
+      F_value = F_val,
+      p_value = p_val,
+      Homogeneous = homogeneous
+    )
+  )
+}
+
+# View results
+levene_results
+```
+
+Export results to excel
+
+```{r}
+library(openxlsx)
+
+# Load the existing workbook
+wb <- loadWorkbook("Statistical_analyses_by_Cluster.xlsx")
+
+# Create sheet if it does NOT exist
+if(!"Homog Var by Cluster" %in% names(wb)) {
+  addWorksheet(wb, "Homog Var by Cluster")
+}
+
+# Write your new table
+writeData(wb, "Homog Var by Cluster", levene_results)
+
+# Save the workbook (overwrite)
+saveWorkbook(wb, "Statistical_analyses_by_Cluster.xlsx", overwrite = TRUE)
+```
+
+## 3. Kruskal Wallis Test
+
+Since most variables fail the assumptions for an ANOVA, we will use a non-parametric rank-based test to determine whether variables significantly differ by stream Cluster; the Kruskal Wallis (KW) test. We will also use the Holm-Bonferroni correction factor for multiple comparisons when conducting pairwise comparisons of variables by Cluster.
+
+KW test relies on the following assumptions
+
+1.  ***For ordinal, interval, or ratio data:*** While most of our variables fail this assumption, we can make an exception while being aware of this.
+
+2.  ***The samples are independent of each other and within each group:*** Our variables meet this assumption.
+
+3.  ***The distributions of the groups should have the same shape.***
+
+### i. Distribution of variables by Cluster
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# Choose variables whose distributions you want to compare by Cluster
+blm_predictors <- c(
+  "log_Zn_uM",
+  "log_Temp_C", 
+  "pH", 
+  "log_DOC_uM",
+  "log_DIC_uM", 
+  "log_Cl_uM", 
+  "log_Ca_uM",
+  "log_Mg_uM", 
+  "log_SO4_uM", 
+  "log_Na_uM",
+  "log_K_uM"
+)
+
+# Change to long format
+dat_long <- dat %>%
+  # Keep Cluster and the variables you want to check
+  dplyr::select(Cluster, all_of(blm_predictors)) %>%
+  
+  # Turn columns into rows: Variable, Value
+  pivot_longer(
+    cols      = -Cluster,
+    names_to  = "Variable",
+    values_to = "Value"
+  )
+
+# Density plots by Cluster
+ggplot(dat_long, aes(x = Value, fill = Cluster)) +
+  geom_density(alpha = 0.4) +   # alpha for transparent fill
+  facet_wrap(~ Variable, scales = "free") +  # one panel per Variable
+  labs(
+    title = "Distributions by Cluster",
+    x = "Value",
+    y = "Density"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 30, hjust = 1)
+  )
+```
+
+### ii. Check for missing values
+
+The KW test also can't handle variables with missing values and no variance, we'll check to see if any variables have these two conditions
+
+```{r}
+library(dplyr)
+
+na_counts <- dat %>%
+  dplyr::select(where(is.numeric)) %>%
+  summarise(across(everything(), ~sum(is.na(.)))) %>%
+  pivot_longer(everything(),
+               names_to = "Variable",
+               values_to = "NA_count") %>%
+  filter(NA_count > 0)
+
+# View results, should be 0
+na_counts
+```
+
+### iii. Check for zero variance
+
+No variables have missing values, now we'll check for lack of variance
+
+```{r}
+no_variance <- dat %>%
+  dplyr::select(where(is.numeric)) %>%
+  summarise(across(everything(), ~dplyr::n_distinct(., na.rm = TRUE))) %>%
+  pivot_longer(everything(),
+               names_to = "Variable",
+               values_to = "Distinct_values") %>%
+  filter(Distinct_values <= 1)
+
+# View results, should be 0
+no_variance
+```
+
+### iv. Run KW tests
+
+Now we can perform the KW test
+
+```{r}
+library(tibble)
+library(agricolae)
+library(dplyr)
+
+alpha <- 0.05
+
+# 1. Get all numeric variables in dat
+numeric_vars <- dat %>%
+  dplyr::select(where(is.numeric)) %>%
+  names()
+
+# 2. Create an empty list to store rows
+combined_list <- list()
+
+# 3. Loop through each numeric variable 
+i <- 1
+for (v in numeric_vars) {
+  
+  # Kruskal-Wallis test
+  formula <- as.formula(paste(v, "~ Cluster"))
+  kw_test <- kruskal.test(formula, data = dat)
+  
+  chi_sq     <- kw_test$statistic
+  df_val     <- kw_test$parameter
+  p_val      <- kw_test$p.value
+  significant <- p_val < alpha   # significant when p < 0.05
+  
+  # agricolae::kruskal to assign groups (letters)
+  k_out <- agricolae::kruskal(
+    y    = dat[[v]],
+    trt  = dat$Cluster,
+    alpha = alpha,
+    group = TRUE
+  )
+  
+  # Create a data frame from the groups table
+  groups_df <- k_out$groups %>%
+    rownames_to_column("Cluster")
+  
+  # Combine test results with group letters
+  combined_list[[i]] <- groups_df %>%
+    mutate(
+      Variable   = v,
+      Chi_sq     = as.numeric(chi_sq),
+      df         = as.numeric(df_val),
+      p_value    = as.numeric(p_val),
+      Significant = significant
+    )
+  
+  i <- i + 1
+}
+
+# 5. Bind everything together
+combined_kruskal <- bind_rows(combined_list)
+
+# View
+str(combined_kruskal)
+```
+
+Export to excel
+
+```{r}
+library(openxlsx)
+
+# Load the existing workbook
+wb <- loadWorkbook("Statistical_analyses_by_Cluster.xlsx")
+
+# Create sheet if it does NOT exist
+if(!"K-W test by Cluster" %in% names(wb)) {
+  addWorksheet(wb, "K-W test by Cluster")
+}
+
+# Write your new table
+writeData(wb, "K-W test by Cluster", combined_kruskal)
+
+# Save the workbook (overwrite)
+saveWorkbook(wb, "Statistical_analyses_by_Cluster.xlsx", overwrite = TRUE)
+```
+
+## 4. Boxplots by Cluster
+
+We first need to create an object with the pair-wise comparison letters and set the order of Cluster
+
+```{r}
+# Create letters_df from combined_kruskal
+letters_df <- combined_kruskal %>%
+  dplyr::select(Variable, Cluster, groups) %>%
+  dplyr::distinct() %>%
+  dplyr::rename(Letters = groups)
+
+dat$Cluster <- as.factor(dat$Cluster)
+
+dat$Cluster <- factor(dat$Cluster, levels = c("Main Stem",
+                                              "Tributaries",
+                                              "NP Tributaries"))
+
+# 3. Colors for each Cluster
+Cluster_colors <- c(
+  "Main Stem"     = "#56B4E9",
+  "NP Tributaries" = "forestgreen",
+  "Tributaries"        = "#D55E00"
+)
+```
+
+### a. BLM predictors
+
+Create a boxplots for each BLM predictor
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+# Define output directory (choose ONE)
+out_dir <- "Plots by Cluster"
+if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+
+# 1. Titles for each variable's plot (panel title)
+title_lookup <- c(
+  "log_Temp_C" = "Temperature",
+  "pH"         = "pH",
+  "log_DOC_uM" = "Dissolved Organic Carbon",
+  "log_DIC_uM" = "Dissolved Inorganic Carbon",
+  "log_Ca_uM"  = "Calcium",
+  "log_Mg_uM"  = "Magnesium",
+  "log_Na_uM"  = "Sodium",
+  "log_K_uM"   = "Potassium",
+  "log_SO4_uM" = "Sulfate",
+  "log_Cl_uM"  = "Chloride"
+)
+
+# 2. Custom y-axis labels for each variable
+y_label_lookup <- c(
+  "log_Temp_C" = "Temperature (°C)",
+  "pH"         = "pH",
+  "log_DOC_uM" = "log DOC (µM)",
+  "log_DIC_uM" = "log DIC (µM)",
+  "log_Ca_uM"  = "log Ca (µM)",
+  "log_Mg_uM"  = "log Mg (µM)",
+  "log_Na_uM"  = "log Na (µM)",
+  "log_K_uM"   = "log K (µM)",
+  "log_SO4_uM" = "log SO₄ (µM)",
+  "log_Cl_uM"  = "log Cl (µM)"
+)
+
+
+# 3. Loop through variables in title_lookup
+for (var in names(title_lookup)) {
+
+  y_pos_df <- dat %>%
+    group_by(Cluster) %>%
+    summarise(
+      y_pos = max(.data[[var]], na.rm = TRUE) * 1.25,
+      .groups = "drop"
+    )
+
+  letters_plot_df <- letters_df %>%
+    filter(Variable == var) %>%
+    dplyr::select(Cluster, Letters) %>%
+    mutate(Cluster = factor(Cluster)) %>%
+    left_join(y_pos_df, by = "Cluster")
+
+  p <- ggplot(dat, aes(
+    x    = Cluster,
+    y    = .data[[var]],
+    fill = Cluster,
+    color = Cluster
+  )) +
+    geom_boxplot(
+      width = 0.6,
+      alpha = 0.35,        
+      outlier.shape = NA 
+    ) +
+    geom_jitter(
+      width = 0.15,
+      size  = 2,
+      alpha = 0.7
+    ) +
+    geom_text(
+      data = letters_plot_df,
+      aes(x = Cluster, y = y_pos, label = Letters),
+      inherit.aes = FALSE,
+      size = 5
+    ) +
+    scale_fill_manual(values = Cluster_colors, drop = FALSE) +
+    scale_color_manual(values = Cluster_colors, drop = FALSE) +
+    labs(
+      title = title_lookup[[var]],
+      y     = y_label_lookup[[var]],
+      x     = ""
+    ) +
+    scale_y_continuous(expand = expansion(mult = c(0, 0.1))) +
+    theme_minimal(base_size = 12) +
+    theme(
+      legend.position = "none",
+      axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
+      axis.text.y = element_text(size = 11),
+      axis.title.y = element_text(size = 12),
+      plot.title = element_text(size = 14)
+    )
+ p
+ 
+  # ---- Save ---
+  file_stub <- paste0("Boxplot_", var, "_by_Cluster")
+
+  ggsave(
+    filename = file.path(out_dir, paste0(file_stub, ".png")),
+    plot     = p,
+    width    = 5,
+    height   = 5,
+    dpi      = 300
+  )
+}
+
+```
+
+Boxplots of BLM predictors on a single pane
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# 1. Make sure output folder exists
+out_dir <- "Plots by Cluster"
+if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+
+# 2. Long format (DO NOT re-factor Cluster)
+dat_long <- dat %>%
+  dplyr::select(Cluster, all_of(names(title_lookup))) %>%
+  pivot_longer(
+    cols      = -Cluster,
+    names_to  = "Variable",
+    values_to = "Value"
+  ) %>%
+  filter(!is.na(Value)) %>%
+  mutate(
+    Variable = factor(Variable, levels = names(title_lookup))
+  )
+
+# 3a. Get max y per Variable x Cluster
+y_pos_df <- dat_long %>%
+  group_by(Variable, Cluster) %>%
+  summarise(y_max = max(Value, na.rm = TRUE), .groups = "drop")
+
+# 3b. Letters (DO NOT re-factor Cluster)
+letters_long <- letters_df %>%
+  filter(Variable %in% names(title_lookup)) %>%
+  mutate(
+    Variable = factor(Variable, levels = names(title_lookup))
+  ) %>%
+  left_join(y_pos_df, by = c("Variable", "Cluster")) %>%
+  mutate(
+    y_pos = y_max * 1.05
+  )
+
+# 4. Facet labels
+facet_labels <- as_labeller(title_lookup)
+
+# 5. Build plot (filled)
+all_vars_panel <- ggplot(
+  dat_long,
+  aes(
+    x     = Cluster,
+    y     = Value,
+    color = Cluster,
+    fill  = Cluster
+  )
+) +
+  geom_boxplot(
+    width = 0.6,
+    alpha = 0.35,
+    outlier.shape = NA
+  ) +
+  geom_jitter(
+    width = 0.15,
+    size  = 1.5,
+    alpha = 0.7
+  ) +
+  geom_text(
+    data = letters_long,
+    aes(x = Cluster, y = y_pos, label = Letters),
+    inherit.aes = FALSE,
+    size = 3
+  ) +
+  scale_color_manual(values = Cluster_colors, drop = FALSE) +
+  scale_fill_manual(values = Cluster_colors, drop = FALSE) +
+  facet_wrap(
+    ~ Variable,
+    scales   = "free_y",
+    ncol     = 3,
+    labeller = facet_labels
+  ) +
+  labs(
+    title = "BLM Predictors by Stream Cluster",
+    x     = "Stream Cluster",
+    y     = "Log Concentration (uM)"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "none",
+    axis.text.x  = element_text(size = 9, angle = 30, hjust = 1),
+    strip.text   = element_text(size = 11),
+    plot.title   = element_text(size = 14)
+  )
+
+all_vars_panel
+
+
+# Save
+out_dir <- "Plots by Cluster"
+if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+
+ggsave(
+  filename = file.path(out_dir, "BLM_predictors_panel_Zn_by_Cluster.png"),
+  plot     = all_vars_panel,
+  width    = 8,
+  height   = 8,
+  dpi      = 300
+)
+```
+
+### b. Trace element fractions
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+#-------------------------------------------------
+# 1. Colors by response variable
+#-------------------------------------------------
+response_colors <- c(
+  "Total Zn (nM)"                       = "slategray",
+  "Free Zn (nM)"                        = "darkslategray3",
+  "Bioavailable Zn (nmol g-1 wet weight)" = "turquoise3"
+)
+
+# Left-to-right facet order
+response_order <- c(
+  "Total Zn (nM)",
+  "Free Zn (nM)",
+  "Bioavailable Zn (nmol g-1 wet weight)"
+)
+
+#-------------------------------------------------
+# 2. Define letter nudges
+#-------------------------------------------------
+letter_nudge <- c(
+  "Total Zn (nM)"                       = 1,
+  "Free Zn (nM)"                        = 1,
+  "Bioavailable Zn (nmol g-1 wet weight)" = 2
+)
+
+#-------------------------------------------------
+# 3. Map variable names -> response labels
+#    Replace log_Free_Zn_uM if needed
+#-------------------------------------------------
+response_lookup <- c(
+  "log_Zn_nM"           = "Total Zn (nM)",
+  "log_Free_Zn_nM"      = "Free Zn (nM)",  
+  "log_TBL_Zn_nmol_g"   = "Bioavailable Zn (nmol g-1 wet weight)"
+)
+
+vars_trace <- names(response_lookup)
+
+#-------------------------------------------------
+# 4. Long data
+#-------------------------------------------------
+dat_long_trace <- dat %>%
+  dplyr::select(Cluster, all_of(vars_trace)) %>%
+  pivot_longer(
+    cols      = -Cluster,
+    names_to  = "Variable",
+    values_to = "Log10(Value)"
+  ) %>%
+  filter(!is.na(`Log10(Value)`)) %>%
+  mutate(
+    Response = response_lookup[Variable],
+    Response = factor(Response, levels = response_order)
+  )
+
+#-------------------------------------------------
+# 5a. Max y per Variable x Cluster
+#-------------------------------------------------
+y_pos_df <- dat_long_trace %>%
+  group_by(Variable, Cluster) %>%
+  summarise(y_max = max(`Log10(Value)`, na.rm = TRUE), .groups = "drop")
+
+#-------------------------------------------------
+# 5b. Attach letters
+#-------------------------------------------------
+letters_long_trace <- letters_df %>%
+  filter(Variable %in% vars_trace) %>%
+  mutate(
+    Response = response_lookup[Variable],
+    Response = factor(Response, levels = response_order)
+  ) %>%
+  left_join(
+    y_pos_df,
+    by = c("Variable", "Cluster")
+  ) %>%
+  mutate(
+    y_pos = y_max + letter_nudge[as.character(Response)]
+  )
+
+#-------------------------------------------------
+# 6. Plot
+#-------------------------------------------------
+bioavail_panel <- ggplot(
+  dat_long_trace,
+  aes(
+    x     = Cluster,
+    y     = `Log10(Value)`,
+    color = Response,
+    fill  = Response
+  )
+) +
+  geom_boxplot(width = 0.6, alpha = 0.5) +
+  geom_jitter(width = 0.15, size = 1, alpha = 0.7) +
+  geom_text(
+    data = letters_long_trace,
+    aes(x = Cluster, y = y_pos, label = Letters),
+    inherit.aes = FALSE,
+    size = 3.5
+  ) +
+  scale_color_manual(values = response_colors, breaks = response_order) +
+  scale_fill_manual(values = response_colors, breaks = response_order) +
+  facet_wrap(~ Response, scales = "free_y", ncol = 3) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(size = 10, angle = 30, hjust = 1),
+    strip.text  = element_text(size = 8),
+    plot.title  = element_text(size = 14)
+  ) +
+  labs(
+    title = "Trace Elements by Stream Cluster",
+    x     = "Stream Cluster",
+    y     = "Log10(Value)"
+  )
+
+bioavail_panel
+
+# Save
+out_dir <- "Plots by Cluster"
+if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+
+ggsave(
+  filename = file.path(out_dir, "Trace_elements_panel_Zn_by_Cluster.png"),
+  plot     = bioavail_panel,
+  width    = 10,
+  height   = 4,
+  dpi      = 300
+)
+```
+
+### c. Zn-complexes
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# ------------------------------------------------------------------
+# 1) Zn species variables you want in the panel
+# ------------------------------------------------------------------
+vars_spec <- c(
+  "log_ZnOH_nM",
+  "log_Zn_OH_2_nM",
+  "log_ZnCO3_nM",
+  "log_ZnHCO3_nM",
+  "log_ZnSO4_nM",
+  "log_ZnCl_nM"
+)
+
+# Facet titles
+title_lookup <- c(
+  "log_ZnOH_nM"     = "ZnOH",
+  "log_Zn_OH_2_nM"  = "Zn(OH)2",
+  "log_ZnCO3_nM"    = "ZnCO3",
+  "log_ZnHCO3_nM"   = "ZnHCO3",
+  "log_ZnSO4_nM"    = "ZnSO4",
+  "log_ZnCl_nM"     = "ZnCl"
+)
+
+facet_labels <- as_labeller(title_lookup)
+
+# ------------------------------------------------------------------
+# 2) Long data (DO NOT re-factor Cluster)
+# ------------------------------------------------------------------
+dat_long_spec <- dat %>%
+  dplyr::select(Cluster, all_of(vars_spec)) %>%
+  pivot_longer(
+    cols      = -Cluster,
+    names_to  = "Variable",
+    values_to = "Value"
+  ) %>%
+  filter(!is.na(Value)) %>%
+  mutate(
+    Variable = factor(Variable, levels = vars_spec)
+  )
+
+# ------------------------------------------------------------------
+# 3) Letters (Kruskal groups) + y positions
+#     letters_df must have: Variable, Cluster, Letters
+#     (DO NOT re-factor Cluster here either)
+# ------------------------------------------------------------------
+y_pos_df_spec <- dat_long_spec %>%
+  group_by(Variable, Cluster) %>%
+  summarise(y_max = max(Value, na.rm = TRUE), .groups = "drop")
+
+letters_long_spec <- letters_df %>%
+  filter(Variable %in% vars_spec) %>%
+  left_join(y_pos_df_spec, by = c("Variable", "Cluster")) %>%
+  mutate(
+    y_pos = y_max + 0.05 * (abs(y_max) + 1)
+  )
+
+# ------------------------------------------------------------------
+# 4) Faceted panel (FILLED boxplot + jitter), colored by Cluster
+# ------------------------------------------------------------------
+spec_panel <- ggplot(dat_long_spec, aes(x = Cluster, y = Value)) +
+  geom_boxplot(
+    aes(color = Cluster, fill = Cluster),
+    width = 0.6,
+    alpha = 0.35,
+    outlier.shape = NA
+  ) +
+  geom_jitter(
+    aes(color = Cluster),
+    width = 0.15,
+    size  = 1.3,
+    alpha = 0.6
+  ) +
+  geom_text(
+    data = letters_long_spec,
+    aes(x = Cluster, y = y_pos, label = Letters),
+    inherit.aes = FALSE,
+    size = 3
+  ) +
+  scale_fill_manual(values = Cluster_colors, drop = FALSE) +
+  scale_color_manual(values = Cluster_colors, drop = FALSE) +
+  facet_wrap(
+    ~ Variable,
+    scales   = "free_y",
+    ncol     = 3,
+    labeller = facet_labels
+  ) +
+  labs(
+    title = "Inorganic Zn Complexes by Stream Cluster",
+    x     = "Stream Cluster",
+    y     = "Log10(Concentration) (nM)"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "none",
+    axis.text.x  = element_text(size = 9, angle = 30, hjust = 1),
+    strip.text   = element_text(size = 11),
+    plot.title   = element_text(size = 14)
+  )
+
+spec_panel
+
+# Save
+ggsave(
+  filename = file.path(out_dir, "Inorganic_Zn_complexes_by_Cluster.png"),
+  plot     = spec_panel,
+  width    = 9,
+  height   = 9,
+  dpi      = 300
+)
+
+```
+
+### d. Organic complexes
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# ------------------------------------------------------------------
+# 1) Variables you want in the panel
+# ------------------------------------------------------------------
+vars_spec <- c(
+  "log_TOrg_Zn_nM",
+  "log_TOrg_H_nM",
+  "log_TOrg_Ca_nM",
+  "log_TOrg_Mg_nM",
+  "log_TOrg_Na_nM"
+)
+
+title_lookup <- c(
+  "log_TOrg_Zn_nM" = "TOrg Zn",
+  "log_TOrg_H_nM"  = "TOrg H",
+  "log_TOrg_Ca_nM" = "TOrg Ca",
+  "log_TOrg_Mg_nM" = "TOrg Mg",
+  "log_TOrg_Na_nM" = "TOrg Na"
+)
+
+facet_labels <- as_labeller(title_lookup)
+
+# ------------------------------------------------------------------
+# 2) Long data (DO NOT re-factor Cluster)
+# ------------------------------------------------------------------
+dat_long_spec <- dat %>%
+  dplyr::select(Cluster, all_of(vars_spec)) %>%
+  pivot_longer(
+    cols      = -Cluster,
+    names_to  = "Variable",
+    values_to = "Value"
+  ) %>%
+  filter(!is.na(Value)) %>%
+  mutate(
+    Variable = factor(Variable, levels = vars_spec)
+  )
+
+# ------------------------------------------------------------------
+# 3) Letters (Kruskal groups) + y positions
+#     letters_df must have: Variable, Cluster, Letters
+#     (DO NOT re-factor Cluster here either)
+# ------------------------------------------------------------------
+y_pos_df_spec <- dat_long_spec %>%
+  group_by(Variable, Cluster) %>%
+  summarise(y_max = max(Value, na.rm = TRUE), .groups = "drop")
+
+letters_long_spec <- letters_df %>%
+  filter(Variable %in% vars_spec) %>%
+  left_join(y_pos_df_spec, by = c("Variable", "Cluster")) %>%
+  mutate(
+    y_pos = y_max + 0.05 * (abs(y_max) + 1)
+  )
+
+# ------------------------------------------------------------------
+# 4) Faceted panel (FILLED boxplot + jitter), colored by Cluster
+# ------------------------------------------------------------------
+spec_panel2 <- ggplot(dat_long_spec, aes(x = Cluster, y = Value)) +
+  geom_boxplot(
+    aes(color = Cluster, fill = Cluster),
+    width = 0.6,
+    alpha = 0.35,
+    outlier.shape = NA
+  ) +
+  geom_jitter(
+    aes(color = Cluster),
+    width = 0.15,
+    size  = 1.3,
+    alpha = 0.6
+  ) +
+  geom_text(
+    data = letters_long_spec,
+    aes(x = Cluster, y = y_pos, label = Letters),
+    inherit.aes = FALSE,
+    size = 3
+  ) +
+  scale_fill_manual(values = Cluster_colors, drop = FALSE) +
+  scale_color_manual(values = Cluster_colors, drop = FALSE) +
+  facet_wrap(
+    ~ Variable,
+    scales   = "free_y",
+    ncol     = 3,
+    labeller = facet_labels
+  ) +
+  labs(
+    title = "Organic Complexes by Stream Cluster",
+    x     = "Stream Cluster",
+    y     = "Log10(Concentration) (nM)"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "none",
+    axis.text.x  = element_text(size = 9, angle = 30, hjust = 1),
+    strip.text   = element_text(size = 11),
+    plot.title   = element_text(size = 14)
+  )
+
+spec_panel2
+
+# Save
+ggsave(
+  filename = file.path(out_dir, "Organic_Complexes_by_Cluster.png"),
+  plot     = spec_panel2,
+  width    = 9,
+  height   = 6,
+  dpi      = 300
+)
+
+```
+
+### e. BL-bound cations
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# ------------------------------------------------------------------
+# 1) Variables you want in the panel
+# ------------------------------------------------------------------
+vars_spec <- c(
+  "log_BL_Ca_nmol_g",
+  "log_BL_H_nmol_g",
+  "log_BL_Mg_nmol_g",
+  "log_BL_Na_nmol_g"
+)
+
+title_lookup <- c(
+  "log_BL_Ca_nmol_g" = "BL-Ca",
+  "log_BL_H_nmol_g"  = "BL-H",
+  "log_BL_Mg_nmol_g" = "BL-Mg",
+  "log_BL_Na_nmol_g" = "BL-Na"
+)
+
+facet_labels <- as_labeller(title_lookup)
+
+# ------------------------------------------------------------------
+# 2) Long data (DO NOT re-factor Cluster)
+# ------------------------------------------------------------------
+dat_long_spec <- dat %>%
+  dplyr::select(Cluster, all_of(vars_spec)) %>%
+  pivot_longer(
+    cols      = -Cluster,
+    names_to  = "Variable",
+    values_to = "Value"
+  ) %>%
+  filter(!is.na(Value)) %>%
+  mutate(
+    Variable = factor(Variable, levels = vars_spec)
+  )
+
+# ------------------------------------------------------------------
+# 3) Letters (Kruskal groups) + y positions
+#     letters_df must have: Variable, Cluster, Letters
+#     (DO NOT re-factor Cluster here either)
+# ------------------------------------------------------------------
+y_pos_df_spec <- dat_long_spec %>%
+  group_by(Variable, Cluster) %>%
+  summarise(y_max = max(Value, na.rm = TRUE), .groups = "drop")
+
+letters_long_spec <- letters_df %>%
+  filter(Variable %in% vars_spec) %>%
+  left_join(y_pos_df_spec, by = c("Variable", "Cluster")) %>%
+  mutate(
+    y_pos = y_max + 0.05 * (abs(y_max) + 1)
+  )
+
+# ------------------------------------------------------------------
+# 4) Faceted panel (FILLED boxplot + jitter), colored by Cluster
+# ------------------------------------------------------------------
+spec_panel3 <- ggplot(dat_long_spec, aes(x = Cluster, y = Value)) +
+  geom_boxplot(
+    aes(color = Cluster, fill = Cluster),
+    width = 0.6,
+    alpha = 0.35,
+    outlier.shape = NA
+  ) +
+  geom_jitter(
+    aes(color = Cluster),
+    width = 0.15,
+    size  = 1.3,
+    alpha = 0.6
+  ) +
+  geom_text(
+    data = letters_long_spec,
+    aes(x = Cluster, y = y_pos, label = Letters),
+    inherit.aes = FALSE,
+    size = 3
+  ) +
+  scale_fill_manual(values = Cluster_colors, drop = FALSE) +
+  scale_color_manual(values = Cluster_colors, drop = FALSE) +
+  facet_wrap(
+    ~ Variable,
+    scales   = "free_y",
+    ncol     = 2,
+    labeller = facet_labels
+  ) +
+  labs(
+    title = "Biotic Ligand-Bound Cations by Stream Cluster",
+    x     = "Stream Cluster",
+    y     = "Log10(Concentration) (nmol g-1)"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "none",
+    axis.text.x  = element_text(size = 9, angle = 30, hjust = 1),
+    strip.text   = element_text(size = 11),
+    plot.title   = element_text(size = 14)
+  )
+
+spec_panel3
+
+# Save
+ggsave(
+  filename = file.path(out_dir, "BL_cations_by_Cluster.png"),
+  plot     = spec_panel3,
+  width    = 9,
+  height   = 6,
+  dpi      = 300
+)
+
+```
+
+### f. Toxicity
+
+Zinc toxicity to daphnia
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+toxicity_plot <- ggplot(dat, aes(x = log_Zn_nM)) +
+
+  # Measured Zinc density
+  geom_density(
+    aes(fill = "Measured Zinc"),
+    alpha = 0.5,
+    linewidth = 0.6,
+    na.rm = TRUE
+  ) +
+
+  # Zn toxicity density
+  geom_density(
+    aes(x = log_Zn_Toxicity_Daphnia_nM, fill = "Toxic to Daphnia"),
+    alpha = 0.5,
+    linewidth = 0.6,
+    na.rm = TRUE
+  ) +
+
+  # Facet by Cluster
+  facet_wrap(~ Cluster, ncol = 2) +
+
+  # Manual fill colors + legend title
+  scale_fill_manual(
+    name   = "Zinc Concentration",
+    values = c(
+      "Measured Zinc"    = "slategray",
+      "Toxic to Daphnia" = "maroon"
+    )
+  ) +
+
+  # Labels
+  labs(
+    title = "Total Zinc Toxicity vs Measured",
+    x     = "Log Zn (nM)",
+    y     = "Density"
+  ) +
+
+  # Clean theme
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "bottom",
+    legend.title    = element_text(size = 11),
+    legend.text     = element_text(size = 10),
+    strip.text      = element_text(size = 11),
+    axis.text.x     = element_text(size = 10),
+    axis.text.y     = element_text(size = 10),
+    plot.title      = element_text(size = 14)
+  )
+
+# Print plot
+toxicity_plot
+
+# Save
+ggsave(
+  filename = file.path("Plots by Cluster", "Probability_of_toxicity_by_Cluster.png"),
+  plot     = toxicity_plot,
+  width    = 12,
+  height   = 6,
+  dpi      = 300
+)
+```
+
+Calculate probability of overlapping measured zinc with toxic levels of zinc by stream Cluster
+
+```{r}
+#Quantify overlapping area of measured zinc with toxic concentrations by Cluster
+
+# Extract the two vectors
+x1 <- dat$log_Zn_nM
+x2 <- dat$log_Zn_Toxicity_Daphnia_nM
+
+library(dplyr)
+
+# --- Define overlap function ---
+overlap_area <- function(x, y, n = 512) {
+  d1 <- density(x, na.rm = TRUE, n = n)
+  d2 <- density(y, na.rm = TRUE, n = n)
+  
+  x_start <- max(min(d1$x), min(d2$x))
+  x_end   <- min(max(d1$x), max(d2$x))
+  
+  if(x_start >= x_end) return(0)  # No overlap
+  
+  x_common <- seq(x_start, x_end, length.out = n)
+  y1 <- approx(d1$x, d1$y, x_common)$y
+  y2 <- approx(d2$x, d2$y, x_common)$y
+  
+  sum(pmin(y1, y2)) * diff(x_common[1:2])
+}
+
+
+# --- Compute overlaps by Cluster ---
+overlap_Zn_by_Cluster <- dat %>%
+  group_by(Cluster) %>%
+  summarise(
+    Overlap_Daphnia = overlap_area(log_Zn_nM, log_Zn_Toxicity_Daphnia_nM)
+  ) %>%
+  ungroup()
+
+# View results
+overlap_Zn_by_Cluster
+
+# Save
+library(openxlsx)
+
+write.xlsx(
+  overlap_Zn_by_Cluster,
+  file = file.path(out_dir, "Probability_of_toxicity_by_Cluster.xlsx"),
+  overwrite = TRUE
+)
+```
+
+# Bioavailability by Site within Network
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+#-------------------------------------------------
+# 1) Prep all sites + order by elevation
+#-------------------------------------------------
+all_sites <- dat %>%
+  mutate(
+    Network = factor(Network)
+  ) %>%
+  group_by(Site) %>%
+  mutate(site_elev = median(Relative_elevation_m, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(
+    Site = factor(Site, levels = unique(Site[order(site_elev)]))
+  )
+
+#-------------------------------------------------
+# 2) Plot (NO Cluster coloring)
+#-------------------------------------------------
+sites_by_network <- ggplot(
+  all_sites,
+  aes(x = Site, y = log_TBL_Zn_nmol_g)
+) +
+  geom_boxplot(
+    fill = "grey70",      # single neutral fill
+    color = "black",
+    outlier.alpha = 0.6
+  ) +
+  facet_grid(~Network, scales = "free_x", space = "free_x", switch = "x") +
+  labs(
+    title = "Bioavailable Zn Across All Sites",
+    x = "Site (ordered by relative elevation)",
+    y = "Log TBL Zn (nmol/g wet weight)"
+  ) +
+  theme_test() +
+  theme(
+    axis.text.x = element_text(angle = 30, hjust = 1),
+    plot.title  = element_text(hjust = 0.5, face = "bold")
+  )
+
+# View
+sites_by_network
+
+#-------------------------------------------------
+# 3) Save
+#-------------------------------------------------
+out_dir <- "Plots by site within Cluster"
+if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+
+ggsave(
+  filename = file.path(out_dir, "Sites_by_network.png"),
+  plot     = sites_by_network,
+  width    = 20,
+  height   = 6,
+  dpi      = 300
+)
+```
+
+With mean by Network
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+#-------------------------------------------------
+# 1) Prep all sites + order by elevation
+#-------------------------------------------------
+all_sites <- dat %>%
+  mutate(
+    Network = factor(Network)
+  ) %>%
+  group_by(Site) %>%
+  mutate(site_elev = median(Relative_elevation_m, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(
+    Site = factor(Site, levels = unique(Site[order(site_elev)]))
+  )
+
+#-------------------------------------------------
+# 2) Calculate mean by Network
+#-------------------------------------------------
+network_means <- all_sites %>%
+  group_by(Network) %>%
+  summarise(
+    mean_value = mean(log_TBL_Zn_nmol_g, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+#-------------------------------------------------
+# 3) Plot
+#-------------------------------------------------
+sites_by_network <- ggplot(
+  all_sites,
+  aes(x = Site, y = log_TBL_Zn_nmol_g)
+) +
+  geom_boxplot(
+    fill = "grey70",
+    color = "black",
+    outlier.alpha = 0.6
+  ) +
+  
+  # Add horizontal mean line per Network
+  geom_hline(
+    data = network_means,
+    aes(yintercept = mean_value),
+    linetype = "dashed",
+    linewidth = 1,
+    color = "red"
+  ) +
+  
+  facet_grid(~Network, scales = "free_x", space = "free_x", switch = "x") +
+  labs(
+    title = "Bioavailable Zn Across All Sites",
+    x = "Site (ordered by relative elevation)",
+    y = "Log TBL Zn (nmol/g wet weight)"
+  ) +
+  theme_test() +
+  theme(
+    axis.text.x = element_text(angle = 30, hjust = 1),
+    plot.title  = element_text(hjust = 0.5, face = "bold")
+  )
+
+# View
+sites_by_network
+
+# Save
+out_dir <- "Plots by site within Cluster"
+if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+
+ggsave(
+  filename = file.path(out_dir, "Sites_by_network_with_mean.png"),
+  plot     = sites_by_network,
+  width    = 20,
+  height   = 6,
+  dpi      = 300
+)
+
+```
+
+Colored by Cluster
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+#-------------------------------------------------
+# 1) Prep all sites + order by elevation
+#-------------------------------------------------
+all_sites <- dat %>%
+  mutate(
+    Cluster = factor(Cluster),
+    Network  = factor(Network)
+  ) %>%
+  group_by(Site) %>%
+  mutate(site_elev = median(Relative_elevation_m, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(
+    Site = factor(Site, levels = unique(Site[order(site_elev)]))
+  )
+
+#-------------------------------------------------
+# 2) Plot
+#-------------------------------------------------
+sites_by_network_Cluster <- ggplot(
+  all_sites,
+  aes(x = Site, y = log_TBL_Zn_nmol_g, fill = Cluster)
+) +
+  geom_boxplot(color = "black", outlier.alpha = 0.6) +
+  facet_grid(~Network, scales = "free_x", space = "free_x", switch = "x") +
+  scale_fill_manual(values = Cluster_colors, drop = FALSE) +
+  labs(
+    title = "Bioavailable Zn Across All Sites",
+    x = "Site (ordered by relative elevation)",
+    y = "Log TBL Zn (nmol/g wet weight)",
+    fill = "Cluster"
+  ) +
+  theme_test() +
+  theme(
+    axis.text.x = element_text(angle = 30, hjust = 1),
+    plot.title  = element_text(hjust = 0.5, face = "bold")
+  )
+
+# View
+sites_by_network_Cluster
+
+# Save 
+ggsave(
+  filename = file.path(out_dir, "Sites_by_network_Cluster.png"),
+  plot     = sites_by_network_Cluster,
+  width    = 20,
+  height   = 6,
+  dpi      = 300
+)
+```
+
+Colored by Cluster and mean by Network and Cluster
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+#-------------------------------------------------
+# 1) Prep all sites + order by elevation
+#-------------------------------------------------
+all_sites <- dat %>%
+  mutate(
+    Cluster = factor(Cluster),
+    Network  = factor(Network)
+  ) %>%
+  group_by(Site) %>%
+  mutate(site_elev = median(Relative_elevation_m, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(
+    Site = factor(Site, levels = unique(Site[order(site_elev)]))
+  )
+
+#-------------------------------------------------
+# 2) Compute Means
+#-------------------------------------------------
+
+# Mean by Network (one per facet)
+network_means <- all_sites %>%
+  group_by(Network) %>%
+  summarise(
+    mean_network = mean(log_TBL_Zn_nmol_g, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# Mean by Cluster within each Network
+Cluster_means <- all_sites %>%
+  group_by(Network, Cluster) %>%
+  summarise(
+    mean_Cluster = mean(log_TBL_Zn_nmol_g, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+#-------------------------------------------------
+# 3) Plot
+#-------------------------------------------------
+sites_by_network_Cluster <- ggplot(
+  all_sites,
+  aes(x = Site, y = log_TBL_Zn_nmol_g, fill = Cluster)
+) +
+  geom_boxplot(color = "black", outlier.alpha = 0.6) +
+
+  # Red dashed line = Network mean
+  geom_hline(
+    data = network_means,
+    aes(yintercept = mean_network),
+    color = "red",
+    linetype = "dashed",
+    linewidth = 1.2
+  ) +
+
+  # Colored dotted lines = Cluster means
+  geom_hline(
+    data = Cluster_means,
+    aes(yintercept = mean_Cluster, color = Cluster),
+    linetype = "dotted",
+    linewidth = 1
+  ) +
+
+  facet_grid(~Network, scales = "free_x", space = "free_x", switch = "x") +
+
+  scale_fill_manual(values = Cluster_colors, drop = FALSE) +
+  scale_color_manual(values = Cluster_colors, drop = FALSE) +
+
+  labs(
+    title = "Bioavailable Zn Across All Sites",
+    x = "Site (ordered by relative elevation)",
+    y = "Log TBL Zn (nmol/g wet weight)",
+    fill = "Cluster"
+  ) +
+
+  theme_test() +
+  theme(
+    axis.text.x = element_text(angle = 30, hjust = 1),
+    plot.title  = element_text(hjust = 0.5, face = "bold"),
+    legend.position = "right"
+  )
+
+# View
+sites_by_network_Cluster
+
+# Save 
+ggsave(
+  filename = file.path(out_dir, "Sites_by_network_Cluster_means.png"),
+  plot     = sites_by_network_Cluster,
+  width    = 20,
+  height   = 6,
+  dpi      = 300
+)
+```
+
+Table
+
+```{r}
+library(dplyr)
+library(tidyr)
+
+# Count observations per Site × Cluster
+site_Cluster_counts <- dat %>%
+  group_by(Network, Site, Cluster) %>%
+  summarise(n_obs = n(), .groups = "drop")
+
+# Determine dominant Cluster per Site
+site_dominant <- site_Cluster_counts %>%
+  group_by(Network, Site) %>%
+  slice_max(order_by = n_obs, n = 1, with_ties = FALSE) %>%
+  rename(Dominant_Cluster = Cluster,
+         Dominant_n = n_obs) %>%
+  ungroup()
+
+# Join back for full site-level table
+site_summary_table <- site_Cluster_counts %>%
+  left_join(site_dominant %>%
+              dplyr::select(Network, Site, Dominant_Cluster),
+            by = c("Network", "Site")) %>%
+  arrange(Network, Site, desc(n_obs))
+
+# Merged table
+nested_table <- site_summary_table %>%
+  group_by(Network, Site) %>%
+  summarise(
+    Typologies_Observed = paste0(Cluster, " (n=", n_obs, ")", collapse = "; "),
+    Dominant_Cluster   = first(Dominant_Cluster),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    Dominant_Cluster = factor(Dominant_Cluster)
+  ) %>%
+  arrange(Dominant_Cluster, Network, Site)
+
+nested_table
+
+# Save
+library(openxlsx)
+
+write.xlsx(
+  nested_table,
+  file = file.path(out_dir, "Sites_by_network_Cluster.xlsx"),
+  overwrite = TRUE
+)
+```
