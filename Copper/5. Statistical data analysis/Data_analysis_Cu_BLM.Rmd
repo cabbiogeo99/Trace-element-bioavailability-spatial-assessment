@@ -429,6 +429,52 @@ writeData(
 saveWorkbook(wb, file_path, overwrite = TRUE)
 ```
 
+## 5. Simple MLR
+
+Here we test whether a simple mechanistic model (top 3 predictors from the full model) can perform nearly as well as your full chemistry model
+
+```{r}
+# Build a simplified MLR
+
+# ------------------------------------------------------------
+# 1. Define simplified predictor set
+# ------------------------------------------------------------
+simple_vars <- c("log_Cu_nM", "log_DOC_nM", "pH")
+simple_vars_std <- paste0(simple_vars, "_std")
+
+# Model formula
+form_simple <- reformulate(simple_vars_std, response = response_std)
+
+# ------------------------------------------------------------
+# 2. Fit simplified MLR
+# ------------------------------------------------------------
+simple_mod <- lm(form_simple, data = std_vars)
+
+summary(simple_mod)
+```
+
+Compare predictive ability
+
+```{r}
+# Function to extract metrics
+get_metrics <- function(model, name) {
+  data.frame(
+    Model = name,
+    R2 = summary(model)$r.squared,
+    Adj_R2 = summary(model)$adj.r.squared,
+    RMSE = sqrt(mean(residuals(model)^2)),
+    AIC = AIC(model)
+  )
+}
+
+metrics_full   <- get_metrics(full_mod, "Full Model")
+metrics_simple <- get_metrics(simple_mod, "Simple Model")
+
+model_comparison <- bind_rows(metrics_full, metrics_simple)
+
+model_comparison
+```
+
 # Assessing Variables by Typology
 
 Set order of Typologies

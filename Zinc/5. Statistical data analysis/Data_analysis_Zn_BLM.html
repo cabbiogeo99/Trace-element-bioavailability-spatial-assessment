@@ -1226,6 +1226,69 @@ writeData(
 # Save workbook (overwrite = TRUE updates the file)
 saveWorkbook(wb, file_path, overwrite = TRUE)</code></pre>
 </div>
+<div id="simple-mlr" class="section level2">
+<h2>6. Simple MLR</h2>
+<p>Here we test whether a simple mechanistic model (Zn + DOC + Ca) can
+perform nearly as well as your full chemistry model</p>
+<pre class="r"><code># Build a simplified MLR
+
+# ------------------------------------------------------------
+# 1. Define simplified predictor set
+# ------------------------------------------------------------
+simple_vars &lt;- c(&quot;log_Zn_nM&quot;, &quot;log_DOC_nM&quot;, &quot;log_Ca_nM&quot;)
+simple_vars_std &lt;- paste0(simple_vars, &quot;_std&quot;)
+
+# Model formula
+form_simple &lt;- reformulate(simple_vars_std, response = response_std)
+
+# ------------------------------------------------------------
+# 2. Fit simplified MLR
+# ------------------------------------------------------------
+simple_mod &lt;- lm(form_simple, data = std_vars)
+
+summary(simple_mod)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = form_simple, data = std_vars)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -1.41467 -0.14053 -0.02402  0.15040  1.32191 
+## 
+## Coefficients:
+##                  Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)    -7.928e-17  1.585e-02    0.00        1    
+## log_Zn_nM_std   9.044e-01  1.645e-02   54.98   &lt;2e-16 ***
+## log_DOC_nM_std -4.374e-01  1.639e-02  -26.69   &lt;2e-16 ***
+## log_Ca_nM_std  -3.878e-01  1.608e-02  -24.12   &lt;2e-16 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 0.299 on 352 degrees of freedom
+## Multiple R-squared:  0.9113, Adjusted R-squared:  0.9106 
+## F-statistic:  1206 on 3 and 352 DF,  p-value: &lt; 2.2e-16</code></pre>
+<p>Compare predictive ability</p>
+<pre class="r"><code># Function to extract metrics
+get_metrics &lt;- function(model, name) {
+  data.frame(
+    Model = name,
+    R2 = summary(model)$r.squared,
+    Adj_R2 = summary(model)$adj.r.squared,
+    RMSE = sqrt(mean(residuals(model)^2)),
+    AIC = AIC(model)
+  )
+}
+
+metrics_full   &lt;- get_metrics(full_mod, &quot;Full Model&quot;)
+metrics_simple &lt;- get_metrics(simple_mod, &quot;Simple Model&quot;)
+
+model_comparison &lt;- bind_rows(metrics_full, metrics_simple)
+
+model_comparison</code></pre>
+<pre><code>##          Model        R2    Adj_R2      RMSE        AIC
+## 1   Full Model 0.9456705 0.9439332 0.2327593  -1.633965
+## 2 Simple Model 0.9113499 0.9105943 0.2973233 156.674278</code></pre>
+</div>
 </div>
 <div id="assessing-variables-by-typology" class="section level1">
 <h1>Assessing Variables by Typology</h1>
