@@ -361,10 +361,12 @@ assumptions). To run this for each of the tabs, simply replace the file
 upload which becomes the object called “dat” and replace the tab name of
 the exported file to the Bioavailability Master Spreadsheet will be,
 then run the entire Rmd.</p>
-<div id="i.-import-dataset" class="section level2">
-<h2>I. Import Dataset</h2>
 <p>Set the working directory to the repo</p>
 <pre class="r"><code>setwd(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/3. Dataset cleaning&quot;)</code></pre>
+<div id="ha-10-closed-system" class="section level1">
+<h1>HA 10% Closed System</h1>
+<div id="i.-import-dataset" class="section level2">
+<h2>I. Import Dataset</h2>
 <p>Upload Bioavailability_Master_Spreadsheet.xlsx</p>
 <pre class="r"><code>#load package (must be installed first)
 library(readxl) 
@@ -842,14 +844,317 @@ saveWorkbook(
   file = file_path,
   overwrite = TRUE
 )</code></pre>
-<p>Now repeat this for</p>
+</div>
+</div>
+<div id="ha-10-open-system" class="section level1">
+<h1>HA 10% Open System</h1>
+<div id="i.-import-dataset-1" class="section level2">
+<h2>I. Import Dataset</h2>
+<p>Upload Bioavailability_Master_Spreadsheet.xlsx</p>
+<pre class="r"><code>#load package (must be installed first)
+library(readxl) 
+
+dat &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/2. Dataset merging/Bioavailability_Master_Spreadsheet.xlsx&quot;, 
+    sheet = &quot;HA 10% Open System&quot;)
+
+str(dat)</code></pre>
+<pre><code>## tibble [386 × 52] (S3: tbl_df/tbl/data.frame)
+##  $ Sample_ID                 : chr [1:386] &quot;WaDE_62&quot; &quot;WaDE_63&quot; &quot;WaDE_64&quot; &quot;WaDE_65&quot; ...
+##  $ Site                      : chr [1:386] &quot;MTN1.1&quot; &quot;EFK13.8&quot; &quot;MTN4&quot; &quot;MTN2&quot; ...
+##  $ Date                      : POSIXct[1:386], format: &quot;2023-06-23&quot; &quot;2023-06-23&quot; ...
+##  $ Regime                    : chr [1:386] &quot;NonPerennial&quot; &quot;Perennial&quot; &quot;Perennial&quot; &quot;NonPerennial&quot; ...
+##  $ Flow_state                : chr [1:386] &quot;Flowing&quot; &quot;Flowing&quot; &quot;Flowing&quot; &quot;Pooled&quot; ...
+##  $ Network                   : chr [1:386] &quot;MTN&quot; &quot;EFK&quot; &quot;MTN&quot; &quot;MTN&quot; ...
+##  $ DrainageArea_SqKm         : num [1:386] 1.42 30.18 0.3 0.74 0.16 ...
+##  $ Relative_elevation_m      : num [1:386] 3.83 0 33.18 12.87 30.45 ...
+##  $ Upstream_from_main_stem_km: num [1:386] 0.205 0 1.255 0.673 0.995 ...
+##  $ Developed_lulc            : num [1:386] 63.6 64.7 41.2 54.4 58.5 ...
+##  $ pH                        : num [1:386] 7.21 8.28 8.29 8.32 7.67 7.49 7.62 7.55 8.13 8.17 ...
+##  $ Temp_C                    : num [1:386] 16.5 18.6 15.8 18.7 16.2 16.5 17.3 16.8 17.3 19 ...
+##  $ DOC_uM                    : num [1:386] 75.8 160 35.8 527.5 119.2 ...
+##  $ Ca_uM                     : num [1:386] 1498 1338 271 306 164 ...
+##  $ Mg_uM                     : num [1:386] 458 333 182 75.6 79.9 24.7 172 237 210 439 ...
+##  $ Na_uM                     : num [1:386] 212 295 90 7 88 66 95 134 115 398 ...
+##  $ K_uM                      : num [1:386] 37 54 24.8 46.4 21.2 12.2 22.5 28.1 24.5 60.2 ...
+##  $ SO4_uM                    : num [1:386] 38.2 139 29.7 7.5 54.3 37.1 21.8 38.8 31.2 203 ...
+##  $ Cl_uM                     : num [1:386] 174 172 80 16 87 77 80 93 90 246 ...
+##  $ DIC_uM                    : num [1:386] 4352 955 3223 878 568 ...
+##  $ Zn_uM                     : num [1:386] 0.036 0.0282 0.115 0.0707 0.0316 0.0819 0.000627 0.0129 0.00762 0.0823 ...
+##  $ Cu_uM                     : num [1:386] 0.0026 0.0174 0.000488 0.0352 0.000834 0.00335 0.00216 0.00708 0.00359 0.0168 ...
+##  $ Free_Cu_M                 : num [1:386] 8.78e-12 4.06e-12 2.42e-13 1.01e-12 2.39e-13 ...
+##  $ CuOH_M                    : num [1:386] 1.80e-12 1.14e-11 5.90e-13 3.35e-12 1.52e-13 ...
+##  $ Cu_OH_2_M                 : num [1:386] 2.75e-14 2.42e-12 1.05e-13 8.07e-13 6.79e-15 ...
+##  $ CuSO4_M                   : num [1:386] 3.35e-14 5.80e-14 9.38e-16 1.06e-15 1.99e-15 ...
+##  $ CuCO3_M                   : num [1:386] 4.14e-12 2.60e-10 1.76e-11 8.54e-11 1.07e-12 ...
+##  $ Cu_CO3_2_M                : num [1:386] 8.74e-16 7.70e-12 5.02e-13 2.76e-12 1.65e-15 ...
+##  $ CuCl_M                    : num [1:386] 2.71e-15 1.25e-15 3.65e-17 3.19e-17 4.23e-17 ...
+##  $ CuHCO3_M                  : num [1:386] 2.03e-11 1.09e-10 7.06e-12 3.18e-11 1.76e-12 ...
+##  $ TOrg_Cu_M                 : num [1:386] 2.57e-09 1.70e-08 4.62e-10 3.51e-08 8.31e-10 ...
+##  $ BL_Cu_mol_kg              : num [1:386] 1.24e-14 6.62e-15 1.01e-15 4.66e-15 1.33e-15 ...
+##  $ BL_CuOH_mol_kg            : num [1:386] 4.11e-16 2.58e-15 4.03e-16 2.06e-15 1.30e-16 ...
+##  $ BL_Ca_mol_kg              : num [1:386] 3.33e-10 3.28e-10 1.71e-10 1.98e-10 1.39e-10 ...
+##  $ BL_H_mol_kg               : num [1:386] 1.24e-12 1.25e-13 2.86e-13 3.22e-13 1.55e-12 ...
+##  $ BL_Mg_mol_kg              : num [1:386] 1.02e-10 8.22e-11 1.16e-10 4.94e-11 6.79e-11 ...
+##  $ BL_Na_mol_kg              : num [1:386] 1.58e-11 2.60e-11 1.89e-11 1.76e-12 2.44e-11 ...
+##  $ HCO3_M                    : num [1:386] 0.000185 0.002087 0.002215 0.002224 0.000518 ...
+##  $ H2_CO3_M                  : num [1:386] 2.67e-05 2.48e-05 2.74e-05 2.48e-05 2.70e-05 ...
+##  $ HS_M                      : num [1:386] 6.35e-17 9.54e-17 9.54e-17 9.62e-17 8.31e-17 ...
+##  $ H2S_M                     : num [1:386] 3.65e-17 4.65e-18 4.65e-18 4.39e-18 1.72e-17 ...
+##  $ MgHCO3_M                  : num [1:386] 7.29e-07 5.73e-06 3.59e-06 1.42e-06 3.95e-07 ...
+##  $ MgCO3_M                   : num [1:386] 3.17e-08 3.12e-06 1.87e-06 8.76e-07 5.08e-08 ...
+##  $ MgSO4_M                   : num [1:386] 1.57e-06 4.24e-06 6.08e-07 6.64e-08 5.75e-07 ...
+##  $ CaHCO3_M                  : num [1:386] 2.37e-06 2.33e-05 5.25e-06 5.82e-06 8.03e-07 ...
+##  $ CaCO3_M                   : num [1:386] 1.73e-07 2.10e-05 4.59e-06 5.91e-06 1.73e-07 ...
+##  $ CaSO4_M                   : num [1:386] 5.06e-06 1.61e-05 8.98e-07 2.53e-07 1.17e-06 ...
+##  $ TOrg_H_M                  : num [1:386] 1.90e-08 6.82e-08 3.01e-08 4.72e-07 2.24e-07 ...
+##  $ TOrg_Ca_M                 : num [1:386] 3.34e-06 7.96e-06 1.31e-06 2.60e-05 4.46e-06 ...
+##  $ TOrg_Mg_M                 : num [1:386] 1.00e-06 1.94e-06 8.64e-07 6.35e-06 2.13e-06 ...
+##  $ TOrg_Na_M                 : num [1:386] 1.23e-07 3.90e-07 9.12e-08 1.31e-07 6.77e-07 ...
+##  $ TOrg_K_M                  : num [1:386] 2.14e-08 7.14e-08 2.51e-08 8.65e-07 1.63e-07 ...</code></pre>
+</div>
+<div id="ii.-unit-conversions-1" class="section level2">
+<h2>II. Unit Conversions</h2>
+<p>Perform the following unit conversions</p>
 <ul>
-<li><p>HA 80% Closed System</p></li>
-<li><p>HA 10% Open System</p></li>
+<li><p>M -&gt; uM and nM</p></li>
+<li><p>uM -&gt; M and nM</p></li>
+<li><p>mol/kg -&gt; nmol/g and umol/g</p></li>
 </ul>
-<p>By replacing the name of the sheet imported and the final excel sheet
-saved to the Bioavailability Master Spreadsheet (first and last code
-blocks)</p>
+<p>That way, we have all variables in units of M, uM, and nM (for
+dissolved species) or mol/kg and nmol/kg (for biotic ligand-bound
+elements)</p>
+<pre class="r"><code>library(dplyr)
+library(stringr)
+library(purrr)
+
+# Add a column only if it doesn&#39;t already exist
+add_if_missing &lt;- function(df, nm, values) {
+  if (nm %in% names(df)) df else df %&gt;% mutate(!!nm := values)
+}
+
+convert_units_no_dups &lt;- function(dat) {
+
+  # -------------------------
+  # 1) Dissolved species: _M, _uM, _nM
+  # -------------------------
+  diss_vars &lt;- names(dat)[str_detect(names(dat), &quot;(_M|_uM|_nM)$&quot;)]
+  diss_base &lt;- unique(str_remove(diss_vars, &quot;(_M|_uM|_nM)$&quot;))
+
+  dat &lt;- reduce(diss_base, function(df, base) {
+
+    nm_M  &lt;- paste0(base, &quot;_M&quot;)
+    nm_uM &lt;- paste0(base, &quot;_uM&quot;)
+    nm_nM &lt;- paste0(base, &quot;_nM&quot;)
+
+    source &lt;- case_when(
+      nm_M  %in% names(df) ~ &quot;M&quot;,
+      nm_uM %in% names(df) ~ &quot;uM&quot;,
+      nm_nM %in% names(df) ~ &quot;nM&quot;,
+      TRUE ~ NA_character_
+    )
+    if (is.na(source)) return(df)
+
+    M_vals &lt;- switch(
+      source,
+      &quot;M&quot;  = df[[nm_M]],
+      &quot;uM&quot; = df[[nm_uM]] / 1e6,
+      &quot;nM&quot; = df[[nm_nM]] / 1e9
+    )
+
+    df %&gt;%
+      add_if_missing(nm_M,  M_vals) %&gt;%
+      add_if_missing(nm_uM, M_vals * 1e6) %&gt;%
+      add_if_missing(nm_nM, M_vals * 1e9)
+
+  }, .init = dat)
+
+  # -------------------------
+  # 2) BL variables: *_mol_kg -&gt; *_nmol_kg, *_nmol_g, *_umol_g
+  # -------------------------
+  bl_molkg &lt;- names(dat)[str_detect(names(dat), &quot;_mol_kg$&quot;)]
+
+  dat &lt;- reduce(bl_molkg, function(df, nm) {
+
+    base &lt;- str_remove(nm, &quot;_mol_kg$&quot;)
+
+    nm_nmol_kg &lt;- paste0(base, &quot;_nmol_kg&quot;)  # mol/kg -&gt; nmol/kg (×1e9)
+    nm_nmol_g  &lt;- paste0(base, &quot;_nmol_g&quot;)   # mol/kg -&gt; nmol/g  (×1e6)
+    nm_umol_g  &lt;- paste0(base, &quot;_umol_g&quot;)   # mol/kg -&gt; umol/g  (×1e3)
+
+    vals &lt;- df[[nm]]
+
+    df %&gt;%
+      add_if_missing(nm_nmol_kg, vals * 1e9) %&gt;%
+      add_if_missing(nm_nmol_g,  vals * 1e6) %&gt;%
+      add_if_missing(nm_umol_g,  vals * 1e3)
+
+  }, .init = dat)
+
+  dat
+}
+
+# Assign it back if you want to keep using `dat$...`
+dat &lt;- convert_units_no_dups(dat)
+
+# quick proof they exist now
+names(dat)[str_detect(names(dat), &quot;^BL_.*_(nmol_g|umol_g)$&quot;)]</code></pre>
+<pre><code>##  [1] &quot;BL_Cu_nmol_g&quot;   &quot;BL_Cu_umol_g&quot;   &quot;BL_CuOH_nmol_g&quot; &quot;BL_CuOH_umol_g&quot;
+##  [5] &quot;BL_Ca_nmol_g&quot;   &quot;BL_Ca_umol_g&quot;   &quot;BL_H_nmol_g&quot;    &quot;BL_H_umol_g&quot;   
+##  [9] &quot;BL_Mg_nmol_g&quot;   &quot;BL_Mg_umol_g&quot;   &quot;BL_Na_nmol_g&quot;   &quot;BL_Na_umol_g&quot;</code></pre>
+<p>Checks</p>
+<pre class="r"><code># No duplicate column names
+anyDuplicated(names(dat))</code></pre>
+<pre><code>## [1] 0</code></pre>
+<pre class="r"><code># Elevation should NOT have uM/nM/M versions
+names(dat)[grepl(&quot;Relative_elevation_m_&quot;, names(dat))]</code></pre>
+<pre><code>## character(0)</code></pre>
+</div>
+<div id="iii.-save-to-excel" class="section level2">
+<h2>III. Save to Excel</h2>
+<p>Save to excel as a clean version of the Bioavailability Master
+Spreadsheet to a new tab</p>
+<pre class="r"><code>library(openxlsx)
+
+file_path  &lt;- &quot;Bioavailability_Master_Spreadsheet_Clean.xlsx&quot;
+sheet_name &lt;- &quot;HA 10% Open System&quot;
+
+# ---------------------------------------------------------
+# Create workbook if it doesn&#39;t exist, otherwise load it
+# ---------------------------------------------------------
+if (!file.exists(file_path)) {
+  wb &lt;- createWorkbook()
+} else {
+  wb &lt;- loadWorkbook(file_path)
+}
+
+# ---------------------------------------------------------
+# If sheet already exists → remove it
+# ---------------------------------------------------------
+if (sheet_name %in% names(wb)) {
+  removeWorksheet(wb, sheet_name)
+}
+
+# ---------------------------------------------------------
+# Create fresh sheet and write data
+# ---------------------------------------------------------
+addWorksheet(wb, sheet_name)
+
+writeData(
+  wb,
+  sheet = sheet_name,
+  x = dat,
+  colNames = TRUE
+)
+
+# ---------------------------------------------------------
+# Save workbook
+# ---------------------------------------------------------
+saveWorkbook(
+  wb,
+  file = file_path,
+  overwrite = TRUE
+)</code></pre>
+</div>
+</div>
+<div id="humic-acid-10-80" class="section level1">
+<h1>Humic Acid 10-80%</h1>
+<div id="i.-import-dataset-2" class="section level2">
+<h2>I. Import Dataset</h2>
+<p>Upload Bioavailability_Master_Spreadsheet.xlsx for ha 10% open
+system</p>
+<pre class="r"><code>library(readxl) 
+
+dat &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/2. Dataset merging/Bioavailability_Master_Spreadsheet.xlsx&quot;, 
+    sheet = &quot;HA 10-80%&quot;)
+
+str(dat)</code></pre>
+<pre><code>## tibble [5,772 × 4] (S3: tbl_df/tbl/data.frame)
+##  $ HA_content   : chr [1:5772] &quot;ha20&quot; &quot;ha20&quot; &quot;ha20&quot; &quot;ha20&quot; ...
+##  $ Sample_ID    : chr [1:5772] &quot;WaDE_62&quot; &quot;WaDE_63&quot; &quot;WaDE_64&quot; &quot;WaDE_65&quot; ...
+##  $ Site         : chr [1:5772] &quot;\&quot;MTN1.1              \&quot;&quot; &quot;\&quot;EFK13.8             \&quot;&quot; &quot;\&quot;MTN4                \&quot;&quot; &quot;\&quot;MTN2                \&quot;&quot; ...
+##  $ TBL_Cu_mol_kg: num [1:5772] 7.95e-15 7.66e-15 1.06e-15 4.98e-15 9.19e-16 ...</code></pre>
+</div>
+<div id="ii.-unit-conversions-2" class="section level2">
+<h2>II. Unit Conversions</h2>
+<p>Convert TBL-Cu from mol/kg -&gt; nmol/g and umol/g</p>
+<pre class="r"><code>library(dplyr)
+
+# Add a column only if it doesn&#39;t already exist
+add_if_missing &lt;- function(df, nm, values) {
+  if (nm %in% names(df)) df else df %&gt;% mutate(!!nm := values)
+}
+
+convert_TBL_Cu_units &lt;- function(dat) {
+
+  # Make sure the base variable exists
+  if (!&quot;TBL_Cu_mol_kg&quot; %in% names(dat)) {
+    stop(&quot;TBL_Cu_mol_kg not found in dataset&quot;)
+  }
+
+  dat %&gt;%
+    mutate(TBL_Cu_mol_kg = as.numeric(TBL_Cu_mol_kg)) %&gt;%
+    
+    # Add derived units
+    add_if_missing(&quot;TBL_Cu_nmol_g&quot;, 
+               dat$TBL_Cu_mol_kg * 1e6) %&gt;%  # mol/kg → nmol/g
+    
+    add_if_missing(&quot;TBL_Cu_umol_g&quot;,  
+                   dat$TBL_Cu_mol_kg * 1e3)      # mol/kg → µmol/g
+}
+
+# Apply
+dat &lt;- convert_TBL_Cu_units(dat)
+
+# Check
+names(dat)[grepl(&quot;TBL_Cu&quot;, names(dat))]</code></pre>
+<pre><code>## [1] &quot;TBL_Cu_mol_kg&quot; &quot;TBL_Cu_nmol_g&quot; &quot;TBL_Cu_umol_g&quot;</code></pre>
+</div>
+<div id="iii.-save-to-excel-1" class="section level2">
+<h2>III. Save to Excel</h2>
+<p>Save to excel as a clean version of the Bioavailability Master
+Spreadsheet to a new tab</p>
+<pre class="r"><code>library(openxlsx)
+
+file_path  &lt;- &quot;Bioavailability_Master_Spreadsheet_Clean.xlsx&quot;
+sheet_name &lt;- &quot;HA 10-80%&quot;
+
+# ---------------------------------------------------------
+# Create workbook if it doesn&#39;t exist, otherwise load it
+# ---------------------------------------------------------
+if (!file.exists(file_path)) {
+  wb &lt;- createWorkbook()
+} else {
+  wb &lt;- loadWorkbook(file_path)
+}
+
+# ---------------------------------------------------------
+# If sheet already exists → remove it
+# ---------------------------------------------------------
+if (sheet_name %in% names(wb)) {
+  removeWorksheet(wb, sheet_name)
+}
+
+# ---------------------------------------------------------
+# Create fresh sheet and write data
+# ---------------------------------------------------------
+addWorksheet(wb, sheet_name)
+
+writeData(
+  wb,
+  sheet = sheet_name,
+  x = dat,
+  colNames = TRUE
+)
+
+# ---------------------------------------------------------
+# Save workbook
+# ---------------------------------------------------------
+saveWorkbook(
+  wb,
+  file = file_path,
+  overwrite = TRUE
+)</code></pre>
+</div>
 </div>
 
 

@@ -767,192 +767,162 @@ if (!file.exists(file_path)) {
 }
 ```
 
-# HA 80% Closed System
+# HA 20-80% Closed System
 
 ## 1. BLM Speciation Mode
 
-If you haven't already, convert the Zn_Speciation.det.xlsx to the newest Excel Workbook version before importing them.
+If you haven't already, convert the BLM output excel files to the newest Excel Workbook version before importing them to R.
 
-Import dataset
+Import BLM datasets for closed system with humic acid 20-80% (7 files) plus the baseline condition of 10% humic acid already uploaded
 
 ```{r}
 library(readxl)
 
-Zn_Speciation_ha80_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/1. Running BLM/Data outputs/Speciation Mode/Zn_speciation_ha80_cs.det.xlsx")
+Zn_Speciation_ha20_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/1. Running BLM/Data outputs/Speciation Mode/Zn_speciation_ha20_cs.det.xlsx")
 
-head(Zn_Speciation_ha80_cs)
+Zn_Speciation_ha30_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/1. Running BLM/Data outputs/Speciation Mode/Zn_speciation_ha30_cs.det.xlsx")
+
+Zn_Speciation_ha40_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/1. Running BLM/Data outputs/Speciation Mode/Zn_speciation_ha40_cs.det.xlsx")
+
+Zn_Speciation_ha50_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/1. Running BLM/Data outputs/Speciation Mode/Zn_speciation_ha50_cs.det.xlsx")
+
+Zn_Speciation_ha60_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/1. Running BLM/Data outputs/Speciation Mode/Zn_speciation_ha60_cs.det.xlsx")
+
+Zn_Speciation_ha70_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/1. Running BLM/Data outputs/Speciation Mode/Zn_speciation_ha70_cs.det.xlsx")
+
+Zn_Speciation_ha80_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/1. Running BLM/Data outputs/Speciation Mode/Zn_speciation_ha80_cs.det.xlsx")
 ```
 
-Clean dataset
+Clean datasets
 
 ```{r}
 library(dplyr)
 library(stringr)
+library(readxl)
 
-Zn_Speciation_ha80_cs_clean <- Zn_Speciation_ha80_cs %>%
-  # 1) Drop rows 1–3
-  slice(-(1:3)) %>%
-  
-  # 2) Set first remaining row as column names
-  { 
-    nm <- as.character(.[1, ])
-    nm <- make.unique(nm)
-    out <- .[-1, ]
-    names(out) <- nm
-    out
-  } %>%
-  
-  # 3) Remove units row (now the first row)
-  slice(-1) %>%
-  
-  # 4) Rename ID columns
-  rename(
-    Sample_ID = `Site Label`,
-    Site      = `Sample Label`
-  ) %>%
-  
-  # 5) Clean Sample_ID and convert others to numeric
-  mutate(
-    Sample_ID = str_extract(Sample_ID, "WaDE_\\d+"),
-    across(-c(Sample_ID, Site), ~ as.numeric(str_replace_all(.x, '"', "")))
-  )
+# ------------------------------------------------------------
+# 1. Cleaning function
+# ------------------------------------------------------------
+clean_blm_speciation <- function(df) {
+  df %>%
+    # Drop rows 1–3
+    slice(-(1:3)) %>%
+    
+    # Set first remaining row as column names
+    {
+      nm <- as.character(.[1, ])
+      nm <- make.unique(nm)
+      out <- .[-1, ]
+      names(out) <- nm
+      out
+    } %>%
+    
+    # Remove units row
+    slice(-1) %>%
+    
+    # Rename ID columns
+    rename(
+      Sample_ID = `Site Label`,
+      Site      = `Sample Label`
+    ) %>%
+    
+    # Drop rows below this are populated with NA
+    slice(1:386) %>%
+    
+    # Clean Sample_ID and convert all other columns to numeric
+    mutate(
+      Sample_ID = str_extract(Sample_ID, "WaDE_\\d+"),
+      across(-c(Sample_ID, Site), ~ as.numeric(str_replace_all(.x, '"', "")))
+    )
+}
 
 
-# Preview
+# ------------------------------------------------------------
+# 2. Apply cleaning function to all 7 files
+# ------------------------------------------------------------
+Zn_Speciation_ha20_cs_clean <- clean_blm_speciation(Zn_Speciation_ha20_cs)
+Zn_Speciation_ha30_cs_clean <- clean_blm_speciation(Zn_Speciation_ha30_cs)
+Zn_Speciation_ha40_cs_clean <- clean_blm_speciation(Zn_Speciation_ha40_cs)
+Zn_Speciation_ha50_cs_clean <- clean_blm_speciation(Zn_Speciation_ha50_cs)
+Zn_Speciation_ha60_cs_clean <- clean_blm_speciation(Zn_Speciation_ha60_cs)
+Zn_Speciation_ha70_cs_clean <- clean_blm_speciation(Zn_Speciation_ha70_cs)
+Zn_Speciation_ha80_cs_clean <- clean_blm_speciation(Zn_Speciation_ha80_cs)
+
+
+# ------------------------------------------------------------
+# 3. Preview one or more cleaned files
+# ------------------------------------------------------------
+head(Zn_Speciation_ha20_cs_clean)
 head(Zn_Speciation_ha80_cs_clean)
 
-# Sanity check: make sure Sample_ID matches to that of the Bioavailability Master Spreadsheet called bio_ms (should be 386)
+
+# ------------------------------------------------------------
+# 4. Sanity checks against bio_ms
+#    (should be 386 if all Sample_ID values matched)
+# ------------------------------------------------------------
+Zn_Speciation_ha20_cs_clean %>%
+  inner_join(bio_ms %>% dplyr::select(Sample_ID), by = "Sample_ID") %>%
+  summarise(n_matched = n())
+
+Zn_Speciation_ha30_cs_clean %>%
+  inner_join(bio_ms %>% dplyr::select(Sample_ID), by = "Sample_ID") %>%
+  summarise(n_matched = n())
+
+Zn_Speciation_ha40_cs_clean %>%
+  inner_join(bio_ms %>% dplyr::select(Sample_ID), by = "Sample_ID") %>%
+  summarise(n_matched = n())
+
+Zn_Speciation_ha50_cs_clean %>%
+  inner_join(bio_ms %>% dplyr::select(Sample_ID), by = "Sample_ID") %>%
+  summarise(n_matched = n())
+
+Zn_Speciation_ha60_cs_clean %>%
+  inner_join(bio_ms %>% dplyr::select(Sample_ID), by = "Sample_ID") %>%
+  summarise(n_matched = n())
+
+Zn_Speciation_ha70_cs_clean %>%
+  inner_join(bio_ms %>% dplyr::select(Sample_ID), by = "Sample_ID") %>%
+  summarise(n_matched = n())
 
 Zn_Speciation_ha80_cs_clean %>%
-  inner_join(
-    Zn_Speciation_ha10_cs_clean %>% 
-      dplyr::select(Sample_ID),
-    by = "Sample_ID"
-  ) %>%
+  inner_join(bio_ms %>% dplyr::select(Sample_ID), by = "Sample_ID") %>%
   summarise(n_matched = n())
 ```
 
-Select variables, add a suffix indicating their units, and add to bio_ms
+Create a dataframe with HA_content, Sample_ID, TBL-Zn (mol/kg)
 
 ```{r}
-library(dplyr)
+# ------------------------------------------------------------
+# Function to extract TBL Zn and add HA content
+# ------------------------------------------------------------
+extract_tbl_zn <- function(df, ha_value) {
+  df %>%
+    mutate(
+      HA_content = ha_value,
+      TBL_Zn_mol_kg = `BL-Zn` + `BL-ZnOH`
+    ) %>%
+    dplyr::select(Sample_ID, HA_content, TBL_Zn_mol_kg)
+}
 
-bio_ms_ha80_cs <- bio_ms %>% # Merge variables from Zn_Speciation_ha10_cs_clean to bio_ms
-  left_join(
-    Zn_Speciation_ha80_cs_clean %>%
-      rename(
-        Free_Zn_M        = Zn,          
-        ZnOH_M           = ZnOH,
-        Zn_OH_2_M        = `Zn(OH)2`,
-        ZnCO3_M          = ZnCO3,
-        ZnHCO3_M         = ZnHCO3,
-        ZnSO4_M          = ZnSO4,
-        ZnCl_M           = ZnCl,
-        ZnS_M            = ZnS,
-        TOrg_Zn_M        = `TOrg.Zn`,
-        BL_Zn_mol_kg     = `BL-Zn`,  
-        BL_Ca_mol_kg     = `BL-Ca`,
-        BL_H_mol_kg      = `BL-H`,
-        BL_Mg_mol_kg     = `BL-Mg`,
-        BL_Na_mol_kg     = `BL-Na`,
-        BL_ZnOH_mol_kg   = `BL-ZnOH`,
-        HCO3_M           = HCO3,
-        H2_CO3_M         = H2CO3,
-        HS_M             = HS,
-        H2S_M            = H2S,
-        MgHCO3_M         = MgHCO3,
-        MgCO3_M          = MgCO3,
-        MgSO4_M          = MgSO4,
-        CaHCO3_M         = CaHCO3,
-        CaCO3_M          = CaCO3,
-        CaSO4_M          = CaSO4,
-        TOrg_H_M         = `TOrg.H`,
-        TOrg_Ca_M        = `TOrg.Ca`,
-        TOrg_Mg_M        = `TOrg.Mg`,
-        TOrg_Na_M        = `TOrg.Na`,
-        TOrg_K_M         = `TOrg.K`
-      ) %>%
-      dplyr::select(
-        Sample_ID,
-        Free_Zn_M,
-        ZnOH_M,
-        Zn_OH_2_M,
-        ZnCO3_M,
-        ZnHCO3_M,
-        ZnSO4_M,
-        ZnCl_M,
-        ZnS_M,
-        TOrg_Zn_M,
-        BL_Zn_mol_kg,
-        BL_Ca_mol_kg,
-        BL_H_mol_kg,
-        BL_Mg_mol_kg,
-        BL_Na_mol_kg,
-        BL_ZnOH_mol_kg,
-        HCO3_M,
-        H2_CO3_M,
-        HS_M,
-        H2S_M,
-        MgHCO3_M,
-        MgCO3_M,
-        MgSO4_M,
-        CaHCO3_M,
-        CaCO3_M,
-        CaSO4_M,
-        TOrg_H_M,
-        TOrg_Ca_M,
-        TOrg_Mg_M,
-        TOrg_Na_M,
-        TOrg_K_M
-      ),
-    by = "Sample_ID"
-  )
-
-
-# Make sure they're numeric
-zn_new_vars <- c(
-  "Free_Zn_M",
-  "ZnOH_M",
-  "Zn_OH_2_M",
-  "ZnCO3_M",
-  "ZnHCO3_M",
-  "ZnSO4_M",
-  "ZnCl_M",
-  "ZnS_M",
-  "TOrg_Zn_M",
-  "BL_Zn_mol_kg",
-  "BL_Ca_mol_kg",
-  "BL_H_mol_kg",
-  "BL_Mg_mol_kg",
-  "BL_Na_mol_kg",
-  "BL_ZnOH_mol_kg",
-  "HCO3_M",
-  "H2_CO3_M",
-  "HS_M",
-  "H2S_M",
-  "MgHCO3_M",
-  "MgCO3_M",
-  "MgSO4_M",
-  "CaHCO3_M",
-  "CaCO3_M",
-  "CaSO4_M",
-  "TOrg_H_M",
-  "TOrg_Ca_M",
-  "TOrg_Mg_M",
-  "TOrg_Na_M",
-  "TOrg_K_M"
+# ------------------------------------------------------------
+# Build final stacked dataset
+# ------------------------------------------------------------
+Zn_TBL_by_HA <- bind_rows(
+  extract_tbl_zn(Zn_Speciation_ha10_cs_clean, 10),
+  extract_tbl_zn(Zn_Speciation_ha20_cs_clean, 20),
+  extract_tbl_zn(Zn_Speciation_ha30_cs_clean, 30),
+  extract_tbl_zn(Zn_Speciation_ha40_cs_clean, 40),
+  extract_tbl_zn(Zn_Speciation_ha50_cs_clean, 50),
+  extract_tbl_zn(Zn_Speciation_ha60_cs_clean, 60),
+  extract_tbl_zn(Zn_Speciation_ha70_cs_clean, 70),
+  extract_tbl_zn(Zn_Speciation_ha80_cs_clean, 80)
 )
 
-bio_ms_ha80_cs <- bio_ms_ha80_cs %>%
-  mutate(across(all_of(zn_new_vars), ~ as.numeric(.)))
-
-# Check
-str(bio_ms_ha80_cs)
+head(Zn_TBL_by_HA)
+str(Zn_TBL_by_HA)
 ```
 
 ## 2. Export to Bioavailability Master Spreadsheet
-
-Since we're saving the data from BLM run as a **open system assuming HA at 10%**, we'll save it to the Bioavailability Master Spreadsheet into a tab called HA 10% Closed System:
 
 ```{r}
 library(openxlsx)
@@ -965,8 +935,8 @@ file_path <- "Bioavailability_Master_Spreadsheet.xlsx"
 if (!file.exists(file_path)) {
   
   wb <- createWorkbook()
-  addWorksheet(wb, "HA 80% Closed System")
-  writeData(wb, "HA 80% Closed System", bio_ms_ha80_cs)
+  addWorksheet(wb, "HA 10-80%")
+  writeData(wb, "HA 10-80%", Zn_TBL_by_HA)
   saveWorkbook(wb, file_path, overwrite = TRUE)
 
 } else {
@@ -977,12 +947,12 @@ if (!file.exists(file_path)) {
   wb <- loadWorkbook(file_path)
 
   # Add sheet if missing
-  if (!"HA 80% Closed System" %in% names(wb)) {
-    addWorksheet(wb, "HA 80% Closed System")
+  if (!"HA 10-80%" %in% names(wb)) {
+    addWorksheet(wb, "HA 10-80%")
   }
 
   # Write/overwrite data in that sheet
-  writeData(wb, "HA 80% Closed System", bio_ms_ha80_cs)
+  writeData(wb, "HA 10-80%", Zn_TBL_by_HA)
 
   # Save
   saveWorkbook(wb, file_path, overwrite = TRUE)

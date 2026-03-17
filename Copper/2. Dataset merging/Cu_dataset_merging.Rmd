@@ -515,7 +515,7 @@ if (!file.exists(file_path)) {
 
 # HA 10% Open System
 
-## 3. BLM Speciation Mode
+## 1. BLM Speciation Mode
 
 If you haven't already, convert the Cu_speciation_ha10_os.det.xlsx to the newest Excel Workbook version before importing them.
 
@@ -695,149 +695,7 @@ bio_ms_ha10_os <- bio_ms_ha10_os %>%
 str(bio_ms_ha10_os)
 ```
 
-## 4. BLM Toxicity Mode
-
-Import the 4 datasets from the folder called **ha10_os**:
-
--   Acute Cu Toxicity Mode on Daphnia (Cu Acute Toxicity on C. dubia.det.xlsx)
--   Chronic Cu Toxicity Mode on Daphnia (Cu Chronic Toxicity on C. dubia.det.xlsx)
--   Acute Cu Toxicity Mode on Minnow (Cu Acute Toxicity on P. promelas.det.xlsx)
--   Chronic Cu Toxicity Mode on Minnow (Cu Chronic Toxicity on P. promelas.det.xlsx)
-
-```{r}
-library(readxl)
-
-Cu_acute_tox_daph <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha10_os/Cu Acute Toxicity on C. dubia.det.xlsx")
-
-Cu_acute_tox_minn <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha10_os/Cu Acute Toxicity on P. promelas.det.xlsx")
-
-Cu_chronic_tox_daph <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha10_os/Cu Chronic Toxicity on C. dubia.det.xlsx")
-
-Cu_chronic_tox_minn <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha10_os/Cu Chronic Toxicity on P. promelas.det.xlsx")
-
-# Check
-head(Cu_acute_tox_daph)
-head(Cu_acute_tox_minn)
-head(Cu_chronic_tox_daph)
-head(Cu_chronic_tox_minn)
-```
-
-Data cleaning loop
-
-```{r}
-library(dplyr)
-library(stringr)
-
-# ----------------------------
-# 1) Cleaning function
-# ----------------------------
-clean_blm_det <- function(df) {
-
-  # Drop the first 3 rows
-  df2 <- df %>% slice(-(1:3))
-
-  # Use the next row as the column names
-  new_names <- as.character(df2[1, ])
-  new_names <- make.unique(new_names)
-
-  # Remove that “name row”
-  df2 <- df2 %>% slice(-1)
-  names(df2) <- new_names
-
-  # Remove the “units” row (now the first row)
-  df2 <- df2 %>% slice(-1)
-
-  # Rename ID columns + clean Sample_ID + convert the rest to numbers
-  df2 <- df2 %>%
-    rename(
-      Sample_ID = `Site Label`,
-      Site      = `Sample Label`
-    ) %>%
-    mutate(
-      Sample_ID = str_extract(Sample_ID, "WaDE_\\d+"),
-      across(-c(Sample_ID, Site), ~ as.numeric(str_replace_all(.x, '"', "")))
-    )
-
-  return(df2)
-}
-
-# ----------------------------
-# 2) Create a list of the 4 toxicity datasets
-# ----------------------------
-cu_list <- list(
-  Cu_acute_tox_daph   = Cu_acute_tox_daph,
-  Cu_acute_tox_minn   = Cu_acute_tox_minn,
-  Cu_chronic_tox_daph = Cu_chronic_tox_daph,
-  Cu_chronic_tox_minn = Cu_chronic_tox_minn
-)
-
-# ----------------------------
-# 3) Clean them all in one step
-# ----------------------------
-cu_clean_list <- lapply(cu_list, clean_blm_det)
-
-# ----------------------------
-# 4) Create clean versions of them
-# ----------------------------
-Cu_acute_tox_daph_clean   <- cu_clean_list$Cu_acute_tox_daph
-Cu_acute_tox_minn_clean   <- cu_clean_list$Cu_acute_tox_minn
-Cu_chronic_tox_daph_clean <- cu_clean_list$Cu_chronic_tox_daph
-Cu_chronic_tox_minn_clean <- cu_clean_list$Cu_chronic_tox_minn
-
-# Quick check
-head(Cu_acute_tox_daph_clean)
-```
-
-Select the T.Cu variable (total amount of dissolved Cu to cause the toxicity to the organism) and add to bio_ms_ha10_os
-
-```{r}
-library(dplyr)
-
-# ----------------------------------------------------
-# 1) Create a list of the 4 cleaned toxicity datasets, where the new names will be the column names in bio_ms_ha10_os
-# ----------------------------------------------------
-cu_tox_clean <- list(
-  Cu_Acute_Tox_Daphnia_M = Cu_acute_tox_daph_clean,
-  Cu_Acute_Tox_Minnow_M  = Cu_acute_tox_minn_clean,
-  Cu_Chronic_Tox_Daphnia_M = Cu_chronic_tox_daph_clean,
-  Cu_Chronic_Tox_Minnow_M  = Cu_chronic_tox_minn_clean
-)
-
-# ----------------------------------------------------
-# 2) Loop over the datasets:
-# renames T.Cu to the correct variable name listed above, 
-# keeps Sample_ID and toxicity value, 
-# and joins it to bio_ms_ha10_os
-# ----------------------------------------------------
-bio_ms_ha10_os <- bio_ms_ha10_os
-
-for (var_name in names(cu_tox_clean)) {
-
-  bio_ms_ha10_os <- bio_ms_ha10_os %>%
-    left_join(
-      cu_tox_clean[[var_name]] %>%
-        rename(!!var_name := T.Cu) %>%   # rename T.Cu to the correct toxicity name
-        dplyr::select(Sample_ID, all_of(var_name)),
-      by = "Sample_ID"
-    )
-
-}
-
-# ----------------------------------------------------
-# 3) Ensure toxicity values are numeric
-# ----------------------------------------------------
-cu_new_vars <- names(cu_tox_clean)
-
-bio_ms_ha10_os <- bio_ms_ha10_os %>%
-  mutate(across(all_of(cu_new_vars), as.numeric))
-
-# ----------------------------------------------------
-# 4) Check
-# ----------------------------------------------------
-str(bio_ms_ha10_os)
-```
-
-## 5. Export to Bioavailability Master Spreadsheet
+## 2. Export to Bioavailability Master Spreadsheet
 
 Since we're saving the data from BLM run as a **open system assuming HA at 10%**, we'll save it to the Bioavailability Master Spreadsheet into a tab called HA 10% Open System:
 
@@ -876,333 +734,162 @@ if (!file.exists(file_path)) {
 }
 ```
 
-# HA 80% Closed System
+# HA 20-80% Closed System
 
-## 3. BLM Speciation Mode
+## 1. BLM Speciation Mode
 
-If you haven't already, convert the Cu_speciation_ha80_cs.det.xlsx to the newest Excel Workbook version before importing them.
+If you haven't already, convert the BLM output excel files to the newest Excel Workbook version before importing them to R.
 
-Import dataset
+Import BLM datasets for closed system with humic acid 20-80% (7 files) plus the baseline condition of 10% humic acid already uploaded
 
 ```{r}
 library(readxl)
+
+Cu_Speciation_ha20_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Speciation Mode/Cu_speciation_ha20_cs.det.xlsx")
+
+Cu_Speciation_ha30_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Speciation Mode/Cu_speciation_ha30_cs.det.xlsx")
+
+Cu_Speciation_ha40_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Speciation Mode/Cu_speciation_ha40_cs.det.xlsx")
+
+Cu_Speciation_ha50_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Speciation Mode/Cu_speciation_ha50_cs.det.xlsx")
+
+Cu_Speciation_ha60_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Speciation Mode/Cu_speciation_ha60_cs.det.xlsx")
+
+Cu_Speciation_ha70_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Speciation Mode/Cu_speciation_ha70_cs.det.xlsx")
 
 Cu_Speciation_ha80_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Speciation Mode/Cu_speciation_ha80_cs.det.xlsx")
-
-head(Cu_Speciation_ha80_cs)
 ```
 
-CLean dataset
+Clean datasets
 
 ```{r}
 library(dplyr)
 library(stringr)
-
-Cu_Speciation_ha80_cs_clean <- Cu_Speciation_ha80_cs %>%
-  # 1) Drop rows 1–3
-  slice(-(1:3)) %>%
-  
-  # 2) Set first remaining row as column names
-  { 
-    nm <- as.character(.[1, ])
-    nm <- make.unique(nm)
-    out <- .[-1, ]
-    names(out) <- nm
-    out
-  } %>%
-  
-  # 3) Remove units row (now the first row)
-  slice(-1) %>%
-  
-  # 4) Rename ID columns
-  rename(
-    Sample_ID = `Site Label`,
-    Site      = `Sample Label`
-  ) %>%
-  
-  # 5) Clean Sample_ID and convert others to numeric
-  mutate(
-    Sample_ID = str_extract(Sample_ID, "WaDE_\\d+"),
-    across(-c(Sample_ID, Site), ~ as.numeric(str_replace_all(.x, '"', "")))
-  )
-
-
-# Preview
-head(Cu_Speciation_ha80_cs_clean)
-
-# Sanity check: make sure Sample_ID matches to that of the Bioavailability Master Spreadsheet called bio_ms (should be 386)
-
-Cu_Speciation_ha80_cs_clean %>%
-  inner_join(
-    Cu_Speciation_ha80_cs_clean %>% 
-      dplyr::select(Sample_ID),
-    by = "Sample_ID"
-  ) %>%
-  summarise(n_matched = n())
-```
-
-Select variables, add a suffix indicating their units, and add to bio_ms to create bio_ms_ha80_cs
-
-```{r}
-library(dplyr)
-
-bio_ms_ha80_cs <- bio_ms %>% 
-  left_join(
-    Cu_Speciation_ha80_cs_clean %>%
-      rename(
-        Free_Cu_M         = Cu,
-        CuOH_M            = CuOH,
-        Cu_OH_2_M         = `Cu(OH)2`,
-        CuSO4_M           = CuSO4,
-        CuCO3_M           = CuCO3,
-        Cu_CO3_2_M        = `Cu(CO3)2`,
-        CuCl_M            = CuCl,
-        CuHCO3_M          = CuHCO3,
-        TOrg_Cu_M         = `TOrg.Cu`,
-        BL_Cu_mol_kg      = `BL-Cu`,
-        BL_CuOH_mol_kg    = `BL-CuOH`,
-        BL_Ca_mol_kg      = `BL-Ca`,
-        BL_H_mol_kg       = `BL-H`,
-        BL_Mg_mol_kg      = `BL-Mg`,
-        BL_Na_mol_kg      = `BL-Na`,
-        HCO3_M            = HCO3,
-        H2_CO3_M          = H2CO3,
-        HS_M              = HS,
-        H2S_M             = H2S,
-        MgHCO3_M          = MgHCO3,
-        MgCO3_M           = MgCO3,
-        MgSO4_M           = MgSO4,
-        CaHCO3_M          = CaHCO3,
-        CaCO3_M           = CaCO3,
-        CaSO4_M           = CaSO4,
-        TOrg_H_M          = `TOrg.H`,
-        TOrg_Ca_M         = `TOrg.Ca`,
-        TOrg_Mg_M         = `TOrg.Mg`,
-        TOrg_Na_M         = `TOrg.Na`,
-        TOrg_K_M          = `TOrg.K`
-      ) %>%
-      dplyr::select(
-        Sample_ID,
-        Free_Cu_M,
-        CuOH_M,
-        Cu_OH_2_M,
-        CuSO4_M,
-        CuCO3_M,
-        Cu_CO3_2_M,
-        CuCl_M,
-        CuHCO3_M,
-        TOrg_Cu_M,
-        BL_Cu_mol_kg,
-        BL_CuOH_mol_kg,
-        BL_Ca_mol_kg,
-        BL_H_mol_kg,
-        BL_Mg_mol_kg,
-        BL_Na_mol_kg,
-        HCO3_M,
-        H2_CO3_M,
-        HS_M,
-        H2S_M,
-        MgHCO3_M,
-        MgCO3_M,
-        MgSO4_M,
-        CaHCO3_M,
-        CaCO3_M,
-        CaSO4_M,
-        TOrg_H_M,
-        TOrg_Ca_M,
-        TOrg_Mg_M,
-        TOrg_Na_M,
-        TOrg_K_M
-      ),
-    by = "Sample_ID"
-  )
-
-# Make sure they're numeric
-cu_new_vars <- c(
-  "Free_Cu_M",
-  "CuOH_M",
-  "Cu_OH_2_M",
-  "CuSO4_M",
-  "CuCO3_M",
-  "Cu_CO3_2_M",
-  "CuCl_M",
-  "CuHCO3_M",
-  "TOrg_Cu_M",
-  "BL_Cu_mol_kg",
-  "BL_CuOH_mol_kg",
-  "BL_Ca_mol_kg",
-  "BL_H_mol_kg",
-  "BL_Mg_mol_kg",
-  "BL_Na_mol_kg",
-  "HCO3_M",
-  "H2_CO3_M",
-  "HS_M",
-  "H2S_M",
-  "MgHCO3_M",
-  "MgCO3_M",
-  "MgSO4_M",
-  "CaHCO3_M",
-  "CaCO3_M",
-  "CaSO4_M",
-  "TOrg_H_M",
-  "TOrg_Ca_M",
-  "TOrg_Mg_M",
-  "TOrg_Na_M",
-  "TOrg_K_M"
-)
-
-bio_ms_ha80_cs <- bio_ms_ha80_cs %>%
-  mutate(across(all_of(cu_new_vars), as.numeric))
-
-# Check
-str(bio_ms_ha80_cs)
-```
-
-## 4. BLM Toxicity Mode
-
-Import the 4 datasets from the folder called **ha80_cs**:
-
-1.  Acute Cu Toxicity Mode on Daphnia (Cu Acute Toxicity on C. dubia.det.xlsx)
-2.  Chronic Cu Toxicity Mode on Daphnia (Cu Chronic Toxicity on C. dubia.det.xlsx)
-3.  Acute Cu Toxicity Mode on Minnow (Cu Acute Toxicity on P. promelas.det.xlsx)
-4.  Chronic Cu Toxicity Mode on Minnow (Cu Chronic Toxicity on P. promelas.det.xlsx)
-
-```{r}
 library(readxl)
 
-Cu_acute_tox_daph <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha80_cs/Cu Acute Toxicity on C. dubia.det.xlsx")
-
-Cu_acute_tox_minn <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha80_cs/Cu Acute Toxicity on P. promelas.det.xlsx")
-
-Cu_chronic_tox_daph <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha80_cs/Cu Chronic Toxicity on C. dubia.det.xlsx")
-
-Cu_chronic_tox_minn <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha80_cs/Cu Chronic Toxicity on P. promelas.det.xlsx")
-
-# Check
-head(Cu_acute_tox_daph)
-head(Cu_acute_tox_minn)
-head(Cu_chronic_tox_daph)
-head(Cu_chronic_tox_minn)
-```
-
-Data cleaning loop
-
-```{r}
-library(dplyr)
-library(stringr)
-
-# ----------------------------
-# 1) Cleaning function
-# ----------------------------
-clean_blm_det <- function(df) {
-
-  # Drop the first 3 rows
-  df2 <- df %>% slice(-(1:3))
-
-  # Use the next row as the column names
-  new_names <- as.character(df2[1, ])
-  new_names <- make.unique(new_names)
-
-  # Remove that “name row”
-  df2 <- df2 %>% slice(-1)
-  names(df2) <- new_names
-
-  # Remove the “units” row (now the first row)
-  df2 <- df2 %>% slice(-1)
-
-  # Rename ID columns + clean Sample_ID + convert the rest to numbers
-  df2 <- df2 %>%
+# ------------------------------------------------------------
+# 1. Cleaning function
+# ------------------------------------------------------------
+clean_blm_speciation <- function(df) {
+  df %>%
+    # Drop rows 1–3
+    slice(-(1:3)) %>%
+    
+    # Set first remaining row as column names
+    {
+      nm <- as.character(.[1, ])
+      nm <- make.unique(nm)
+      out <- .[-1, ]
+      names(out) <- nm
+      out
+    } %>%
+    
+    # Remove units row
+    slice(-1) %>%
+    
+    # Rename ID columns
     rename(
       Sample_ID = `Site Label`,
       Site      = `Sample Label`
     ) %>%
+    
+    # Drop rows below this are populated with NA
+    slice(1:386) %>%
+    
+    # Clean Sample_ID and convert all other columns to numeric
     mutate(
       Sample_ID = str_extract(Sample_ID, "WaDE_\\d+"),
       across(-c(Sample_ID, Site), ~ as.numeric(str_replace_all(.x, '"', "")))
     )
-
-  return(df2)
 }
 
-# ----------------------------
-# 2) Create a list of the 4 toxicity datasets
-# ----------------------------
-cu_list <- list(
-  Cu_acute_tox_daph   = Cu_acute_tox_daph,
-  Cu_acute_tox_minn   = Cu_acute_tox_minn,
-  Cu_chronic_tox_daph = Cu_chronic_tox_daph,
-  Cu_chronic_tox_minn = Cu_chronic_tox_minn
-)
 
-# ----------------------------
-# 3) Clean them all in one step
-# ----------------------------
-cu_clean_list <- lapply(cu_list, clean_blm_det)
+# ------------------------------------------------------------
+# 2. Apply cleaning function to all 7 files
+# ------------------------------------------------------------
+Cu_Speciation_ha20_cs_clean <- clean_blm_speciation(Cu_Speciation_ha20_cs)
+Cu_Speciation_ha30_cs_clean <- clean_blm_speciation(Cu_Speciation_ha30_cs)
+Cu_Speciation_ha40_cs_clean <- clean_blm_speciation(Cu_Speciation_ha40_cs)
+Cu_Speciation_ha50_cs_clean <- clean_blm_speciation(Cu_Speciation_ha50_cs)
+Cu_Speciation_ha60_cs_clean <- clean_blm_speciation(Cu_Speciation_ha60_cs)
+Cu_Speciation_ha70_cs_clean <- clean_blm_speciation(Cu_Speciation_ha70_cs)
+Cu_Speciation_ha80_cs_clean <- clean_blm_speciation(Cu_Speciation_ha80_cs)
 
-# ----------------------------
-# 4) Create clean versions of them
-# ----------------------------
-Cu_acute_tox_daph_clean   <- cu_clean_list$Cu_acute_tox_daph
-Cu_acute_tox_minn_clean   <- cu_clean_list$Cu_acute_tox_minn
-Cu_chronic_tox_daph_clean <- cu_clean_list$Cu_chronic_tox_daph
-Cu_chronic_tox_minn_clean <- cu_clean_list$Cu_chronic_tox_minn
 
-# Quick check
-head(Cu_acute_tox_daph_clean)
+# ------------------------------------------------------------
+# 3. Preview one or more cleaned files
+# ------------------------------------------------------------
+head(Cu_Speciation_ha20_cs_clean)
+head(Cu_Speciation_ha80_cs_clean)
+
+
+# ------------------------------------------------------------
+# 4. Sanity checks against bio_ms
+#    (should be 386 if all Sample_ID values matched)
+# ------------------------------------------------------------
+Cu_Speciation_ha20_cs_clean %>%
+  inner_join(bio_ms %>% dplyr::select(Sample_ID), by = "Sample_ID") %>%
+  summarise(n_matched = n())
+
+Cu_Speciation_ha30_cs_clean %>%
+  inner_join(bio_ms %>% dplyr::select(Sample_ID), by = "Sample_ID") %>%
+  summarise(n_matched = n())
+
+Cu_Speciation_ha40_cs_clean %>%
+  inner_join(bio_ms %>% dplyr::select(Sample_ID), by = "Sample_ID") %>%
+  summarise(n_matched = n())
+
+Cu_Speciation_ha50_cs_clean %>%
+  inner_join(bio_ms %>% dplyr::select(Sample_ID), by = "Sample_ID") %>%
+  summarise(n_matched = n())
+
+Cu_Speciation_ha60_cs_clean %>%
+  inner_join(bio_ms %>% dplyr::select(Sample_ID), by = "Sample_ID") %>%
+  summarise(n_matched = n())
+
+Cu_Speciation_ha70_cs_clean %>%
+  inner_join(bio_ms %>% dplyr::select(Sample_ID), by = "Sample_ID") %>%
+  summarise(n_matched = n())
+
+Cu_Speciation_ha80_cs_clean %>%
+  inner_join(bio_ms %>% dplyr::select(Sample_ID), by = "Sample_ID") %>%
+  summarise(n_matched = n())
 ```
 
-Select the T.Cu variable (total amount of dissolved Cu to cause the toxicity to the organism) and add to bio_ms_ha80_cs
+Create a dataframe with HA_content, Sample_ID, TBL-Cu (mol/kg)
 
 ```{r}
-library(dplyr)
-
-# ----------------------------------------------------
-# 1) Create a list of the 4 cleaned toxicity datasets, where the new names will be the column names in bio_ms_ha80_cs
-# ----------------------------------------------------
-cu_tox_clean <- list(
-  Cu_Acute_Tox_Daphnia_M = Cu_acute_tox_daph_clean,
-  Cu_Acute_Tox_Minnow_M  = Cu_acute_tox_minn_clean,
-  Cu_Chronic_Tox_Daphnia_M = Cu_chronic_tox_daph_clean,
-  Cu_Chronic_Tox_Minnow_M  = Cu_chronic_tox_minn_clean
-)
-
-# ----------------------------------------------------
-# 2) Loop over the datasets:
-# renames T.Cu to the correct variable name listed above, 
-# keeps Sample_ID and toxicity value, 
-# and joins it to bio_ms_ha80_cs
-# ----------------------------------------------------
-bio_ms_ha80_cs <- bio_ms_ha80_cs
-
-for (var_name in names(cu_tox_clean)) {
-
-  bio_ms_ha80_cs <- bio_ms_ha80_cs %>%
-    left_join(
-      cu_tox_clean[[var_name]] %>%
-        rename(!!var_name := T.Cu) %>%   # rename T.Cu to the correct toxicity name
-        dplyr::select(Sample_ID, all_of(var_name)),
-      by = "Sample_ID"
-    )
-
+# ------------------------------------------------------------
+# Function to extract TBL Zn and add HA content
+# ------------------------------------------------------------
+extract_tbl_cu <- function(df, ha_value) {
+  df %>%
+    mutate(
+      HA_content = ha_value,
+      TBL_Cu_mol_kg = `BL-Cu` + `BL-CuOH`
+    ) %>%
+    dplyr::select(Sample_ID, HA_content, TBL_Cu_mol_kg)
 }
 
-# ----------------------------------------------------
-# 3) Ensure toxicity values are numeric
-# ----------------------------------------------------
-cu_new_vars <- names(cu_tox_clean)
+# ------------------------------------------------------------
+# Build final stacked dataset
+# ------------------------------------------------------------
+Cu_TBL_by_HA <- bind_rows(
+  extract_tbl_cu(Cu_Speciation_ha10_cs_clean, 10),
+  extract_tbl_cu(Cu_Speciation_ha20_cs_clean, 20),
+  extract_tbl_cu(Cu_Speciation_ha30_cs_clean, 30),
+  extract_tbl_cu(Cu_Speciation_ha40_cs_clean, 40),
+  extract_tbl_cu(Cu_Speciation_ha50_cs_clean, 50),
+  extract_tbl_cu(Cu_Speciation_ha60_cs_clean, 60),
+  extract_tbl_cu(Cu_Speciation_ha70_cs_clean, 70),
+  extract_tbl_cu(Cu_Speciation_ha80_cs_clean, 80)
+)
 
-bio_ms_ha80_cs <- bio_ms_ha80_cs %>%
-  mutate(across(all_of(cu_new_vars), as.numeric))
-
-# ----------------------------------------------------
-# 4) Check
-# ----------------------------------------------------
-str(bio_ms_ha80_cs)
+head(Cu_TBL_by_HA)
+str(Cu_TBL_by_HA)
 ```
 
-## 5. Export to Bioavailability Master Spreadsheet
-
-Since we're saving the data from BLM run as a **closed system assuming HA at 80%**, we'll save it to the Bioavailability Master Spreadsheet into a tab called HA 80% Closed System:
+## 2. Export to Bioavailability Master Spreadsheet
 
 ```{r}
 library(openxlsx)
@@ -1215,8 +902,8 @@ file_path <- "Bioavailability_Master_Spreadsheet.xlsx"
 if (!file.exists(file_path)) {
   
   wb <- createWorkbook()
-  addWorksheet(wb, "HA 80% Closed System")
-  writeData(wb, "HA 80% Closed System", bio_ms_ha80_cs)
+  addWorksheet(wb, "HA 10-80%")
+  writeData(wb, "HA 10-80%", Cu_TBL_by_HA)
   saveWorkbook(wb, file_path, overwrite = TRUE)
 
 } else {
@@ -1227,12 +914,12 @@ if (!file.exists(file_path)) {
   wb <- loadWorkbook(file_path)
 
   # Add sheet if missing
-  if (!"HA 80% Closed System" %in% names(wb)) {
-    addWorksheet(wb, "HA 80% Closed System")
+  if (!"HA 10-80%" %in% names(wb)) {
+    addWorksheet(wb, "HA 10-80%")
   }
 
   # Write/overwrite data in that sheet
-  writeData(wb, "HA 80% Closed System", bio_ms_ha80_cs)
+  writeData(wb, "HA 10-80%", Cu_TBL_by_HA)
 
   # Save
   saveWorkbook(wb, file_path, overwrite = TRUE)

@@ -32,6 +32,17 @@ dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Researc
 head(dat)
 ```
 
+First, omit pooled samples
+
+```{r}
+library(dplyr)
+
+dat <- dat %>%
+  filter(Flow_state != "Pooled")
+
+str(dat$Flow_state)
+```
+
 Upload the Zinc Bioavailability_Master_Spreadsheet_Clean3.xlsx and ensure Typology exists
 
 ```{r}
@@ -55,6 +66,24 @@ dat <- dat %>%
 
 # Check
 str(dat$Typology)
+```
+
+Save to Bioavailability_Master_Spreadsheet_Clean3.xlsx to this working directory
+
+```{r}
+library(openxlsx)
+
+# 1. Create a brand-new workbook
+wb <- createWorkbook()
+
+# 2. Add your sheet
+addWorksheet(wb, "HA 10% Closed System")
+
+# 3. Write your updated dat to the sheet
+writeData(wb, sheet = "HA 10% Closed System", dat)
+
+# 4. Save — overwrite the entire file
+saveWorkbook(wb, "Bioavailability_Master_Spreadsheet_Clean3.xlsx", overwrite = TRUE)
 ```
 
 # Identifying Important Predictors of Bioavailability
@@ -1582,80 +1611,6 @@ ggplot(dat, aes(x = Typology, y = log_Cu_nM)) +
   labs(
     x = "Developed Land Cover (%)",
     y = "Log Total Cu (nM)"
-  ) +
-  
-  theme_classic(base_size = 14)
-```
-
-## Cu vs developed land cover
-
-PD Tribs
-
-```{r}
-library(dplyr)
-library(ggplot2)
-
-ggplot(
-  dat %>% filter(Typology == "PD Tribs"),
-  aes(x = Developed_lulc, y = log_Cu_uM)
-) +
-  
-  geom_point(size = 2, alpha = 0.7) +
-  
-  geom_smooth(method = "lm", se = TRUE, color = "steelblue") +
-  
-  labs(
-    x = "Developed Land Cover (m)",
-    y = "Log Cu (µM)",
-    title = "Log Cu vs Developed LC (PD Tributaries)"
-  ) +
-  
-  theme_classic(base_size = 14)
-```
-
-P Tribs
-
-```{r}
-library(dplyr)
-library(ggplot2)
-
-ggplot(
-  dat %>% filter(Typology == "P Tribs"),
-  aes(x = Developed_lulc, y = log_Cu_uM)
-) +
-  
-  geom_point(size = 2, alpha = 0.7) +
-  
-  geom_smooth(method = "lm", se = TRUE, color = "steelblue") +
-  
-  labs(
-    x = "Developed Land Cover (m)",
-    y = "Log Cu (µM)",
-    title = "Log Cu vs Developed LC (P Tribs)"
-  ) +
-  
-  theme_classic(base_size = 14)
-```
-
-NP Tribs
-
-```{r}
-library(dplyr)
-library(ggplot2)
-
-ggplot(
-  dat %>% filter(Typology == "NP Tribs"),
-  aes(x = Developed_lulc, y = log_Cu_uM)
-) +
-  
-  geom_point(size = 2, alpha = 0.7) +
-  
-  geom_smooth(method = "lm", se = TRUE, color = "steelblue") +
-  
-  labs(
-    x = "Developed Land Cover (m)",
-    y = "Log Cu (µM)",
-    title = "Log Cu vs Developed LC (NP Tributaries)"
   ) +
   
   theme_classic(base_size = 14)

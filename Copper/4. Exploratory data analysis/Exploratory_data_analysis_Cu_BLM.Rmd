@@ -29,9 +29,6 @@ ha10_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Res
 
 ha10_os <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/3. Dataset cleaning/Bioavailability_Master_Spreadsheet_Clean.xlsx", 
     sheet = "HA 10% Open System")
-
-ha80_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/3. Dataset cleaning/Bioavailability_Master_Spreadsheet_Clean.xlsx", 
-    sheet = "HA 80% Closed System")
 ```
 
 # 2. Log-Transform Variables
@@ -66,7 +63,6 @@ add_log_variables <- function(dat, exclude_vars) {
 # Run
 ha10_cs <- add_log_variables(ha10_cs, exclude_vars)
 ha10_os <- add_log_variables(ha10_os, exclude_vars)
-ha80_cs <- add_log_variables(ha80_cs, exclude_vars)
 
 # Check
 names(ha10_cs)[grepl("^log_", names(ha10_cs))]
@@ -83,12 +79,10 @@ wb <- createWorkbook()
 # Add worksheets
 addWorksheet(wb, "HA 10% Closed System")
 addWorksheet(wb, "HA 10% Open System")
-addWorksheet(wb, "HA 80% Closed System")
 
 # Write data to each sheet
 writeData(wb, sheet = "HA 10% Closed System", ha10_cs)
 writeData(wb, sheet = "HA 10% Open System",  ha10_os)
-writeData(wb, sheet = "HA 80% Closed System", ha80_cs)
 
 # Save to current working directory
 saveWorkbook(

@@ -367,10 +367,7 @@ ha10_cs &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Labora
     sheet = &quot;HA 10% Closed System&quot;)
 
 ha10_os &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/3. Dataset cleaning/Bioavailability_Master_Spreadsheet_Clean.xlsx&quot;, 
-    sheet = &quot;HA 10% Open System&quot;)
-
-ha80_cs &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/3. Dataset cleaning/Bioavailability_Master_Spreadsheet_Clean.xlsx&quot;, 
-    sheet = &quot;HA 80% Closed System&quot;)</code></pre>
+    sheet = &quot;HA 10% Open System&quot;)</code></pre>
 </div>
 <div id="log-transform-variables" class="section level1">
 <h1>2. Log-Transform Variables</h1>
@@ -411,82 +408,82 @@ add_log_variables &lt;- function(dat, exclude_vars) {
 # Run
 ha10_cs &lt;- add_log_variables(ha10_cs, exclude_vars)
 ha10_os &lt;- add_log_variables(ha10_os, exclude_vars)
-ha80_cs &lt;- add_log_variables(ha80_cs, exclude_vars)
 
 # Check
 names(ha10_cs)[grepl(&quot;^log_&quot;, names(ha10_cs))]</code></pre>
-<pre><code>##   [1] &quot;log_Temp_C&quot;                    &quot;log_DOC_uM&quot;                   
-##   [3] &quot;log_Ca_uM&quot;                     &quot;log_Mg_uM&quot;                    
-##   [5] &quot;log_Na_uM&quot;                     &quot;log_K_uM&quot;                     
-##   [7] &quot;log_SO4_uM&quot;                    &quot;log_Cl_uM&quot;                    
-##   [9] &quot;log_DIC_uM&quot;                    &quot;log_Zn_uM&quot;                    
-##  [11] &quot;log_Cu_uM&quot;                     &quot;log_Free_Cu_M&quot;                
-##  [13] &quot;log_CuOH_M&quot;                    &quot;log_Cu_OH_2_M&quot;                
-##  [15] &quot;log_CuSO4_M&quot;                   &quot;log_CuCO3_M&quot;                  
-##  [17] &quot;log_Cu_CO3_2_M&quot;                &quot;log_CuCl_M&quot;                   
-##  [19] &quot;log_CuHCO3_M&quot;                  &quot;log_TOrg_Cu_M&quot;                
-##  [21] &quot;log_BL_Cu_mol_kg&quot;              &quot;log_BL_CuOH_mol_kg&quot;           
-##  [23] &quot;log_BL_Ca_mol_kg&quot;              &quot;log_BL_H_mol_kg&quot;              
-##  [25] &quot;log_BL_Mg_mol_kg&quot;              &quot;log_BL_Na_mol_kg&quot;             
-##  [27] &quot;log_HCO3_M&quot;                    &quot;log_H2_CO3_M&quot;                 
-##  [29] &quot;log_HS_M&quot;                      &quot;log_H2S_M&quot;                    
-##  [31] &quot;log_MgHCO3_M&quot;                  &quot;log_MgCO3_M&quot;                  
-##  [33] &quot;log_MgSO4_M&quot;                   &quot;log_CaHCO3_M&quot;                 
-##  [35] &quot;log_CaCO3_M&quot;                   &quot;log_CaSO4_M&quot;                  
-##  [37] &quot;log_TOrg_H_M&quot;                  &quot;log_TOrg_Ca_M&quot;                
-##  [39] &quot;log_TOrg_Mg_M&quot;                 &quot;log_TOrg_Na_M&quot;                
-##  [41] &quot;log_TOrg_K_M&quot;                  &quot;log_Cu_Acute_Tox_Daphnia_M&quot;   
-##  [43] &quot;log_Cu_Acute_Tox_Minnow_M&quot;     &quot;log_Cu_Chronic_Tox_Daphnia_M&quot; 
-##  [45] &quot;log_Cu_Chronic_Tox_Minnow_M&quot;   &quot;log_DOC_M&quot;                    
-##  [47] &quot;log_DOC_nM&quot;                    &quot;log_Ca_M&quot;                     
-##  [49] &quot;log_Ca_nM&quot;                     &quot;log_Mg_M&quot;                     
-##  [51] &quot;log_Mg_nM&quot;                     &quot;log_Na_M&quot;                     
-##  [53] &quot;log_Na_nM&quot;                     &quot;log_K_M&quot;                      
-##  [55] &quot;log_K_nM&quot;                      &quot;log_SO4_M&quot;                    
-##  [57] &quot;log_SO4_nM&quot;                    &quot;log_Cl_M&quot;                     
-##  [59] &quot;log_Cl_nM&quot;                     &quot;log_DIC_M&quot;                    
-##  [61] &quot;log_DIC_nM&quot;                    &quot;log_Zn_M&quot;                     
-##  [63] &quot;log_Zn_nM&quot;                     &quot;log_Cu_M&quot;                     
-##  [65] &quot;log_Cu_nM&quot;                     &quot;log_Free_Cu_uM&quot;               
-##  [67] &quot;log_Free_Cu_nM&quot;                &quot;log_CuOH_uM&quot;                  
-##  [69] &quot;log_CuOH_nM&quot;                   &quot;log_Cu_OH_2_uM&quot;               
-##  [71] &quot;log_Cu_OH_2_nM&quot;                &quot;log_CuSO4_uM&quot;                 
-##  [73] &quot;log_CuSO4_nM&quot;                  &quot;log_CuCO3_uM&quot;                 
-##  [75] &quot;log_CuCO3_nM&quot;                  &quot;log_Cu_CO3_2_uM&quot;              
-##  [77] &quot;log_Cu_CO3_2_nM&quot;               &quot;log_CuCl_uM&quot;                  
-##  [79] &quot;log_CuCl_nM&quot;                   &quot;log_CuHCO3_uM&quot;                
-##  [81] &quot;log_CuHCO3_nM&quot;                 &quot;log_TOrg_Cu_uM&quot;               
-##  [83] &quot;log_TOrg_Cu_nM&quot;                &quot;log_HCO3_uM&quot;                  
-##  [85] &quot;log_HCO3_nM&quot;                   &quot;log_H2_CO3_uM&quot;                
-##  [87] &quot;log_H2_CO3_nM&quot;                 &quot;log_HS_uM&quot;                    
-##  [89] &quot;log_HS_nM&quot;                     &quot;log_H2S_uM&quot;                   
-##  [91] &quot;log_H2S_nM&quot;                    &quot;log_MgHCO3_uM&quot;                
-##  [93] &quot;log_MgHCO3_nM&quot;                 &quot;log_MgCO3_uM&quot;                 
-##  [95] &quot;log_MgCO3_nM&quot;                  &quot;log_MgSO4_uM&quot;                 
-##  [97] &quot;log_MgSO4_nM&quot;                  &quot;log_CaHCO3_uM&quot;                
-##  [99] &quot;log_CaHCO3_nM&quot;                 &quot;log_CaCO3_uM&quot;                 
-## [101] &quot;log_CaCO3_nM&quot;                  &quot;log_CaSO4_uM&quot;                 
-## [103] &quot;log_CaSO4_nM&quot;                  &quot;log_TOrg_H_uM&quot;                
-## [105] &quot;log_TOrg_H_nM&quot;                 &quot;log_TOrg_Ca_uM&quot;               
-## [107] &quot;log_TOrg_Ca_nM&quot;                &quot;log_TOrg_Mg_uM&quot;               
-## [109] &quot;log_TOrg_Mg_nM&quot;                &quot;log_TOrg_Na_uM&quot;               
-## [111] &quot;log_TOrg_Na_nM&quot;                &quot;log_TOrg_K_uM&quot;                
-## [113] &quot;log_TOrg_K_nM&quot;                 &quot;log_Cu_Acute_Tox_Daphnia_uM&quot;  
-## [115] &quot;log_Cu_Acute_Tox_Daphnia_nM&quot;   &quot;log_Cu_Acute_Tox_Minnow_uM&quot;   
-## [117] &quot;log_Cu_Acute_Tox_Minnow_nM&quot;    &quot;log_Cu_Chronic_Tox_Daphnia_uM&quot;
-## [119] &quot;log_Cu_Chronic_Tox_Daphnia_nM&quot; &quot;log_Cu_Chronic_Tox_Minnow_uM&quot; 
-## [121] &quot;log_Cu_Chronic_Tox_Minnow_nM&quot;  &quot;log_BL_Cu_nmol_kg&quot;            
-## [123] &quot;log_BL_Cu_nmol_g&quot;              &quot;log_BL_Cu_umol_g&quot;             
-## [125] &quot;log_BL_CuOH_nmol_kg&quot;           &quot;log_BL_CuOH_nmol_g&quot;           
-## [127] &quot;log_BL_CuOH_umol_g&quot;            &quot;log_BL_Ca_nmol_kg&quot;            
-## [129] &quot;log_BL_Ca_nmol_g&quot;              &quot;log_BL_Ca_umol_g&quot;             
-## [131] &quot;log_BL_H_nmol_kg&quot;              &quot;log_BL_H_nmol_g&quot;              
-## [133] &quot;log_BL_H_umol_g&quot;               &quot;log_BL_Mg_nmol_kg&quot;            
-## [135] &quot;log_BL_Mg_nmol_g&quot;              &quot;log_BL_Mg_umol_g&quot;             
-## [137] &quot;log_BL_Na_nmol_kg&quot;             &quot;log_BL_Na_nmol_g&quot;             
-## [139] &quot;log_BL_Na_umol_g&quot;              &quot;log_TBL_Cu_nmol_g&quot;            
-## [141] &quot;log_TBL_Cu_umol_g&quot;             &quot;log_TBL_Cu_mol_kg&quot;            
-## [143] &quot;log_rel_prop_Cu&quot;</code></pre>
+<pre><code>##   [1] &quot;log_DrainageArea_SqKm&quot;          &quot;log_Upstream_from_main_stem_km&quot;
+##   [3] &quot;log_Temp_C&quot;                     &quot;log_DOC_uM&quot;                    
+##   [5] &quot;log_Ca_uM&quot;                      &quot;log_Mg_uM&quot;                     
+##   [7] &quot;log_Na_uM&quot;                      &quot;log_K_uM&quot;                      
+##   [9] &quot;log_SO4_uM&quot;                     &quot;log_Cl_uM&quot;                     
+##  [11] &quot;log_DIC_uM&quot;                     &quot;log_Zn_uM&quot;                     
+##  [13] &quot;log_Cu_uM&quot;                      &quot;log_Free_Cu_M&quot;                 
+##  [15] &quot;log_CuOH_M&quot;                     &quot;log_Cu_OH_2_M&quot;                 
+##  [17] &quot;log_CuSO4_M&quot;                    &quot;log_CuCO3_M&quot;                   
+##  [19] &quot;log_Cu_CO3_2_M&quot;                 &quot;log_CuCl_M&quot;                    
+##  [21] &quot;log_CuHCO3_M&quot;                   &quot;log_TOrg_Cu_M&quot;                 
+##  [23] &quot;log_BL_Cu_mol_kg&quot;               &quot;log_BL_CuOH_mol_kg&quot;            
+##  [25] &quot;log_BL_Ca_mol_kg&quot;               &quot;log_BL_H_mol_kg&quot;               
+##  [27] &quot;log_BL_Mg_mol_kg&quot;               &quot;log_BL_Na_mol_kg&quot;              
+##  [29] &quot;log_HCO3_M&quot;                     &quot;log_H2_CO3_M&quot;                  
+##  [31] &quot;log_HS_M&quot;                       &quot;log_H2S_M&quot;                     
+##  [33] &quot;log_MgHCO3_M&quot;                   &quot;log_MgCO3_M&quot;                   
+##  [35] &quot;log_MgSO4_M&quot;                    &quot;log_CaHCO3_M&quot;                  
+##  [37] &quot;log_CaCO3_M&quot;                    &quot;log_CaSO4_M&quot;                   
+##  [39] &quot;log_TOrg_H_M&quot;                   &quot;log_TOrg_Ca_M&quot;                 
+##  [41] &quot;log_TOrg_Mg_M&quot;                  &quot;log_TOrg_Na_M&quot;                 
+##  [43] &quot;log_TOrg_K_M&quot;                   &quot;log_Cu_Acute_Tox_Daphnia_M&quot;    
+##  [45] &quot;log_Cu_Acute_Tox_Minnow_M&quot;      &quot;log_Cu_Chronic_Tox_Daphnia_M&quot;  
+##  [47] &quot;log_Cu_Chronic_Tox_Minnow_M&quot;    &quot;log_DOC_M&quot;                     
+##  [49] &quot;log_DOC_nM&quot;                     &quot;log_Ca_M&quot;                      
+##  [51] &quot;log_Ca_nM&quot;                      &quot;log_Mg_M&quot;                      
+##  [53] &quot;log_Mg_nM&quot;                      &quot;log_Na_M&quot;                      
+##  [55] &quot;log_Na_nM&quot;                      &quot;log_K_M&quot;                       
+##  [57] &quot;log_K_nM&quot;                       &quot;log_SO4_M&quot;                     
+##  [59] &quot;log_SO4_nM&quot;                     &quot;log_Cl_M&quot;                      
+##  [61] &quot;log_Cl_nM&quot;                      &quot;log_DIC_M&quot;                     
+##  [63] &quot;log_DIC_nM&quot;                     &quot;log_Zn_M&quot;                      
+##  [65] &quot;log_Zn_nM&quot;                      &quot;log_Cu_M&quot;                      
+##  [67] &quot;log_Cu_nM&quot;                      &quot;log_Free_Cu_uM&quot;                
+##  [69] &quot;log_Free_Cu_nM&quot;                 &quot;log_CuOH_uM&quot;                   
+##  [71] &quot;log_CuOH_nM&quot;                    &quot;log_Cu_OH_2_uM&quot;                
+##  [73] &quot;log_Cu_OH_2_nM&quot;                 &quot;log_CuSO4_uM&quot;                  
+##  [75] &quot;log_CuSO4_nM&quot;                   &quot;log_CuCO3_uM&quot;                  
+##  [77] &quot;log_CuCO3_nM&quot;                   &quot;log_Cu_CO3_2_uM&quot;               
+##  [79] &quot;log_Cu_CO3_2_nM&quot;                &quot;log_CuCl_uM&quot;                   
+##  [81] &quot;log_CuCl_nM&quot;                    &quot;log_CuHCO3_uM&quot;                 
+##  [83] &quot;log_CuHCO3_nM&quot;                  &quot;log_TOrg_Cu_uM&quot;                
+##  [85] &quot;log_TOrg_Cu_nM&quot;                 &quot;log_HCO3_uM&quot;                   
+##  [87] &quot;log_HCO3_nM&quot;                    &quot;log_H2_CO3_uM&quot;                 
+##  [89] &quot;log_H2_CO3_nM&quot;                  &quot;log_HS_uM&quot;                     
+##  [91] &quot;log_HS_nM&quot;                      &quot;log_H2S_uM&quot;                    
+##  [93] &quot;log_H2S_nM&quot;                     &quot;log_MgHCO3_uM&quot;                 
+##  [95] &quot;log_MgHCO3_nM&quot;                  &quot;log_MgCO3_uM&quot;                  
+##  [97] &quot;log_MgCO3_nM&quot;                   &quot;log_MgSO4_uM&quot;                  
+##  [99] &quot;log_MgSO4_nM&quot;                   &quot;log_CaHCO3_uM&quot;                 
+## [101] &quot;log_CaHCO3_nM&quot;                  &quot;log_CaCO3_uM&quot;                  
+## [103] &quot;log_CaCO3_nM&quot;                   &quot;log_CaSO4_uM&quot;                  
+## [105] &quot;log_CaSO4_nM&quot;                   &quot;log_TOrg_H_uM&quot;                 
+## [107] &quot;log_TOrg_H_nM&quot;                  &quot;log_TOrg_Ca_uM&quot;                
+## [109] &quot;log_TOrg_Ca_nM&quot;                 &quot;log_TOrg_Mg_uM&quot;                
+## [111] &quot;log_TOrg_Mg_nM&quot;                 &quot;log_TOrg_Na_uM&quot;                
+## [113] &quot;log_TOrg_Na_nM&quot;                 &quot;log_TOrg_K_uM&quot;                 
+## [115] &quot;log_TOrg_K_nM&quot;                  &quot;log_Cu_Acute_Tox_Daphnia_uM&quot;   
+## [117] &quot;log_Cu_Acute_Tox_Daphnia_nM&quot;    &quot;log_Cu_Acute_Tox_Minnow_uM&quot;    
+## [119] &quot;log_Cu_Acute_Tox_Minnow_nM&quot;     &quot;log_Cu_Chronic_Tox_Daphnia_uM&quot; 
+## [121] &quot;log_Cu_Chronic_Tox_Daphnia_nM&quot;  &quot;log_Cu_Chronic_Tox_Minnow_uM&quot;  
+## [123] &quot;log_Cu_Chronic_Tox_Minnow_nM&quot;   &quot;log_BL_Cu_nmol_kg&quot;             
+## [125] &quot;log_BL_Cu_nmol_g&quot;               &quot;log_BL_Cu_umol_g&quot;              
+## [127] &quot;log_BL_CuOH_nmol_kg&quot;            &quot;log_BL_CuOH_nmol_g&quot;            
+## [129] &quot;log_BL_CuOH_umol_g&quot;             &quot;log_BL_Ca_nmol_kg&quot;             
+## [131] &quot;log_BL_Ca_nmol_g&quot;               &quot;log_BL_Ca_umol_g&quot;              
+## [133] &quot;log_BL_H_nmol_kg&quot;               &quot;log_BL_H_nmol_g&quot;               
+## [135] &quot;log_BL_H_umol_g&quot;                &quot;log_BL_Mg_nmol_kg&quot;             
+## [137] &quot;log_BL_Mg_nmol_g&quot;               &quot;log_BL_Mg_umol_g&quot;              
+## [139] &quot;log_BL_Na_nmol_kg&quot;              &quot;log_BL_Na_nmol_g&quot;              
+## [141] &quot;log_BL_Na_umol_g&quot;               &quot;log_TBL_Cu_nmol_g&quot;             
+## [143] &quot;log_TBL_Cu_umol_g&quot;              &quot;log_TBL_Cu_mol_kg&quot;             
+## [145] &quot;log_rel_prop_Cu&quot;</code></pre>
 <p>Export transformed variables to excel by creating a second version of
 the clean Bioavailability Master Spreadsheet</p>
 <pre class="r"><code>library(openxlsx)
@@ -497,12 +494,10 @@ wb &lt;- createWorkbook()
 # Add worksheets
 addWorksheet(wb, &quot;HA 10% Closed System&quot;)
 addWorksheet(wb, &quot;HA 10% Open System&quot;)
-addWorksheet(wb, &quot;HA 80% Closed System&quot;)
 
 # Write data to each sheet
 writeData(wb, sheet = &quot;HA 10% Closed System&quot;, ha10_cs)
 writeData(wb, sheet = &quot;HA 10% Open System&quot;,  ha10_os)
-writeData(wb, sheet = &quot;HA 80% Closed System&quot;, ha80_cs)
 
 # Save to current working directory
 saveWorkbook(

@@ -1,0 +1,424 @@
+---
+title: "Sensitivity Analysis of Humic Acid Assumption Cu BLM"
+author: "Cecilia Albert-Black"
+output: 
+  html_document:
+    self_contained: true
+---
+
+# Objectives
+
+To assess BLM's assumption of humic acid content (HA) of dissolved organic carbon (DOC), we will assess bioavailability across a range of HA % 10-80 by increments of 10.
+
+# 1. Setup
+
+Set working directory
+
+```{r}
+setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/6. Sensitivity analyses")
+```
+
+Import the dataset with BLM results under varying HA (%) and the Bioavailability Master Spreadsheet 3 which contains Typologies
+
+```{r}
+library(readxl)
+
+ha_dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/3. Dataset cleaning/Bioavailability_Master_Spreadsheet_Clean.xlsx", 
+    sheet = "HA 10-80%")
+
+head(ha_dat)
+
+bms <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/5. Statistical data analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx")
+
+head(bms)
+```
+
+Add Typology column from bms to ha_dat to sample IDs retained in bms
+
+```{r}
+library(dplyr)
+
+#------------------------------------------------------------
+# 1. Check whether both datasets contain the same Sample_ID values
+#------------------------------------------------------------
+
+# Unique Sample_IDs in each dataset
+ha_ids  <- ha_dat %>% distinct(Sample_ID)
+bms_ids <- bms %>% distinct(Sample_ID)
+
+# Sample_IDs in ha_dat but not in bms
+ha_not_in_bms <- ha_ids %>%
+  anti_join(bms_ids, by = "Sample_ID")
+
+# Sample_IDs in bms but not in ha_dat
+bms_not_in_ha <- bms_ids %>%
+  anti_join(ha_ids, by = "Sample_ID")
+
+# Sample_IDs in ha_dat not in bms, likely filtered out
+nrow(ha_not_in_bms)
+ha_not_in_bms
+
+#------------------------------------------------------------
+# 2. Omit samples in ha_dat that do not appear in bms
+#------------------------------------------------------------
+ha_dat <- ha_dat %>%
+  semi_join(bms %>% distinct(Sample_ID), by = "Sample_ID")
+
+#------------------------------------------------------------
+# 3. Add Typology from bms to ha_dat by Sample_ID
+#------------------------------------------------------------
+ha_dat <- ha_dat %>%
+  left_join(
+    bms %>%
+      dplyr::select(Sample_ID, Typology) %>%
+      distinct(),
+    by = "Sample_ID"
+  )
+
+# View result
+str(ha_dat)
+head(ha_dat)
+```
+
+# 2. Plots of Bioavailability by Increasing HA
+
+## i. All
+
+```{r}
+library(ggplot2)
+
+ha_all <-
+  ggplot(
+  ha_dat,
+  aes(x = HA_content,
+      y = log10(TBL_Cu_nmol_g))
+) +
+  
+  # Individual sample trajectories
+  geom_line(aes(group = Sample_ID), alpha = 0.2) +
+  geom_point(aes(group = Sample_ID), alpha = 0.2, size = 1) +
+  
+  # Overall mean line
+  stat_summary(
+    fun = mean,
+    geom = "line",
+    linewidth = 1.2
+  ) +
+  
+  # Overall mean points
+  stat_summary(
+    fun = mean,
+    geom = "point",
+    size = 2
+  ) +
+  
+  # Error bars (mean ± SE)
+  stat_summary(
+    fun.data = mean_se,
+    geom = "errorbar",
+    width = 2,
+    linewidth = 0.8
+  ) +
+  
+  labs(
+    x = "Humic Acid Content (%)",
+    y = "log TBL-Cu (nmol/g)",
+    title = "Sensitivity of Cu Bioavailability to HA Content"
+  ) +
+  
+  theme_classic(base_size = 14)
+
+# View
+ha_all
+
+# Define output directory
+out_dir <- file.path(getwd(), "Plots of HA SA")
+
+# Create it only if it doesn't exist
+if (!dir.exists(out_dir)) {
+  dir.create(out_dir)
+}
+
+# Save
+ggsave(
+  filename = file.path(out_dir, "All_Cu_samples_by_humic_acid.png"),
+  plot = ha_all,
+  width = 8,
+  height = 5,
+  dpi = 600
+)
+```
+
+## ii. By typology
+
+```{r}
+library(ggplot2)
+
+ha_typ <- 
+  ggplot(
+  ha_dat,
+  aes(x = HA_content,
+      y = log10(TBL_Cu_nmol_g),
+      color = Typology)
+) +
+  
+  # Mean line
+  stat_summary(
+    fun = mean,
+    geom = "line",
+    size = 1.2
+  ) +
+  
+  # Mean points
+  stat_summary(
+    fun = mean,
+    geom = "point",
+    size = 2
+  ) +
+  
+  # Error bars (mean ± SE)
+  stat_summary(
+    fun.data = mean_se,
+    geom = "errorbar",
+    width = 2,
+    size = 0.8
+  ) +
+  
+  labs(
+    x = "Humic Acid Content (%)",
+    y = expression(log[10]~"TBL-Cu (nmol "~g^{-1}*")"),
+    color = "Stream Typology",
+    title = 
+      "Cu Bioavailability with Increasing Humic Acid Content"
+  ) +
+  
+  theme_classic(base_size = 14)
+
+# View
+ha_typ
+
+# Save
+ggsave(
+  filename = file.path(out_dir, "Cu_by_humic_acid_by_typology.png"),
+  plot = ha_typ,
+  width = 8,
+  height = 5,
+  dpi = 600
+)
+```
+
+# 3. Sensitivity Analysis
+
+Computed differences in TBL-Cu (nmol/g) within each Sample_ID for each incremental increase in HA (%). To do so, first create ha_sens
+
+```{r}
+library(dplyr)
+
+ha_sens <- ha_dat %>%
+  arrange(Sample_ID, HA_content) %>%
+  group_by(Sample_ID, Typology) %>%
+  
+  # Create "next HA" value within each sample
+  mutate(
+    HA_next = lead(HA_content),
+    TBL_next = lead(TBL_Cu_nmol_g)
+  ) %>%
+  
+  # Keep only valid transitions (drop last HA=80 rows)
+  filter(!is.na(HA_next)) %>%
+  
+  # Optional: ensure only 10-step increments
+  filter(HA_next - HA_content == 10)
+
+# Preview
+head(ha_sens)
+```
+
+## i. Calculate metrics
+
+-   **Delta:** absolute change
+
+-   **Percent change:** relative change
+
+-   **Log response ratio (LRR):** log10(next / current)
+
+```{r}
+ha_sens <- ha_sens %>%
+  mutate(
+    delta = TBL_next - TBL_Cu_nmol_g,
+    
+    pct_change = (TBL_next - TBL_Cu_nmol_g) / TBL_Cu_nmol_g * 100,
+    
+    log_rr = log10(TBL_next / TBL_Cu_nmol_g),
+    
+    HA_transition = paste0(HA_content, "-", HA_next)
+  )
+
+# Preview
+head(ha_sens)
+```
+
+## ii. Summary statistics
+
+Mean and SE of each SA metric by typology by incremental increase in HA (%)
+
+```{r}
+ha_summary <- ha_sens %>%
+  group_by(Typology, HA_transition) %>%
+  summarise(
+    mean_delta = mean(delta, na.rm = TRUE),
+    se_delta   = sd(delta, na.rm = TRUE) / sqrt(n()),
+    
+    mean_pct_change = mean(pct_change, na.rm = TRUE),
+    se_pct_change   = sd(pct_change, na.rm = TRUE) / sqrt(n()),
+    
+    mean_log_rr = mean(log_rr, na.rm = TRUE),
+    se_log_rr   = sd(log_rr, na.rm = TRUE) / sqrt(n()),
+    
+    n = n(),
+    .groups = "drop"
+  )
+
+View(ha_summary)
+
+# Save
+library(openxlsx)
+
+# Create workbook
+wb <- createWorkbook()
+
+# Add worksheet
+addWorksheet(wb, "HA_Sensitivity_Summary")
+
+# Write data
+writeData(wb, "HA_Sensitivity_Summary", ha_summary)
+
+# Save file
+saveWorkbook(
+  wb,
+  file = file.path(out_dir, "HA_Sensitivity_Summary.xlsx"),
+  overwrite = TRUE
+)
+```
+
+Summary across all HA (%) increases
+
+```{r}
+ha_summary_overall <- ha_sens %>%
+  group_by(Typology) %>%
+  summarise(
+    mean_delta = mean(delta, na.rm = TRUE),
+    se_delta   = sd(delta, na.rm = TRUE) / sqrt(n()),
+    
+    mean_pct_change = mean(pct_change, na.rm = TRUE),
+    se_pct_change   = sd(pct_change, na.rm = TRUE) / sqrt(n()),
+    
+    mean_log_rr = mean(log_rr, na.rm = TRUE),
+    se_log_rr   = sd(log_rr, na.rm = TRUE) / sqrt(n()),
+    
+    n = n(),
+    .groups = "drop"
+  )
+
+View(ha_summary_overall)
+
+# Save
+library(openxlsx)
+
+# File path
+file_path <- file.path(out_dir, "HA_Sensitivity_Summary.xlsx")
+
+# Load existing workbook
+wb <- loadWorkbook(file_path)
+
+if ("Overall_Summary" %in% names(wb)) {
+  removeWorksheet(wb, "Overall_Summary")
+}
+
+addWorksheet(wb, "Overall_Summary")
+writeData(wb, "Overall_Summary", ha_summary_overall)
+
+saveWorkbook(wb, file = file_path, overwrite = TRUE)
+```
+
+# 4. Plots of Sensitivity Analysis
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+# Prepare the data for plotting, ensure the increments are in order
+
+ha_summary <- ha_summary %>%
+  mutate(
+    HA_transition = factor(
+      HA_transition,
+      levels = c("10-20","20-30","30-40","40-50","50-60","60-70","70-80")
+    )
+  )
+
+```
+
+## i. LRR
+
+```{r}
+p_logrr <- ggplot(ha_summary,
+       aes(x = HA_transition,
+           y = mean_log_rr,
+           color = Typology,
+           group = Typology)) +
+  
+  geom_line(size = 1.2) +
+  
+  geom_point(size = 2.5) +
+  
+  geom_errorbar(
+    aes(ymin = mean_log_rr - se_log_rr,
+        ymax = mean_log_rr + se_log_rr),
+    width = 0.15,
+    size = 0.8
+  ) +
+  
+  geom_hline(yintercept = 0, linetype = "dashed", color = "black") +
+  
+  labs(
+    x = "Humic Acid Transition (%)",
+    y = expression(Log[10]~LRR~""),
+    color = "Stream Typology",
+    title = "Log Response Ratio"
+  ) +
+  
+  theme_classic(base_size = 14) +
+  theme(legend.position = "none")
+
+p_logrr
+
+# Save
+ggsave(
+  filename = file.path(out_dir, "Cu_LRR_by_typology.png"),
+  plot = p_logrr,
+  width = 8,
+  height = 5,
+  dpi = 600
+)
+```
+
+Publication figure
+
+```{r}
+library(patchwork)
+
+final_plot <- (ha_typ / p_logrr) +
+  plot_annotation(tag_levels = "A")
+
+final_plot
+
+# Save
+ggsave(
+  filename = file.path(out_dir, "Cu_humic_acid_sensitivity_analysis.png"),
+  plot = final_plot,
+  width = 8,
+  height = 10,
+  dpi = 600
+)
+```
