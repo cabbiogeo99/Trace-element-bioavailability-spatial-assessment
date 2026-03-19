@@ -845,41 +845,40 @@ library(ggplot2)
 # 1. Colors by response variable
 #-------------------------------------------------
 response_colors <- c(
-  "Total Cu (nM)"                       = "chocolate4",
-  "Free Cu (nM)"                        = "peru",
-  "Bioavailable Cu (nmol g-1 wet weight)" = "chocolate1"
+  "Total Cu (nM)"   = "chocolate4",
+  "Free Cu (nM)"    = "peru",
+  "Bioavailable Cu" = "chocolate1"
 )
 
 # Left-to-right facet order
 response_order <- c(
   "Total Cu (nM)",
   "Free Cu (nM)",
-  "Bioavailable Cu (nmol g-1 wet weight)"
+  "Bioavailable Cu"
 )
 
 #-------------------------------------------------
 # 2. Define letter nudges
 #-------------------------------------------------
 letter_nudge <- c(
-  "Total Cu (nM)"                       = 1,
-  "Free Cu (nM)"                        = 1,
-  "Bioavailable Cu (nmol g-1 wet weight)" = 2
+  "Total Cu (nM)"   = 1,
+  "Free Cu (nM)"    = 1,
+  "Bioavailable Cu" = 2
 )
 
 #-------------------------------------------------
-# 3. Map variable names -> response labels 
-#    IMPORTANT: Replace "log_Free_Cu_uM" with your actual Free Cu column name.
+# 3. Map variable names -> response labels
 #-------------------------------------------------
 response_lookup <- c(
   "log_Cu_nM"         = "Total Cu (nM)",
   "log_Free_Cu_nM"    = "Free Cu (nM)",                 
-  "log_TBL_Cu_nmol_g" = "Bioavailable Cu (nmol g-1 wet weight)"
+  "log_TBL_Cu_nmol_g" = "Bioavailable Cu"
 )
 
 vars_trace <- names(response_lookup)
 
 #-------------------------------------------------
-# 4. Long data for plotting (use Typology)
+# 4. Long data
 #-------------------------------------------------
 dat_long_trace <- dat %>%
   dplyr::select(Typology, all_of(vars_trace)) %>%
@@ -888,21 +887,21 @@ dat_long_trace <- dat %>%
     names_to  = "Variable",
     values_to = "Log10(Value)"
   ) %>%
-  dplyr::filter(!is.na(`Log10(Value)`)) %>%
-  dplyr::mutate(
+  filter(!is.na(`Log10(Value)`)) %>%
+  mutate(
     Response = response_lookup[Variable],
     Response = factor(Response, levels = response_order)
   )
 
 #-------------------------------------------------
-# 5a. Max y per Variable x Typology (needed for letters)
+# 5a. Max y per Variable x Typology
 #-------------------------------------------------
 y_pos_df <- dat_long_trace %>%
   group_by(Variable, Typology) %>%
   summarise(y_max = max(`Log10(Value)`, na.rm = TRUE), .groups = "drop")
 
 #-------------------------------------------------
-# 5b. Attach Response + y positions + nudges to letters_df
+# 5b. Attach letters above groups
 #-------------------------------------------------
 letters_long_trace <- letters_df %>%
   filter(Variable %in% vars_trace) %>%
@@ -919,7 +918,16 @@ letters_long_trace <- letters_df %>%
   )
 
 #-------------------------------------------------
-# 6. Plot 
+# 5c. Facet strip labels with a., b., c.
+#-------------------------------------------------
+facet_labs <- c(
+  "Total Cu (nM)"   = "a. Total Cu",
+  "Free Cu (nM)"    = "b. Free Cu",
+  "Bioavailable Cu" = "c. Bioavailable Cu"
+)
+
+#-------------------------------------------------
+# 6. Plot
 #-------------------------------------------------
 bioavail_panel <- ggplot(
   dat_long_trace,
@@ -940,18 +948,23 @@ bioavail_panel <- ggplot(
   ) +
   scale_color_manual(values = response_colors, breaks = response_order) +
   scale_fill_manual(values = response_colors, breaks = response_order) +
-  facet_wrap(~ Response, scales = "free_y", ncol = 3) +
+  facet_wrap(
+    ~ Response,
+    scales = "free_y",
+    ncol = 3,
+    labeller = labeller(Response = facet_labs)
+  ) +
   theme_minimal(base_size = 12) +
   theme(
     legend.position = "none",
     axis.text.x = element_text(size = 10, angle = 30, hjust = 1),
-    strip.text  = element_text(size = 8),
+    strip.text  = element_text(size = 12),
     plot.title  = element_text(size = 14)
   ) +
   labs(
     title = "Trace Elements by Stream Typology",
     x     = "Stream Typology",
-    y     = "Log10(Value)"
+    y     = expression(log[10]~"concentration (nmol)")
   )
 
 # View
@@ -964,8 +977,162 @@ if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
 ggsave(
   filename = file.path(out_dir, "Trace_elements_panel_Cu.png"),
   plot     = bioavail_panel,
+  width    = 10,
+  height   = 5,
+  dpi      = 300
+)
+```
+
+With relative available
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+#-------------------------------------------------
+# 1. Colors by response variable
+#-------------------------------------------------
+response_colors <- c(
+  "Total Cu (nM)"                    = "chocolate4",
+  "Free Cu (nM)"                     = "peru",
+  "Relative Available Cu (Free/Total)" = "tan4",
+  "Bioavailable Cu"                  = "chocolate1"
+)
+
+# Facet order
+response_order <- c(
+  "Total Cu (nM)",
+  "Free Cu (nM)",
+  "Relative Available Cu (Free/Total)",
+  "Bioavailable Cu"
+)
+
+#-------------------------------------------------
+# 2. Define letter nudges
+#-------------------------------------------------
+letter_nudge <- c(
+  "Total Cu (nM)"                    = 1,
+  "Free Cu (nM)"                     = 1,
+  "Relative Available Cu (Free/Total)" = 0.05,
+  "Bioavailable Cu"                  = 2
+)
+
+#-------------------------------------------------
+# 3. Map variable names -> response labels
+#-------------------------------------------------
+response_lookup <- c(
+  "log_Cu_nM"         = "Total Cu (nM)",
+  "log_Free_Cu_nM"    = "Free Cu (nM)",
+  "rel_prop_Cu"       = "Relative Available Cu (Free/Total)",
+  "log_TBL_Cu_nmol_g" = "Bioavailable Cu"
+)
+
+vars_trace <- names(response_lookup)
+
+#-------------------------------------------------
+# 4. Long data
+#-------------------------------------------------
+dat_long_trace <- dat %>%
+  dplyr::select(Typology, all_of(vars_trace)) %>%
+  pivot_longer(
+    cols      = -Typology,
+    names_to  = "Variable",
+    values_to = "Value"
+  ) %>%
+  filter(!is.na(Value)) %>%
+  mutate(
+    Response = response_lookup[Variable],
+    Response = factor(Response, levels = response_order)
+  )
+
+#-------------------------------------------------
+# 5a. Max y per Variable x Typology
+#-------------------------------------------------
+y_pos_df <- dat_long_trace %>%
+  group_by(Variable, Typology) %>%
+  summarise(y_max = max(Value, na.rm = TRUE), .groups = "drop")
+
+#-------------------------------------------------
+# 5b. Attach letters above groups
+#-------------------------------------------------
+letters_long_trace <- letters_df %>%
+  filter(Variable %in% vars_trace) %>%
+  mutate(
+    Response = response_lookup[Variable],
+    Response = factor(Response, levels = response_order)
+  ) %>%
+  left_join(
+    y_pos_df,
+    by = c("Variable", "Typology")
+  ) %>%
+  mutate(
+    y_pos = y_max + letter_nudge[as.character(Response)]
+  )
+
+#-------------------------------------------------
+# 5c. Facet strip labels with a., b., c., d.
+#-------------------------------------------------
+facet_labs <- c(
+  "Total Cu (nM)"                      = "a. Total",
+  "Free Cu (nM)"                       = "b. Free",
+  "Relative Available Cu (Free/Total)" = "c. Relative Available",
+  "Bioavailable Cu"                    = "d. Bioavailable"
+)
+
+#-------------------------------------------------
+# 6. Plot
+#-------------------------------------------------
+bioavail_panel2 <- ggplot(
+  dat_long_trace,
+  aes(
+    x     = Typology,
+    y     = Value,
+    color = Response,
+    fill  = Response
+  )
+) +
+  geom_boxplot(width = 0.6, alpha = 0.5) +
+  geom_jitter(width = 0.15, size = 1, alpha = 0.7) +
+  geom_text(
+    data = letters_long_trace,
+    aes(x = Typology, y = y_pos, label = Letters),
+    inherit.aes = FALSE,
+    size = 3.5
+  ) +
+  scale_color_manual(values = response_colors, breaks = response_order) +
+  scale_fill_manual(values = response_colors, breaks = response_order) +
+  facet_wrap(
+    ~ Response,
+    scales = "free_y",
+    ncol = 2,
+    labeller = labeller(Response = facet_labs)
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(size = 10, angle = 30, hjust = 1),
+    strip.text  = element_text(size = 12),
+    plot.title  = element_text(size = 14)
+  ) +
+  labs(
+    title = "Trace Elements by Stream Typology",
+    x     = "Stream Typology",
+    y     = expression(log[10]~"concentration (nmol)")
+  )
+
+# View
+bioavail_panel2
+
+# Save
+out_dir <- "Plots by typology"
+if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+
+ggsave(
+  filename = file.path(out_dir, "Trace_elements_panel_Cu2.png"),
+  plot     = bioavail_panel2,
   width    = 8,
-  height   = 3,
+  height   = 8,
   dpi      = 300
 )
 ```

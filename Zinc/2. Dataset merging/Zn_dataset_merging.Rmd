@@ -7,7 +7,7 @@ output: html_document
 
 # Overview
 
-The following datasets will be used to create a Bioavailability Master Spreadsheet which will have tabs according to the BLM assumptions considered (HA 10% Closed System, HA 10% Open System, and HA 80% Closed System)
+The following datasets will be used to create a Bioavailability Master Spreadsheet which will have tabs according to the BLM assumptions considered (HA 10% Closed System, HA 10% Open System, and HA 10-60% Closed System)
 
 1.  **Clean WaDE Synoptic Survey dataset** (WaDE_Synoptic_Summary_Clean.xlsx)
 
@@ -767,13 +767,13 @@ if (!file.exists(file_path)) {
 }
 ```
 
-# HA 20-80% Closed System
+# HA 20-60% Closed System
 
 ## 1. BLM Speciation Mode
 
 If you haven't already, convert the BLM output excel files to the newest Excel Workbook version before importing them to R.
 
-Import BLM datasets for closed system with humic acid 20-80% (7 files) plus the baseline condition of 10% humic acid already uploaded
+Import BLM datasets for closed system with humic acid 20-60% (7 files) plus the baseline condition of 10% humic acid already uploaded
 
 ```{r}
 library(readxl)
@@ -787,10 +787,6 @@ Zn_Speciation_ha40_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National 
 Zn_Speciation_ha50_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/1. Running BLM/Data outputs/Speciation Mode/Zn_speciation_ha50_cs.det.xlsx")
 
 Zn_Speciation_ha60_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/1. Running BLM/Data outputs/Speciation Mode/Zn_speciation_ha60_cs.det.xlsx")
-
-Zn_Speciation_ha70_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/1. Running BLM/Data outputs/Speciation Mode/Zn_speciation_ha70_cs.det.xlsx")
-
-Zn_Speciation_ha80_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/1. Running BLM/Data outputs/Speciation Mode/Zn_speciation_ha80_cs.det.xlsx")
 ```
 
 Clean datasets
@@ -845,15 +841,13 @@ Zn_Speciation_ha30_cs_clean <- clean_blm_speciation(Zn_Speciation_ha30_cs)
 Zn_Speciation_ha40_cs_clean <- clean_blm_speciation(Zn_Speciation_ha40_cs)
 Zn_Speciation_ha50_cs_clean <- clean_blm_speciation(Zn_Speciation_ha50_cs)
 Zn_Speciation_ha60_cs_clean <- clean_blm_speciation(Zn_Speciation_ha60_cs)
-Zn_Speciation_ha70_cs_clean <- clean_blm_speciation(Zn_Speciation_ha70_cs)
-Zn_Speciation_ha80_cs_clean <- clean_blm_speciation(Zn_Speciation_ha80_cs)
 
 
 # ------------------------------------------------------------
 # 3. Preview one or more cleaned files
 # ------------------------------------------------------------
 head(Zn_Speciation_ha20_cs_clean)
-head(Zn_Speciation_ha80_cs_clean)
+head(Zn_Speciation_ha60_cs_clean)
 
 
 # ------------------------------------------------------------
@@ -877,14 +871,6 @@ Zn_Speciation_ha50_cs_clean %>%
   summarise(n_matched = n())
 
 Zn_Speciation_ha60_cs_clean %>%
-  inner_join(bio_ms %>% dplyr::select(Sample_ID), by = "Sample_ID") %>%
-  summarise(n_matched = n())
-
-Zn_Speciation_ha70_cs_clean %>%
-  inner_join(bio_ms %>% dplyr::select(Sample_ID), by = "Sample_ID") %>%
-  summarise(n_matched = n())
-
-Zn_Speciation_ha80_cs_clean %>%
   inner_join(bio_ms %>% dplyr::select(Sample_ID), by = "Sample_ID") %>%
   summarise(n_matched = n())
 ```
@@ -913,9 +899,7 @@ Zn_TBL_by_HA <- bind_rows(
   extract_tbl_zn(Zn_Speciation_ha30_cs_clean, 30),
   extract_tbl_zn(Zn_Speciation_ha40_cs_clean, 40),
   extract_tbl_zn(Zn_Speciation_ha50_cs_clean, 50),
-  extract_tbl_zn(Zn_Speciation_ha60_cs_clean, 60),
-  extract_tbl_zn(Zn_Speciation_ha70_cs_clean, 70),
-  extract_tbl_zn(Zn_Speciation_ha80_cs_clean, 80)
+  extract_tbl_zn(Zn_Speciation_ha60_cs_clean, 60)
 )
 
 head(Zn_TBL_by_HA)
@@ -935,8 +919,8 @@ file_path <- "Bioavailability_Master_Spreadsheet.xlsx"
 if (!file.exists(file_path)) {
   
   wb <- createWorkbook()
-  addWorksheet(wb, "HA 10-80%")
-  writeData(wb, "HA 10-80%", Zn_TBL_by_HA)
+  addWorksheet(wb, "HA 10-60%")
+  writeData(wb, "HA 10-60%", Zn_TBL_by_HA)
   saveWorkbook(wb, file_path, overwrite = TRUE)
 
 } else {
@@ -947,12 +931,12 @@ if (!file.exists(file_path)) {
   wb <- loadWorkbook(file_path)
 
   # Add sheet if missing
-  if (!"HA 10-80%" %in% names(wb)) {
-    addWorksheet(wb, "HA 10-80%")
+  if (!"HA 10-60%" %in% names(wb)) {
+    addWorksheet(wb, "HA 10-60%")
   }
 
   # Write/overwrite data in that sheet
-  writeData(wb, "HA 10-80%", Zn_TBL_by_HA)
+  writeData(wb, "HA 10-60%", Zn_TBL_by_HA)
 
   # Save
   saveWorkbook(wb, file_path, overwrite = TRUE)

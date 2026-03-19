@@ -509,7 +509,7 @@ saveWorkbook(
 )
 ```
 
-# Humic Acid 10-80%
+# Humic Acid 10-60%
 
 ## I. Import Dataset
 
@@ -519,7 +519,7 @@ Upload Bioavailability_Master_Spreadsheet.xlsx for ha 10% open system
 library(readxl) 
 
 dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/2. Dataset merging/Bioavailability_Master_Spreadsheet.xlsx", 
-    sheet = "HA 10-80%")
+    sheet = "HA 10-60%")
 
 str(dat)
 ```
@@ -569,7 +569,7 @@ Save to excel as a clean version of the Bioavailability Master Spreadsheet to a 
 library(openxlsx)
 
 file_path  <- "Bioavailability_Master_Spreadsheet_Clean.xlsx"
-sheet_name <- "HA 10-80%"
+sheet_name <- "HA 10-60%"
 
 # ---------------------------------------------------------
 # Create workbook if it doesn't exist, otherwise load it

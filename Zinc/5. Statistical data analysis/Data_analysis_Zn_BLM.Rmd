@@ -1174,7 +1174,6 @@ if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
 
 # 1. Titles for each variable's plot (panel title)
 title_lookup <- c(
-  "log_Temp_C" = "Temperature",
   "pH"         = "pH",
   "log_DOC_uM" = "Dissolved Organic Carbon",
   "log_DIC_uM" = "Dissolved Inorganic Carbon",
@@ -1188,7 +1187,6 @@ title_lookup <- c(
 
 # 2. Custom y-axis labels for each variable
 y_label_lookup <- c(
-  "log_Temp_C" = "Temperature (°C)",
   "pH"         = "pH",
   "log_DOC_uM" = "log DOC (µM)",
   "log_DIC_uM" = "log DIC (µM)",
@@ -1351,7 +1349,7 @@ all_vars_panel <- ggplot(
   labs(
     title = "BLM Predictors by Stream Typology",
     x     = "Stream Typology",
-    y     = "Log Concentration (uM)"
+    y     = expression(log[10]~"Concentration (μM)")
   ) +
   theme_minimal(base_size = 12) +
   theme(
@@ -1388,35 +1386,34 @@ library(ggplot2)
 # 1. Colors by response variable
 #-------------------------------------------------
 response_colors <- c(
-  "Total Zn (nM)"                       = "slategray",
-  "Free Zn (nM)"                        = "darkslategray3",
-  "Bioavailable Zn (nmol g-1 wet weight)" = "turquoise3"
+  "Total Zn (nM)"   = "slategray",
+  "Free Zn (nM)"    = "darkslategray3",
+  "Bioavailable Zn" = "turquoise3"
 )
 
 # Left-to-right facet order
 response_order <- c(
   "Total Zn (nM)",
   "Free Zn (nM)",
-  "Bioavailable Zn (nmol g-1 wet weight)"
+  "Bioavailable Zn"
 )
 
 #-------------------------------------------------
 # 2. Define letter nudges
 #-------------------------------------------------
 letter_nudge <- c(
-  "Total Zn (nM)"                       = 1,
-  "Free Zn (nM)"                        = 1,
-  "Bioavailable Zn (nmol g-1 wet weight)" = 2
+  "Total Zn (nM)"   = 1,
+  "Free Zn (nM)"    = 1,
+  "Bioavailable Zn" = 2
 )
 
 #-------------------------------------------------
 # 3. Map variable names -> response labels
-#    Replace log_Free_Zn_uM if needed
 #-------------------------------------------------
 response_lookup <- c(
-  "log_Zn_nM"           = "Total Zn (nM)",
-  "log_Free_Zn_nM"      = "Free Zn (nM)",  
-  "log_TBL_Zn_nmol_g"   = "Bioavailable Zn (nmol g-1 wet weight)"
+  "log_Zn_nM"         = "Total Zn (nM)",
+  "log_Free_Zn_nM"    = "Free Zn (nM)",  
+  "log_TBL_Zn_nmol_g" = "Bioavailable Zn"
 )
 
 vars_trace <- names(response_lookup)
@@ -1445,7 +1442,7 @@ y_pos_df <- dat_long_trace %>%
   summarise(y_max = max(`Log10(Value)`, na.rm = TRUE), .groups = "drop")
 
 #-------------------------------------------------
-# 5b. Attach letters
+# 5b. Attach letters above groups
 #-------------------------------------------------
 letters_long_trace <- letters_df %>%
   filter(Variable %in% vars_trace) %>%
@@ -1460,6 +1457,15 @@ letters_long_trace <- letters_df %>%
   mutate(
     y_pos = y_max + letter_nudge[as.character(Response)]
   )
+
+#-------------------------------------------------
+# 5c. Facet strip labels with a., b., c.
+#-------------------------------------------------
+facet_labs <- c(
+  "Total Zn (nM)"   = "a. Total Zn",
+  "Free Zn (nM)"    = "b. Free Zn",
+  "Bioavailable Zn" = "c. Bioavailable Zn"
+)
 
 #-------------------------------------------------
 # 6. Plot
@@ -1483,18 +1489,23 @@ bioavail_panel <- ggplot(
   ) +
   scale_color_manual(values = response_colors, breaks = response_order) +
   scale_fill_manual(values = response_colors, breaks = response_order) +
-  facet_wrap(~ Response, scales = "free_y", ncol = 3) +
+  facet_wrap(
+    ~ Response,
+    scales = "free_y",
+    ncol = 3,
+    labeller = labeller(Response = facet_labs)
+  ) +
   theme_minimal(base_size = 12) +
   theme(
     legend.position = "none",
     axis.text.x = element_text(size = 10, angle = 30, hjust = 1),
-    strip.text  = element_text(size = 8),
+    strip.text  = element_text(size = 12),
     plot.title  = element_text(size = 14)
   ) +
   labs(
     title = "Trace Elements by Stream Typology",
     x     = "Stream Typology",
-    y     = "Log10(Value)"
+    y     = expression(log[10]~"concentration (nmol)")
   )
 
 bioavail_panel
@@ -1506,8 +1517,161 @@ if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
 ggsave(
   filename = file.path(out_dir, "Trace_elements_panel_Zn.png"),
   plot     = bioavail_panel,
+  width    = 10,
+  height   = 5,
+  dpi      = 300
+)
+```
+
+Includes relative proportion of free/total Zn
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+#-------------------------------------------------
+# 1. Colors by response variable
+#-------------------------------------------------
+response_colors <- c(
+  "Total Zn (nM)"                  = "slategray",
+  "Free Zn (nM)"                   = "darkslategray3",
+  "Relative Available Zn (Free/Total)" = "darkslategray",
+  "Bioavailable Zn"                = "turquoise3"
+)
+
+# Facet order
+response_order <- c(
+  "Total Zn (nM)",
+  "Free Zn (nM)",
+  "Relative Available Zn (Free/Total)",
+  "Bioavailable Zn"
+)
+
+#-------------------------------------------------
+# 2. Define letter nudges
+#-------------------------------------------------
+letter_nudge <- c(
+  "Total Zn (nM)"                  = 1,
+  "Free Zn (nM)"                   = 1,
+  "Relative Available Zn (Free/Total)" = 0.05,
+  "Bioavailable Zn"                = 2
+)
+
+#-------------------------------------------------
+# 3. Map variable names -> response labels
+#-------------------------------------------------
+response_lookup <- c(
+  "log_Zn_nM"         = "Total Zn (nM)",
+  "log_Free_Zn_nM"    = "Free Zn (nM)", 
+  "rel_prop_Zn"       = "Relative Available Zn (Free/Total)",
+  "log_TBL_Zn_nmol_g" = "Bioavailable Zn"
+)
+
+vars_trace <- names(response_lookup)
+
+#-------------------------------------------------
+# 4. Long data
+#-------------------------------------------------
+dat_long_trace <- dat %>%
+  dplyr::select(Typology, all_of(vars_trace)) %>%
+  pivot_longer(
+    cols      = -Typology,
+    names_to  = "Variable",
+    values_to = "Value"
+  ) %>%
+  filter(!is.na(Value)) %>%
+  mutate(
+    Response = response_lookup[Variable],
+    Response = factor(Response, levels = response_order)
+  )
+
+#-------------------------------------------------
+# 5a. Max y per Variable x Typology
+#-------------------------------------------------
+y_pos_df <- dat_long_trace %>%
+  group_by(Variable, Typology) %>%
+  summarise(y_max = max(Value, na.rm = TRUE), .groups = "drop")
+
+#-------------------------------------------------
+# 5b. Attach letters above groups
+#-------------------------------------------------
+letters_long_trace <- letters_df %>%
+  filter(Variable %in% vars_trace) %>%
+  mutate(
+    Response = response_lookup[Variable],
+    Response = factor(Response, levels = response_order)
+  ) %>%
+  left_join(
+    y_pos_df,
+    by = c("Variable", "Typology")
+  ) %>%
+  mutate(
+    y_pos = y_max + letter_nudge[as.character(Response)]
+  )
+
+#-------------------------------------------------
+# 5c. Facet strip labels with a., b., c., d.
+#-------------------------------------------------
+facet_labs <- c(
+  "Total Zn (nM)"                    = "a. Total",
+  "Free Zn (nM)"                     = "b. Free",
+  "Relative Available Zn (Free/Total)" = "d. Relative Available",
+  "Bioavailable Zn"                  = "c. Bioavailable"
+)
+
+#-------------------------------------------------
+# 6. Plot
+#-------------------------------------------------
+bioavail_panel2 <- ggplot(
+  dat_long_trace,
+  aes(
+    x     = Typology,
+    y     = Value,
+    color = Response,
+    fill  = Response
+  )
+) +
+  geom_boxplot(width = 0.6, alpha = 0.5) +
+  geom_jitter(width = 0.15, size = 1, alpha = 0.7) +
+  geom_text(
+    data = letters_long_trace,
+    aes(x = Typology, y = y_pos, label = Letters),
+    inherit.aes = FALSE,
+    size = 3.5
+  ) +
+  scale_color_manual(values = response_colors, breaks = response_order) +
+  scale_fill_manual(values = response_colors, breaks = response_order) +
+  facet_wrap(
+    ~ Response,
+    scales = "free_y",
+    ncol = 2,
+    labeller = labeller(Response = facet_labs)
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(size = 10, angle = 30, hjust = 1),
+    strip.text  = element_text(size = 12),
+    plot.title  = element_text(size = 14)
+  ) +
+  labs(
+    title = "Trace Elements by Stream Typology",
+    x     = "Stream Typology",
+    y     = expression(log[10]~"concentration (nmol)")
+  )
+
+bioavail_panel2
+
+# Save
+out_dir <- "Plots by typology"
+if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+
+ggsave(
+  filename = file.path(out_dir, "Trace_elements_panel_Zn2.png"),
+  plot     = bioavail_panel2,
   width    = 8,
-  height   = 3,
+  height   = 8,
   dpi      = 300
 )
 ```
@@ -2000,6 +2164,24 @@ write.xlsx(
 
 # Other Plots
 
+Import the dataset
+
+```{r}
+setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/5. Statistical data analysis")
+
+library(readxl)
+dat <- read_excel("Bioavailability_Master_Spreadsheet_Clean3.xlsx")
+
+
+# Colors for each Typology
+typology_colors <- c(
+  "P Tribs"         = "#56B4E9",
+  "PD Tribs"        = "#D55E00",
+  "NP Tribs"        = "#009E73",
+  "Main Stem"       = "#999999"
+)
+```
+
 ## Sites within Each Typology
 
 ```{r}
@@ -2181,87 +2363,6 @@ ggsave(
 )
 ```
 
-## With mean by Network
-
-```{r}
-library(dplyr)
-library(ggplot2)
-
-#-------------------------------------------------
-# 1) Prep all sites + order by elevation
-#-------------------------------------------------
-all_sites <- dat %>%
-  mutate(
-    Network = factor(Network)
-  ) %>%
-  group_by(Site) %>%
-  mutate(site_elev = median(Relative_elevation_m, na.rm = TRUE)) %>%
-  ungroup() %>%
-  mutate(
-    Site = factor(Site, levels = unique(Site[order(site_elev)]))
-  )
-
-#-------------------------------------------------
-# 2) Calculate mean by Network
-#-------------------------------------------------
-network_means <- all_sites %>%
-  group_by(Network) %>%
-  summarise(
-    mean_value = mean(log_TBL_Zn_nmol_g, na.rm = TRUE),
-    .groups = "drop"
-  )
-
-#-------------------------------------------------
-# 3) Plot
-#-------------------------------------------------
-sites_by_network <- ggplot(
-  all_sites,
-  aes(x = Site, y = log_TBL_Zn_nmol_g)
-) +
-  geom_boxplot(
-    fill = "grey70",
-    color = "black",
-    outlier.alpha = 0.6
-  ) +
-  
-  # Add horizontal mean line per Network
-  geom_hline(
-    data = network_means,
-    aes(yintercept = mean_value),
-    linetype = "dashed",
-    linewidth = 1,
-    color = "red"
-  ) +
-  
-  facet_grid(~Network, scales = "free_x", space = "free_x", switch = "x") +
-  labs(
-    title = "Bioavailable Zn Across All Sites",
-    x = "Site (ordered by relative elevation)",
-    y = "Log TBL Zn (nmol/g wet weight)"
-  ) +
-  theme_test() +
-  theme(
-    axis.text.x = element_text(angle = 30, hjust = 1),
-    plot.title  = element_text(hjust = 0.5, face = "bold")
-  )
-
-# View
-sites_by_network
-
-# Save
-out_dir <- "Plots by site within typology"
-if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
-
-ggsave(
-  filename = file.path(out_dir, "Sites_by_network_with_mean.png"),
-  plot     = sites_by_network,
-  width    = 20,
-  height   = 6,
-  dpi      = 300
-)
-
-```
-
 ## Colored by typology
 
 ```{r}
@@ -2311,105 +2412,6 @@ sites_by_network_typology
 # Save 
 ggsave(
   filename = file.path(out_dir, "Sites_by_network_typology.png"),
-  plot     = sites_by_network_typology,
-  width    = 20,
-  height   = 6,
-  dpi      = 300
-)
-```
-
-## Colored by typology and mean by Network and Typology
-
-```{r}
-library(dplyr)
-library(ggplot2)
-
-#-------------------------------------------------
-# 1) Prep all sites + order by elevation
-#-------------------------------------------------
-all_sites <- dat %>%
-  mutate(
-    Typology = factor(Typology),
-    Network  = factor(Network)
-  ) %>%
-  group_by(Site) %>%
-  mutate(site_elev = median(Relative_elevation_m, na.rm = TRUE)) %>%
-  ungroup() %>%
-  mutate(
-    Site = factor(Site, levels = unique(Site[order(site_elev)]))
-  )
-
-#-------------------------------------------------
-# 2) Compute Means
-#-------------------------------------------------
-
-# Mean by Network (one per facet)
-network_means <- all_sites %>%
-  group_by(Network) %>%
-  summarise(
-    mean_network = mean(log_TBL_Zn_nmol_g, na.rm = TRUE),
-    .groups = "drop"
-  )
-
-# Mean by Typology within each Network
-typology_means <- all_sites %>%
-  group_by(Network, Typology) %>%
-  summarise(
-    mean_typology = mean(log_TBL_Zn_nmol_g, na.rm = TRUE),
-    .groups = "drop"
-  )
-
-#-------------------------------------------------
-# 3) Plot
-#-------------------------------------------------
-sites_by_network_typology <- ggplot(
-  all_sites,
-  aes(x = Site, y = log_TBL_Zn_nmol_g, fill = Typology)
-) +
-  geom_boxplot(color = "black", outlier.alpha = 0.6) +
-
-  # Red dashed line = Network mean
-  geom_hline(
-    data = network_means,
-    aes(yintercept = mean_network),
-    color = "red",
-    linetype = "dashed",
-    linewidth = 1.2
-  ) +
-
-  # Colored dotted lines = Typology means
-  geom_hline(
-    data = typology_means,
-    aes(yintercept = mean_typology, color = Typology),
-    linetype = "dotted",
-    linewidth = 1
-  ) +
-
-  facet_grid(~Network, scales = "free_x", space = "free_x", switch = "x") +
-
-  scale_fill_manual(values = typology_colors, drop = FALSE) +
-  scale_color_manual(values = typology_colors, drop = FALSE) +
-
-  labs(
-    title = "Bioavailable Zn Across All Sites",
-    x = "Site (ordered by relative elevation)",
-    y = "Log TBL Zn (nmol/g wet weight)",
-    fill = "Typology"
-  ) +
-
-  theme_test() +
-  theme(
-    axis.text.x = element_text(angle = 30, hjust = 1),
-    plot.title  = element_text(hjust = 0.5, face = "bold"),
-    legend.position = "right"
-  )
-
-# View
-sites_by_network_typology
-
-# Save 
-ggsave(
-  filename = file.path(out_dir, "Sites_by_network_typology_means.png"),
   plot     = sites_by_network_typology,
   width    = 20,
   height   = 6,
@@ -2468,7 +2470,105 @@ write.xlsx(
 )
 ```
 
-## DOC by Developed LC and Elevation
+## Interaction effect of Typology and Developed LULC
+
+Interaction effect for each BLM predictor \~ Typology \* Developed_lulc
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(broom)
+
+vars <- c(
+  "log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
+  "log_Ca_nM", "log_Mg_nM", "log_SO4_nM",
+  "log_Na_nM", "log_K_nM", "log_Zn_nM", "log_Cu_nM"
+)
+
+dat_long <- dat %>%
+  select(Typology, Developed_lulc, all_of(vars)) %>%
+  pivot_longer(
+    cols = all_of(vars),
+    names_to = "Variable",
+    values_to = "Value"
+  )
+
+model_results <- dat_long %>%
+  group_by(Variable) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ lm(Value ~ Developed_lulc * Typology, data = .x)),
+    tidy  = map(model, tidy)
+  ) %>%
+  unnest(tidy)
+
+# Extract interaction terms
+interaction_results <- model_results %>%
+  filter(
+    term == "(Intercept)" |
+    term == "Developed_lulc" |
+    grepl("Developed_lulc:Typology", term)
+  ) %>%
+  select(Variable, term, estimate, p.value) %>%
+  mutate(
+    significant = p.value < 0.05
+  )
+
+# Save
+out_dir <- "Typology_Developed_lulc Interaction"
+if (!dir.exists(out_dir)) {
+  dir.create(out_dir, recursive = TRUE)
+}
+
+library(openxlsx)
+
+wb <- createWorkbook()
+
+addWorksheet(wb, "Interaction_Results")
+
+writeData(wb, "Interaction_Results", interaction_results)
+
+saveWorkbook(
+  wb,
+  file = file.path(out_dir, "interaction_results.xlsx"),
+  overwrite = TRUE
+)
+```
+
+All sites
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+vars <- c(
+  "log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
+  "log_Ca_nM", "log_Mg_nM", "log_SO4_nM",
+  "log_Na_nM", "log_K_nM", "log_Zn_nM", "log_Cu_nM"
+)
+
+dat_long <- dat %>%
+  select(Developed_lulc, all_of(vars)) %>%
+  pivot_longer(
+    cols = all_of(vars),
+    names_to = "Variable",
+    values_to = "Value"
+  )
+
+ggplot(dat_long, aes(x = Developed_lulc, y = Value, color = Variable)) +
+  
+  geom_point(alpha = 0.5) +
+  
+  geom_smooth(method = "lm", se = TRUE, color = "steelblue") +
+  
+  facet_wrap(~ Variable, scales = "free_y") +
+  
+  theme_classic(base_size = 14) +
+  
+  theme(legend.position = "none")
+```
 
 ### Main Stem
 
@@ -2476,224 +2576,431 @@ As a function of Developed LC
 
 ```{r}
 library(dplyr)
+library(tidyr)
 library(ggplot2)
 
-ggplot(
-  dat %>% filter(Typology == "Main Stem"),
-  aes(x = Developed_lulc, y = log_DOC_uM)
-) +
+vars <- c(
+  "log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
+  "log_Ca_nM", "log_Mg_nM", "log_SO4_nM",
+  "log_Na_nM", "log_K_nM", "log_Zn_nM", "log_Cu_nM"
+)
+
+dat_long <- dat %>%
+  filter(Type == "Main Stem") %>%   
+  select(Developed_lulc, all_of(vars)) %>%
+  pivot_longer(
+    cols = all_of(vars),
+    names_to = "Variable",
+    values_to = "Value"
+  )
+
+ggplot(dat_long, aes(x = Developed_lulc, y = Value, color = Variable)) +
   
-  geom_point(size = 2, alpha = 0.7) +
+  geom_point(alpha = 0.5) +
   
-  geom_smooth(
-    method = "lm",
-    se = TRUE,          # confidence interval
-    color = "steelblue",
-    linewidth = 1
-  ) +
+  geom_smooth(method = "lm", se = FALSE, color = "steelblue") +
+  
+  facet_wrap(~ Variable, scales = "free_y") +
+  
+  theme_classic(base_size = 14) +
+  
+  theme(legend.position = "none") +
   
   labs(
+    title = "Water Chemistry vs Developed Land Cover (Main Stem)",
     x = "Developed Land Cover (%)",
-    y = "Log DOC (µM)",
-    title = "DOC vs Developed Land Cover (Main Stem)"
-  ) +
-  
-  theme_classic(base_size = 14)
-```
-
-As a function of elevation
-
-```{r}
-library(dplyr)
-library(ggplot2)
-
-ggplot(
-  dat %>% filter(Typology == "Main Stem"),
-  aes(x = Elevation_m, y = log_DOC_uM)
-) +
-  
-  geom_point(size = 2, alpha = 0.7) +
-  
-  geom_smooth(
-    method = "lm",
-    se = TRUE,          # confidence interval
-    color = "steelblue",
-    linewidth = 1
-  ) +
-  
-  labs(
-    x = "Elevation (m)",
-    y = "Log DOC (µM)",
-    title = "DOC vs Elevation (Main Stem)"
-  ) +
-  
-  theme_classic(base_size = 14)
+    y = "Log Concentration (nM)"
+  )
 ```
 
 ### PD Tribs
 
 ```{r}
 library(dplyr)
+library(tidyr)
 library(ggplot2)
 
-ggplot(
-  dat %>% filter(Typology == "PD Tribs"),
-  aes(x = Developed_lulc, y = log_DOC_uM)
-) +
+vars <- c(
+  "log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
+  "log_Ca_nM", "log_Mg_nM", "log_SO4_nM",
+  "log_Na_nM", "log_K_nM", "log_Zn_nM", "log_Cu_nM"
+)
+
+dat_long <- dat %>%
+  filter(Typology == "PD Tribs") %>%   
+  select(Developed_lulc, all_of(vars)) %>%
+  pivot_longer(
+    cols = all_of(vars),
+    names_to = "Variable",
+    values_to = "Value"
+  )
+
+ggplot(dat_long, aes(x = Developed_lulc, y = Value, color = Variable)) +
   
-  geom_point(size = 2, alpha = 0.7) +
+  geom_point(alpha = 0.5) +
   
-  geom_smooth(
-    method = "lm",
-    se = TRUE,          # confidence interval
-    color = "steelblue",
-    linewidth = 1
-  ) +
+  geom_smooth(method = "lm", se = FALSE, color = "steelblue") +
+  
+  facet_wrap(~ Variable, scales = "free_y") +
+  
+  theme_classic(base_size = 14) +
+  
+  theme(legend.position = "none") +
   
   labs(
+    title = "Water Chemistry vs Developed Land Cover (PD Tribs)",
     x = "Developed Land Cover (%)",
-    y = "Log DOC (µM)",
-    title = "DOC vs Developed Land Cover (PD Tribs)"
-  ) +
-  
-  theme_classic(base_size = 14)
-```
-
-```{r}
-library(dplyr)
-library(ggplot2)
-
-ggplot(
-  dat %>% filter(Typology == "PD Tribs"),
-  aes(x = Relative_elevation_m, y = log_DOC_uM)
-) +
-  
-  geom_point(size = 2, alpha = 0.7) +
-  
-  geom_smooth(
-    method = "lm",
-    se = TRUE,          # confidence interval
-    color = "steelblue",
-    linewidth = 1
-  ) +
-  
-  labs(
-    x = "Relative Elevation (m)",
-    y = "Log DOC (µM)",
-    title = "DOC vs Relative Elevation (PD Tribs)"
-  ) +
-  
-  theme_classic(base_size = 14)
+    y = "Log Concentration (nM)"
+  )
 ```
 
 ### Perennial Tribs
 
 ```{r}
 library(dplyr)
+library(tidyr)
 library(ggplot2)
 
-ggplot(
-  dat %>% filter(Typology == "P Tribs"),
-  aes(x = Developed_lulc, y = log_DOC_uM)
-) +
+vars <- c(
+  "log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
+  "log_Ca_nM", "log_Mg_nM", "log_SO4_nM",
+  "log_Na_nM", "log_K_nM", "log_Zn_nM", "log_Cu_nM"
+)
+
+dat_long <- dat %>%
+  filter(Typology == "P Tribs") %>%   
+  select(Developed_lulc, all_of(vars)) %>%
+  pivot_longer(
+    cols = all_of(vars),
+    names_to = "Variable",
+    values_to = "Value"
+  )
+
+ggplot(dat_long, aes(x = Developed_lulc, y = Value, color = Variable)) +
   
-  geom_point(size = 2, alpha = 0.7) +
+  geom_point(alpha = 0.5) +
   
-  geom_smooth(
-    method = "lm",
-    se = TRUE,          # confidence interval
-    color = "steelblue",
-    linewidth = 1
-  ) +
+  geom_smooth(method = "lm", se = FALSE, color = "steelblue") +
+  
+  facet_wrap(~ Variable, scales = "free_y") +
+  
+  theme_classic(base_size = 14) +
+  
+  theme(legend.position = "none") +
   
   labs(
+    title = "Water Chemistry vs Developed Land Cover (P Tribs)",
     x = "Developed Land Cover (%)",
-    y = "Log DOC (µM)",
-    title = "DOC vs Developed Land Cover (P Tribs)"
-  ) +
-  
-  theme_classic(base_size = 14)
-```
-
-```{r}
-library(dplyr)
-library(ggplot2)
-
-ggplot(
-  dat %>% filter(Typology == "P Tribs"),
-  aes(x = Relative_elevation_m, y = DOC_uM)
-) +
-  
-  geom_point(size = 2, alpha = 0.7) +
-  
-  geom_smooth(
-    method = "lm",
-    se = TRUE,          # confidence interval
-    color = "steelblue",
-    linewidth = 1
-  ) +
-  
-  labs(
-    x = "Relative Elevation (m)",
-    y = "Log DOC (µM)",
-    title = "DOC vs Relative Elevation (P Tribs)"
-  ) +
-  
-  theme_classic(base_size = 14)
+    y = "Log Concentration (nM)"
+  )
 ```
 
 ### NP Tribs
 
 ```{r}
 library(dplyr)
+library(tidyr)
 library(ggplot2)
 
-ggplot(
-  dat %>% filter(Typology == "NP Tribs"),
-  aes(x = Developed_lulc, y = DOC_uM)
-) +
+vars <- c(
+  "log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
+  "log_Ca_nM", "log_Mg_nM", "log_SO4_nM",
+  "log_Na_nM", "log_K_nM", "log_Zn_nM", "log_Cu_nM"
+)
+
+dat_long <- dat %>%
+  filter(Typology == "NP Tribs") %>%   
+  select(Developed_lulc, all_of(vars)) %>%
+  pivot_longer(
+    cols = all_of(vars),
+    names_to = "Variable",
+    values_to = "Value"
+  )
+
+ggplot(dat_long, aes(x = Developed_lulc, y = Value, color = Variable)) +
   
-  geom_point(size = 2, alpha = 0.7) +
+  geom_point(alpha = 0.5) +
   
-  geom_smooth(
-    method = "lm",
-    se = TRUE,          # confidence interval
-    color = "steelblue",
-    linewidth = 1
-  ) +
+  geom_smooth(method = "lm", se = FALSE, color = "steelblue") +
+  
+  facet_wrap(~ Variable, scales = "free_y") +
+  
+  theme_classic(base_size = 14) +
+  
+  theme(legend.position = "none") +
   
   labs(
+    title = "Water Chemistry vs Developed Land Cover (NP Tribs)",
     x = "Developed Land Cover (%)",
-    y = "Log DOC (µM)",
-    title = "DOC vs Developed Land Cover (NP Tribs)"
-  ) +
-  
-  theme_classic(base_size = 14)
+    y = "Log Concentration (nM)"
+  )
 ```
+
+## Interaction of Typology and Time
 
 ```{r}
 library(dplyr)
+library(tidyr)
+library(purrr)
+library(broom)
+
+vars <- c(
+  "log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
+  "log_Ca_nM", "log_Mg_nM", "log_SO4_nM",
+  "log_Na_nM", "log_K_nM", "log_Zn_nM", "log_Cu_nM"
+)
+
+dat_long <- dat %>%
+  select(Date, Typology, all_of(vars)) %>%
+  pivot_longer(
+    cols = all_of(vars),
+    names_to = "Variable",
+    values_to = "Value"
+  ) %>%
+  filter(!is.na(Date), !is.na(Value))
+
+model_results <- dat_long %>%
+  group_by(Variable) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ lm(Value ~ Date * Typology, data = .x)),
+    tidy  = map(model, tidy)
+  ) %>%
+  unnest(tidy)
+
+# Extract interaction terms
+interaction_results <- model_results %>%
+  filter(
+    term == "(Intercept)" |
+    term == "Date" |
+    grepl("Date:Typology", term)
+  ) %>%
+  select(Variable, term, estimate, p.value) %>%
+  mutate(
+    significant = p.value < 0.05
+  )
+```
+
+All sites
+
+```{r}
+library(dplyr)
+library(tidyr)
 library(ggplot2)
 
-ggplot(
-  dat %>% filter(Typology == "NP Tribs"),
-  aes(x = Relative_elevation_m, y = DOC_uM)
-) +
+vars <- c(
+  "pH","log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
+  "log_Ca_nM", "log_Mg_nM", "log_SO4_nM",
+  "log_Na_nM", "log_K_nM", "log_Zn_nM", "log_Cu_nM"
+)
+
+dat_long <- dat %>%   
+  select(Date, all_of(vars)) %>%        
+  pivot_longer(
+    cols = all_of(vars),
+    names_to = "Variable",
+    values_to = "Value"
+  )
+
+ggplot(dat_long, aes(x = Date, y = Value, color = Variable)) +
   
-  geom_point(size = 2, alpha = 0.7) +
+  geom_point(alpha = 0.4) +
   
   geom_smooth(
-    method = "lm",
-    se = TRUE,          # confidence interval
-    color = "steelblue",
-    linewidth = 1
+    method = "loess",   
+    se = FALSE,
+    color = "steelblue"
   ) +
+  
+  facet_wrap(~ Variable, scales = "free_y") +
+  
+  theme_classic(base_size = 14) +
+  
+  theme(legend.position = "none") +
   
   labs(
-    x = "Relative Elevation (m)",
-    y = "Log DOC (µM)",
-    title = "DOC vs Relative Elevation (NP Tribs)"
+    title = "Water Chemistry Over Time",
+    x = "Date",
+    y = "Log Concentration (nM)"
+  )
+```
+
+### Main Stem
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+vars <- c(
+  "pH","log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
+  "log_Ca_nM", "log_Mg_nM", "log_SO4_nM",
+  "log_Na_nM", "log_K_nM", "log_Zn_nM", "log_Cu_nM"
+)
+
+dat_long <- dat %>%
+  filter(Typology == "Main Stem") %>%   
+  select(Date, all_of(vars)) %>%        
+  pivot_longer(
+    cols = all_of(vars),
+    names_to = "Variable",
+    values_to = "Value"
+  )
+
+ggplot(dat_long, aes(x = Date, y = Value, color = Variable)) +
+  
+  geom_point(alpha = 0.4) +
+  
+  geom_smooth(
+    method = "loess",   
+    se = FALSE,
+    color = "steelblue"
   ) +
   
-  theme_classic(base_size = 14)
+  facet_wrap(~ Variable, scales = "free_y") +
+  
+  theme_classic(base_size = 14) +
+  
+  theme(legend.position = "none") +
+  
+  labs(
+    title = "Water Chemistry Over Time (Main Stem)",
+    x = "Date",
+    y = "Log Concentration (nM)"
+  )
+```
+
+### PD Tribs
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+vars <- c(
+  "pH","log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
+  "log_Ca_nM", "log_Mg_nM", "log_SO4_nM",
+  "log_Na_nM", "log_K_nM", "log_Zn_nM", "log_Cu_nM"
+)
+
+dat_long <- dat %>%
+  filter(Typology == "PD Tribs") %>%   
+  select(Date, all_of(vars)) %>%        
+  pivot_longer(
+    cols = all_of(vars),
+    names_to = "Variable",
+    values_to = "Value"
+  )
+
+ggplot(dat_long, aes(x = Date, y = Value, color = Variable)) +
+  
+  geom_point(alpha = 0.4) +
+  
+  geom_smooth(
+    method = "loess",   
+    se = FALSE,
+    color = "steelblue"
+  ) +
+  
+  facet_wrap(~ Variable, scales = "free_y") +
+  
+  theme_classic(base_size = 14) +
+  
+  theme(legend.position = "none") +
+  
+  labs(
+    title = "Water Chemistry Over Time (PD Tribs)",
+    x = "Date",
+    y = "Log Concentration (nM)"
+  )
+```
+
+### P Tribs
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+vars <- c(
+  "pH","log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
+  "log_Ca_nM", "log_Mg_nM", "log_SO4_nM",
+  "log_Na_nM", "log_K_nM", "log_Zn_nM", "log_Cu_nM"
+)
+
+dat_long <- dat %>%
+  filter(Typology == "P Tribs") %>%   
+  select(Date, all_of(vars)) %>%        
+  pivot_longer(
+    cols = all_of(vars),
+    names_to = "Variable",
+    values_to = "Value"
+  )
+
+ggplot(dat_long, aes(x = Date, y = Value, color = Variable)) +
+  
+  geom_point(alpha = 0.4) +
+  
+  geom_smooth(
+    method = "loess",   
+    se = FALSE,
+    color = "steelblue"
+  ) +
+  
+  facet_wrap(~ Variable, scales = "free_y") +
+  
+  theme_classic(base_size = 14) +
+  
+  theme(legend.position = "none") +
+  
+  labs(
+    title = "Water Chemistry Over Time (P Tribs)",
+    x = "Date",
+    y = "Log Concentration (nM)"
+  )
+```
+
+### NP Tribs
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+vars <- c(
+  "pH","log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
+  "log_Ca_nM", "log_Mg_nM", "log_SO4_nM",
+  "log_Na_nM", "log_K_nM", "log_Zn_nM", "log_Cu_nM"
+)
+
+dat_long <- dat %>%
+  filter(Typology == "NP Tribs") %>%   
+  select(Date, all_of(vars)) %>%        
+  pivot_longer(
+    cols = all_of(vars),
+    names_to = "Variable",
+    values_to = "Value"
+  )
+
+ggplot(dat_long, aes(x = Date, y = Value, color = Variable)) +
+  
+  geom_point(alpha = 0.4) +
+  
+  geom_smooth(
+    method = "loess",   
+    se = FALSE,
+    color = "steelblue"
+  ) +
+  
+  facet_wrap(~ Variable, scales = "free_y") +
+  
+  theme_classic(base_size = 14) +
+  
+  theme(legend.position = "none") +
+  
+  labs(
+    title = "Water Chemistry Over Time (NP Tribs)",
+    x = "Date",
+    y = "Log Concentration (nM)"
+  )
 ```

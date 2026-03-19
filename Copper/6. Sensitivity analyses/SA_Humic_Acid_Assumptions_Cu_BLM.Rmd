@@ -8,7 +8,7 @@ output:
 
 # Objectives
 
-To assess BLM's assumption of humic acid content (HA) of dissolved organic carbon (DOC), we will assess bioavailability across a range of HA % 10-80 by increments of 10.
+To assess BLM's assumption of humic acid content (HA) of dissolved organic carbon (DOC), we will assess bioavailability across a range of HA % 10-60 by increments of 10.
 
 # 1. Setup
 
@@ -24,7 +24,7 @@ Import the dataset with BLM results under varying HA (%) and the Bioavailability
 library(readxl)
 
 ha_dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/3. Dataset cleaning/Bioavailability_Master_Spreadsheet_Clean.xlsx", 
-    sheet = "HA 10-80%")
+    sheet = "HA 10-60%")
 
 head(ha_dat)
 
@@ -224,7 +224,7 @@ ha_sens <- ha_dat %>%
     TBL_next = lead(TBL_Cu_nmol_g)
   ) %>%
   
-  # Keep only valid transitions (drop last HA=80 rows)
+  # Keep only valid transitions (drop last HA=60 rows)
   filter(!is.na(HA_next)) %>%
   
   # Optional: ensure only 10-step increments
@@ -353,7 +353,7 @@ ha_summary <- ha_summary %>%
   mutate(
     HA_transition = factor(
       HA_transition,
-      levels = c("10-20","20-30","30-40","40-50","50-60","60-70","70-80")
+      levels = c("10-20","20-30","30-40","40-50","50-60")
     )
   )
 
