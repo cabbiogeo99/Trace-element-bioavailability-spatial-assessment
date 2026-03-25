@@ -157,16 +157,16 @@ library(dplyr)
 cluster_colors <- c(
   "1" = "#56B4E9",
   "2" = "#D55E00",
-  "4" = "#009E73",
-  "3" = "#999999"
+  "3" = "#999999",
+  "4" = "#009E73"
 )
 
-# Make sure habillage is a factor with the order you want
+# Force correct ordering
 cluster_for_plot <- dat$cluster %>%
-  factor(levels = c("1", "2", "4", "3"))
+  factor(levels = c("1", "2", "3", "4"))
 
 #-------------------------------------------------
-# 1) PCA (same as your original)
+# 1) PCA
 #-------------------------------------------------
 pca_result <- prcomp(scaled_blm_predict, center = TRUE, scale. = TRUE)
 
@@ -177,14 +177,18 @@ pca_summary <- summary(pca_result)
 #-------------------------------------------------
 pca_cluster <- fviz_pca_biplot(
   pca_result,
-  geom.ind     = "point",          
-  col.var      = "black",          
-  habillage    = cluster_for_plot, 
-  addEllipses  = TRUE,             
+  geom.ind     = "point",
+  col.var      = "black",
+  habillage    = cluster_for_plot,
+  addEllipses  = TRUE,
   legend.title = "Cluster",
-  palette      = cluster_colors    
+  palette      = cluster_colors
 ) +
-  labs(title = "PCA Biplot of All Sites by Cluster")
+  labs(
+    title = "PCA Biplot of All Sites by Cluster",
+    x = "PC1 (46.5%)",
+    y = "PC2 (19.2%)"
+  )
 
 # View
 pca_cluster
@@ -336,8 +340,8 @@ rel_freq
 ggsave(
   filename = file.path(out_dir, "Relative_freq_plots_by_cluster.png"),
   plot     = rel_freq,
-  width    = 8,
-  height   = 6,
+  width    = 6,
+  height   = 4,
   dpi      = 300
 )
 ```
@@ -2481,13 +2485,13 @@ library(purrr)
 library(broom)
 
 vars <- c(
-  "log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
+  "pH", "log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
   "log_Ca_nM", "log_Mg_nM", "log_SO4_nM",
   "log_Na_nM", "log_K_nM", "log_Zn_nM", "log_Cu_nM"
 )
 
 dat_long <- dat %>%
-  select(Typology, Developed_lulc, all_of(vars)) %>%
+  dplyr::select(Typology, Developed_lulc, all_of(vars)) %>%
   pivot_longer(
     cols = all_of(vars),
     names_to = "Variable",
@@ -2510,7 +2514,7 @@ interaction_results <- model_results %>%
     term == "Developed_lulc" |
     grepl("Developed_lulc:Typology", term)
   ) %>%
-  select(Variable, term, estimate, p.value) %>%
+  dplyr::select(Variable, term, estimate, p.value) %>%
   mutate(
     significant = p.value < 0.05
   )
@@ -2544,30 +2548,72 @@ library(tidyr)
 library(ggplot2)
 
 vars <- c(
-  "log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
+  "pH", "log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
   "log_Ca_nM", "log_Mg_nM", "log_SO4_nM",
   "log_Na_nM", "log_K_nM", "log_Zn_nM", "log_Cu_nM"
 )
 
-dat_long <- dat %>%
-  select(Developed_lulc, all_of(vars)) %>%
+dat_long <- dat %>%   
+  dplyr::select(Developed_lulc, Typology, all_of(vars)) %>%        
   pivot_longer(
     cols = all_of(vars),
     names_to = "Variable",
     values_to = "Value"
   )
 
-ggplot(dat_long, aes(x = Developed_lulc, y = Value, color = Variable)) +
+dat_long$Typology <- factor(
+  dat_long$Typology,
+  levels = c("Main Stem", "PD Tribs", "P Tribs", "NP Tribs")
+)
+
+p <- ggplot(dat_long, aes(x = Developed_lulc, y = Value)) +
   
-  geom_point(alpha = 0.5) +
+  geom_point(alpha = 0.35, color = "gray50") +
   
-  geom_smooth(method = "lm", se = TRUE, color = "steelblue") +
+  geom_smooth(
+    aes(linetype = Typology, group = Typology),
+    method = "lm",
+    se = FALSE,
+    color = "black",
+    linewidth = 0.9
+  ) +
   
   facet_wrap(~ Variable, scales = "free_y") +
   
+  scale_linetype_manual(
+    values = c(
+      "Main Stem" = "solid",
+      "PD Tribs"  = "dashed",
+      "P Tribs"   = "twodash",
+      "NP Tribs"  = "dotted"
+    )
+  ) +
+  
   theme_classic(base_size = 14) +
   
-  theme(legend.position = "none")
+  labs(
+    title = "Water Chemistry vs Developed Land Cover",
+    x = "Developed land cover (%)",
+    y = NULL,
+    linetype = "Typology"
+  )
+
+p
+
+# Save
+out_dir <- "Typology_Developed_lulc Interaction"
+if (!dir.exists(out_dir)) {
+  dir.create(out_dir, recursive = TRUE)
+}
+
+ggsave(
+  filename = file.path(out_dir, "Typology_developedlulc_all.png"),
+  plot     = p,
+  width    = 15,
+  height   = 8,
+  dpi      = 300
+)
+
 ```
 
 ### Main Stem
@@ -2580,21 +2626,21 @@ library(tidyr)
 library(ggplot2)
 
 vars <- c(
-  "log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
+  "pH", "log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
   "log_Ca_nM", "log_Mg_nM", "log_SO4_nM",
   "log_Na_nM", "log_K_nM", "log_Zn_nM", "log_Cu_nM"
 )
 
 dat_long <- dat %>%
   filter(Type == "Main Stem") %>%   
-  select(Developed_lulc, all_of(vars)) %>%
+  dplyr::select(Developed_lulc, all_of(vars)) %>%
   pivot_longer(
     cols = all_of(vars),
     names_to = "Variable",
     values_to = "Value"
   )
 
-ggplot(dat_long, aes(x = Developed_lulc, y = Value, color = Variable)) +
+p1 <- ggplot(dat_long, aes(x = Developed_lulc, y = Value, color = Variable)) +
   
   geom_point(alpha = 0.5) +
   
@@ -2608,9 +2654,17 @@ ggplot(dat_long, aes(x = Developed_lulc, y = Value, color = Variable)) +
   
   labs(
     title = "Water Chemistry vs Developed Land Cover (Main Stem)",
-    x = "Developed Land Cover (%)",
-    y = "Log Concentration (nM)"
+    x = "Developed Land Cover (%)"
   )
+
+# Save
+ggsave(
+  filename = file.path(out_dir, "Typology_development_ms.png"),
+  plot     = p1,
+  width    = 10,
+  height   = 5,
+  dpi      = 300
+)
 ```
 
 ### PD Tribs
@@ -2621,21 +2675,21 @@ library(tidyr)
 library(ggplot2)
 
 vars <- c(
-  "log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
+  "pH", "log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
   "log_Ca_nM", "log_Mg_nM", "log_SO4_nM",
   "log_Na_nM", "log_K_nM", "log_Zn_nM", "log_Cu_nM"
 )
 
 dat_long <- dat %>%
   filter(Typology == "PD Tribs") %>%   
-  select(Developed_lulc, all_of(vars)) %>%
+  dplyr::select(Developed_lulc, all_of(vars)) %>%
   pivot_longer(
     cols = all_of(vars),
     names_to = "Variable",
     values_to = "Value"
   )
 
-ggplot(dat_long, aes(x = Developed_lulc, y = Value, color = Variable)) +
+p2 <- ggplot(dat_long, aes(x = Developed_lulc, y = Value, color = Variable)) +
   
   geom_point(alpha = 0.5) +
   
@@ -2649,9 +2703,29 @@ ggplot(dat_long, aes(x = Developed_lulc, y = Value, color = Variable)) +
   
   labs(
     title = "Water Chemistry vs Developed Land Cover (PD Tribs)",
-    x = "Developed Land Cover (%)",
-    y = "Log Concentration (nM)"
+    x = "Developed Land Cover (%)"
   )
+
+# Save
+ggsave(
+  filename = file.path(out_dir, "Typology_development_pdtribs.png"),
+  plot     = p2,
+  width    = 10,
+  height   = 5,
+  dpi      = 300
+)
+```
+
+Relationship of DOC and developed lulc
+
+```{r}
+library(dplyr)
+
+doc_model <- dat %>%
+  filter(Typology == "PD Tribs") %>%
+  lm(log_DOC_nM ~ Developed_lulc, data = .)
+
+summary(doc_model)
 ```
 
 ### Perennial Tribs
@@ -2662,21 +2736,21 @@ library(tidyr)
 library(ggplot2)
 
 vars <- c(
-  "log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
+  "pH", "log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
   "log_Ca_nM", "log_Mg_nM", "log_SO4_nM",
   "log_Na_nM", "log_K_nM", "log_Zn_nM", "log_Cu_nM"
 )
 
 dat_long <- dat %>%
   filter(Typology == "P Tribs") %>%   
-  select(Developed_lulc, all_of(vars)) %>%
+  dplyr::select(Developed_lulc, all_of(vars)) %>%
   pivot_longer(
     cols = all_of(vars),
     names_to = "Variable",
     values_to = "Value"
   )
 
-ggplot(dat_long, aes(x = Developed_lulc, y = Value, color = Variable)) +
+p3 <- ggplot(dat_long, aes(x = Developed_lulc, y = Value, color = Variable)) +
   
   geom_point(alpha = 0.5) +
   
@@ -2690,9 +2764,17 @@ ggplot(dat_long, aes(x = Developed_lulc, y = Value, color = Variable)) +
   
   labs(
     title = "Water Chemistry vs Developed Land Cover (P Tribs)",
-    x = "Developed Land Cover (%)",
-    y = "Log Concentration (nM)"
+    x = "Developed Land Cover (%)"
   )
+
+# Save
+ggsave(
+  filename = file.path(out_dir, "Typology_development_ptribs.png"),
+  plot     = p3,
+  width    = 10,
+  height   = 5,
+  dpi      = 300
+)
 ```
 
 ### NP Tribs
@@ -2703,21 +2785,21 @@ library(tidyr)
 library(ggplot2)
 
 vars <- c(
-  "log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
+  "pH", "log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
   "log_Ca_nM", "log_Mg_nM", "log_SO4_nM",
   "log_Na_nM", "log_K_nM", "log_Zn_nM", "log_Cu_nM"
 )
 
 dat_long <- dat %>%
   filter(Typology == "NP Tribs") %>%   
-  select(Developed_lulc, all_of(vars)) %>%
+  dplyr::select(Developed_lulc, all_of(vars)) %>%
   pivot_longer(
     cols = all_of(vars),
     names_to = "Variable",
     values_to = "Value"
   )
 
-ggplot(dat_long, aes(x = Developed_lulc, y = Value, color = Variable)) +
+p4 <- ggplot(dat_long, aes(x = Developed_lulc, y = Value, color = Variable)) +
   
   geom_point(alpha = 0.5) +
   
@@ -2731,9 +2813,17 @@ ggplot(dat_long, aes(x = Developed_lulc, y = Value, color = Variable)) +
   
   labs(
     title = "Water Chemistry vs Developed Land Cover (NP Tribs)",
-    x = "Developed Land Cover (%)",
-    y = "Log Concentration (nM)"
+    x = "Developed Land Cover (%)"
   )
+
+# Save
+ggsave(
+  filename = file.path(out_dir, "Typology_development_nptribs.png"),
+  plot     = p4,
+  width    = 10,
+  height   = 5,
+  dpi      = 300
+)
 ```
 
 ## Interaction of Typology and Time
@@ -2745,13 +2835,13 @@ library(purrr)
 library(broom)
 
 vars <- c(
-  "log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
+  "pH", "log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
   "log_Ca_nM", "log_Mg_nM", "log_SO4_nM",
   "log_Na_nM", "log_K_nM", "log_Zn_nM", "log_Cu_nM"
 )
 
 dat_long <- dat %>%
-  select(Date, Typology, all_of(vars)) %>%
+  dplyr::select(Date, Typology, all_of(vars)) %>%
   pivot_longer(
     cols = all_of(vars),
     names_to = "Variable",
@@ -2775,10 +2865,30 @@ interaction_results <- model_results %>%
     term == "Date" |
     grepl("Date:Typology", term)
   ) %>%
-  select(Variable, term, estimate, p.value) %>%
+  dplyr::select(Variable, term, estimate, p.value) %>%
   mutate(
     significant = p.value < 0.05
   )
+
+# Save
+out_dir <- "Typology_Date Interaction"
+if (!dir.exists(out_dir)) {
+  dir.create(out_dir, recursive = TRUE)
+}
+
+library(openxlsx)
+
+wb <- createWorkbook()
+
+addWorksheet(wb, "Interaction_Results")
+
+writeData(wb, "Interaction_Results", interaction_results)
+
+saveWorkbook(
+  wb,
+  file = file.path(out_dir, "interaction_results.xlsx"),
+  overwrite = TRUE
+)
 ```
 
 All sites
@@ -2789,40 +2899,68 @@ library(tidyr)
 library(ggplot2)
 
 vars <- c(
-  "pH","log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
+  "pH", "log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
   "log_Ca_nM", "log_Mg_nM", "log_SO4_nM",
   "log_Na_nM", "log_K_nM", "log_Zn_nM", "log_Cu_nM"
 )
 
 dat_long <- dat %>%   
-  select(Date, all_of(vars)) %>%        
+  dplyr::select(Date, Typology, all_of(vars)) %>%        
   pivot_longer(
     cols = all_of(vars),
     names_to = "Variable",
     values_to = "Value"
   )
 
-ggplot(dat_long, aes(x = Date, y = Value, color = Variable)) +
+dat_long$Typology <- factor(
+  dat_long$Typology,
+  levels = c("Main Stem", "PD Tribs", "P Tribs", "NP Tribs")
+)
+
+a <- ggplot(dat_long, aes(x = Date, y = Value)) +
   
-  geom_point(alpha = 0.4) +
+  # points in neutral color
+  geom_point(alpha = 0.35, color = "gray50") +
   
+  # one loess trendline per typology
   geom_smooth(
-    method = "loess",   
+    aes(linetype = Typology, group = Typology),
+    method = "loess",
     se = FALSE,
-    color = "steelblue"
+    color = "black",
+    linewidth = 0.9
   ) +
   
   facet_wrap(~ Variable, scales = "free_y") +
   
-  theme_classic(base_size = 14) +
+  scale_linetype_manual(
+    values = c(
+      "Main Stem" = "solid",
+      "PD Tribs" = "dashed",
+      "P Tribs" = "twodash",
+      "NP Tribs" = "dotted"
+    )
+  ) +
   
-  theme(legend.position = "none") +
+  theme_classic(base_size = 14) +
   
   labs(
     title = "Water Chemistry Over Time",
     x = "Date",
-    y = "Log Concentration (nM)"
+    y = NULL,
+    linetype = "Typology"
   )
+
+a
+
+# Save
+ggsave(
+  filename = file.path(out_dir, "Typology_date_all.png"),
+  plot     = a,
+  width    = 15,
+  height   = 8,
+  dpi      = 300
+)
 ```
 
 ### Main Stem
@@ -2840,14 +2978,14 @@ vars <- c(
 
 dat_long <- dat %>%
   filter(Typology == "Main Stem") %>%   
-  select(Date, all_of(vars)) %>%        
+  dplyr::select(Date, all_of(vars)) %>%        
   pivot_longer(
     cols = all_of(vars),
     names_to = "Variable",
     values_to = "Value"
   )
 
-ggplot(dat_long, aes(x = Date, y = Value, color = Variable)) +
+a1 <- ggplot(dat_long, aes(x = Date, y = Value, color = Variable)) +
   
   geom_point(alpha = 0.4) +
   
@@ -2865,9 +3003,17 @@ ggplot(dat_long, aes(x = Date, y = Value, color = Variable)) +
   
   labs(
     title = "Water Chemistry Over Time (Main Stem)",
-    x = "Date",
-    y = "Log Concentration (nM)"
+    x = "Date"
   )
+
+# Save
+ggsave(
+  filename = file.path(out_dir, "Typology_date_ms.png"),
+  plot     = a1,
+  width    = 15,
+  height   = 8,
+  dpi      = 300
+)
 ```
 
 ### PD Tribs
@@ -2885,14 +3031,14 @@ vars <- c(
 
 dat_long <- dat %>%
   filter(Typology == "PD Tribs") %>%   
-  select(Date, all_of(vars)) %>%        
+  dplyr::select(Date, all_of(vars)) %>%        
   pivot_longer(
     cols = all_of(vars),
     names_to = "Variable",
     values_to = "Value"
   )
 
-ggplot(dat_long, aes(x = Date, y = Value, color = Variable)) +
+a2 <- ggplot(dat_long, aes(x = Date, y = Value, color = Variable)) +
   
   geom_point(alpha = 0.4) +
   
@@ -2910,9 +3056,17 @@ ggplot(dat_long, aes(x = Date, y = Value, color = Variable)) +
   
   labs(
     title = "Water Chemistry Over Time (PD Tribs)",
-    x = "Date",
-    y = "Log Concentration (nM)"
+    x = "Date"
   )
+
+# Save
+ggsave(
+  filename = file.path(out_dir, "Typology_date_pdtribs.png"),
+  plot     = a2,
+  width    = 15,
+  height   = 8,
+  dpi      = 300
+)
 ```
 
 ### P Tribs
@@ -2930,14 +3084,14 @@ vars <- c(
 
 dat_long <- dat %>%
   filter(Typology == "P Tribs") %>%   
-  select(Date, all_of(vars)) %>%        
+  dplyr::select(Date, all_of(vars)) %>%        
   pivot_longer(
     cols = all_of(vars),
     names_to = "Variable",
     values_to = "Value"
   )
 
-ggplot(dat_long, aes(x = Date, y = Value, color = Variable)) +
+a3 <- ggplot(dat_long, aes(x = Date, y = Value, color = Variable)) +
   
   geom_point(alpha = 0.4) +
   
@@ -2955,9 +3109,17 @@ ggplot(dat_long, aes(x = Date, y = Value, color = Variable)) +
   
   labs(
     title = "Water Chemistry Over Time (P Tribs)",
-    x = "Date",
-    y = "Log Concentration (nM)"
+    x = "Date"
   )
+
+# Save
+ggsave(
+  filename = file.path(out_dir, "Typology_date_ptribs.png"),
+  plot     = a3,
+  width    = 15,
+  height   = 8,
+  dpi      = 300
+)
 ```
 
 ### NP Tribs
@@ -2975,14 +3137,14 @@ vars <- c(
 
 dat_long <- dat %>%
   filter(Typology == "NP Tribs") %>%   
-  select(Date, all_of(vars)) %>%        
+  dplyr::select(Date, all_of(vars)) %>%        
   pivot_longer(
     cols = all_of(vars),
     names_to = "Variable",
     values_to = "Value"
   )
 
-ggplot(dat_long, aes(x = Date, y = Value, color = Variable)) +
+a4 <- ggplot(dat_long, aes(x = Date, y = Value, color = Variable)) +
   
   geom_point(alpha = 0.4) +
   
@@ -3000,7 +3162,15 @@ ggplot(dat_long, aes(x = Date, y = Value, color = Variable)) +
   
   labs(
     title = "Water Chemistry Over Time (NP Tribs)",
-    x = "Date",
-    y = "Log Concentration (nM)"
+    x = "Date"
   )
+
+# Save
+ggsave(
+  filename = file.path(out_dir, "Typology_date_nptribs.png"),
+  plot     = a4,
+  width    = 15,
+  height   = 8,
+  dpi      = 300
+)
 ```
