@@ -1,0 +1,94 @@
+---
+title: "Adding typological clustering variables"
+author: "Cecilia Albert-Black"
+output:
+  html_document:
+    self_contained: true
+    output_file: "Data_analysis_Cu_BLM.html"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.show = "hide", fig.keep = "none")
+```
+
+The objectives of this notebook will be to conduct statistical analyses of the Bioavailability Master Spreadsheet Clean version 2 assuming baseline BLM assumptions (HA 10% Closed System).
+
+First, set the working directory
+
+```{r}
+setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/5. Cluster analysis")
+```
+
+# Identifying Stream Typologies
+
+Since this was already done in the Stat analysis Rmd in the Zinc folder, we just need to merge the column Typology from the dataset in that folder with this one
+
+```{r}
+library(readxl)
+
+dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/4. Exploratory data analysis/Bioavailability_Master_Spreadsheet_Clean2.xlsx", 
+    sheet = "HA 10% Closed System")
+
+head(dat)
+```
+
+First, omit pooled samples
+
+```{r}
+library(dplyr)
+
+dat <- dat %>%
+  filter(Flow_state != "Pooled")
+
+str(dat$Flow_state)
+```
+
+Upload the Zinc Bioavailability_Master_Spreadsheet_Clean3.xlsx and ensure Typology and Typology2 exists
+
+```{r}
+zn_dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/5. Cluster analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx", 
+    sheet = "HA 10% Closed System")
+
+str(zn_dat$Typology)
+str(zn_dat$Typology2)
+```
+
+Merge the Typology and Typology2 columns to dat by Sample_ID
+
+```{r}
+library(dplyr)
+
+dat <- dat %>%
+  left_join(
+    zn_dat %>%
+      dplyr::select(Sample_ID, Typology),
+    by = "Sample_ID"
+  ) %>%
+  left_join(
+    zn_dat %>%
+      dplyr::select(Sample_ID, Typology2),
+    by = "Sample_ID"
+  )
+
+# Check
+str(dat$Typology)
+str(dat$Typology2)
+```
+
+Save to Bioavailability_Master_Spreadsheet_Clean3.xlsx to this working directory
+
+```{r}
+library(openxlsx)
+
+# 1. Create a brand-new workbook
+wb <- createWorkbook()
+
+# 2. Add your sheet
+addWorksheet(wb, "HA 10% Closed System")
+
+# 3. Write your updated dat to the sheet
+writeData(wb, sheet = "HA 10% Closed System", dat)
+
+# 4. Save — overwrite the entire file
+saveWorkbook(wb, "Bioavailability_Master_Spreadsheet_Clean3.xlsx", overwrite = TRUE)
+```

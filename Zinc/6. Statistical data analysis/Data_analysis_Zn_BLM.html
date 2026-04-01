@@ -359,13 +359,14 @@ display: none;
 analyses of the Bioavailability Master Spreadsheet Clean version 2
 assuming baseline BLM assumptions (HA 10% Closed System).</p>
 <p>First, set the working directory</p>
-<pre class="r"><code>setwd(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt&quot;)</code></pre>
+<pre class="r"><code>setwd(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/6. Statistical data analysis&quot;)</code></pre>
 <p>Import dataset</p>
 <pre class="r"><code>library(readxl)
-dat &lt;- read_excel(&quot;Bioavailability_Master_Spreadsheet_Clean3.xlsx&quot;)
+
+dat &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/5. Cluster analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx&quot;)
 
 head(dat)</code></pre>
-<pre><code>## # A tibble: 6 × 291
+<pre><code>## # A tibble: 6 × 293
 ##   Sample_ID Site    Date                Regime    Flow_state Network Elevation_m
 ##   &lt;chr&gt;     &lt;chr&gt;   &lt;dttm&gt;              &lt;chr&gt;     &lt;chr&gt;      &lt;chr&gt;         &lt;dbl&gt;
 ## 1 WaDE_62   MTN1.1  2023-06-23 00:00:00 NonPeren… Flowing    MTN            248.
@@ -374,7 +375,7 @@ head(dat)</code></pre>
 ## 4 WaDE_66   MCA3.3  2023-06-23 00:00:00 NonPeren… Flowing    MCA            280.
 ## 5 WaDE_67   MCA3.2  2023-06-23 00:00:00 NonPeren… Flowing    MCA            275.
 ## 6 WaDE_68   MCA4    2023-06-23 00:00:00 Perennial Flowing    MCA            261.
-## # ℹ 284 more variables: Relative_elevation_m &lt;dbl&gt;,
+## # ℹ 286 more variables: Relative_elevation_m &lt;dbl&gt;,
 ## #   Upstream_from_main_stem_km &lt;dbl&gt;, Developed_lulc &lt;dbl&gt;, Type &lt;chr&gt;,
 ## #   Development &lt;chr&gt;, Relative_elevation &lt;chr&gt;, pH &lt;dbl&gt;, Temp_C &lt;dbl&gt;,
 ## #   DOC_uM &lt;dbl&gt;, Ca_uM &lt;dbl&gt;, Mg_uM &lt;dbl&gt;, Na_uM &lt;dbl&gt;, K_uM &lt;dbl&gt;,
@@ -518,9 +519,10 @@ form_std &lt;- reformulate(vars_to_select_std, response = response_std)
 
 # 1. Full MLR
 full_mod &lt;- lm(form_std, data = std_vars)
+full_mod_summary &lt;- summary(full_mod)
 
 # 2. Estimates (standardized partial slopes) + p-values
-coef_table &lt;- summary(full_mod)$coefficients
+coef_table &lt;- full_mod_summary$coefficients
 
 est_df &lt;- data.frame(
   Predictor = rownames(coef_table),
@@ -564,14 +566,42 @@ final_table</code></pre>
 ## 9          pH_std  0.171555959  1.744276e-25  1.452898    0.016106657
 ## 10 log_Temp_C_std -0.045902911  9.682067e-04  1.204339    0.013277262
 ## 11 log_SO4_nM_std  0.028618358  2.595611e-01  4.066294    0.008431821</code></pre>
-<pre class="r"><code># 6. Save
-library(openxlsx)
+<pre class="r"><code># 6. Create full coefficient table for separate Excel sheet
+coef_tab &lt;- as.data.frame(full_mod_summary$coefficients)
+coef_tab$Predictor &lt;- rownames(coef_tab)
+coef_tab &lt;- coef_tab %&gt;%
+  relocate(Predictor)
 
+# 7. Create model summary table for separate Excel sheet
+model_stats &lt;- data.frame(
+  Metric = c(
+    &quot;Residual standard error&quot;,
+    &quot;R-squared&quot;,
+    &quot;Adjusted R-squared&quot;,
+    &quot;F-statistic&quot;,
+    &quot;Numerator df&quot;,
+    &quot;Denominator df&quot;
+  ),
+  Value = c(
+    full_mod_summary$sigma,
+    full_mod_summary$r.squared,
+    full_mod_summary$adj.r.squared,
+    unname(full_mod_summary$fstatistic[&quot;value&quot;]),
+    unname(full_mod_summary$fstatistic[&quot;numdf&quot;]),
+    unname(full_mod_summary$fstatistic[&quot;dendf&quot;])
+  )
+)
+
+# 8. Save workbook
 out_dir &lt;- &quot;Multiple linear regression&quot;
 dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
 
 write.xlsx(
-  final_table,
+  list(
+    Final_Table = final_table,
+    Full_Model_Coefficients = coef_tab,
+    Full_Model_Summary = model_stats
+  ),
   file = file.path(out_dir, &quot;MLR.xlsx&quot;),
   overwrite = TRUE
 )</code></pre>
@@ -662,7 +692,7 @@ ggsave(
 <pre><code>## `geom_smooth()` using formula = &#39;y ~ x&#39;</code></pre>
 </div>
 <div id="outlier-detection" class="section level2">
-<h2>5. Outlier detection</h2>
+<h2>4. Outlier detection</h2>
 <pre class="r"><code># 1. Get model diagnostics
 model_diag &lt;- influence.measures(full_mod)
 
@@ -798,8 +828,8 @@ flagged_obs_clusters</code></pre>
 <pre><code>##             Value n.x prop_flagged n.y prop_overall
 ## 1       Main Stem   6   0.23076923 127  0.356741573
 ## 2        NP Tribs  10   0.38461538  14  0.039325843
-## 3         P Tribs   9   0.34615385  98  0.275280899
-## 4        PD Tribs   1   0.03846154 117  0.328651685
+## 3         P Tribs   9   0.34615385  93  0.261235955
+## 4        PD Tribs   1   0.03846154 122  0.342696629
 ## 5          BSL3.2   1   0.03846154  11  0.030898876
 ## 6          BSL3.3   1   0.03846154  10  0.028089888
 ## 7          BSL5.1   1   0.03846154   1  0.002808989
@@ -840,68 +870,105 @@ writeData(
 saveWorkbook(wb, file_path, overwrite = TRUE)</code></pre>
 </div>
 <div id="simple-mlr" class="section level2">
-<h2>6. Simple MLR</h2>
+<h2>5. Simple MLR</h2>
 <p>Here we test whether a simple mechanistic model (top 3 predictors
-from the full model) can perform nearly as well as your full chemistry
+from the full model) can perform as well as your full chemistry
 model</p>
 <pre class="r"><code># Build a simplified MLR
+
+library(dplyr)
+library(openxlsx)
 
 # ------------------------------------------------------------
 # 1. Define simplified predictor set
 # ------------------------------------------------------------
 simple_vars &lt;- c(&quot;log_Zn_nM&quot;, &quot;log_DOC_nM&quot;, &quot;log_Ca_nM&quot;)
-simple_vars_std &lt;- paste0(simple_vars, &quot;_std&quot;)
 
-# Model formula
+# ------------------------------------------------------------
+# 2. Standardize response + simplified predictors
+# ------------------------------------------------------------
+simple_std_vars &lt;- dat %&gt;%
+  dplyr::select(log_TBL_Zn_nmol_g, all_of(simple_vars)) %&gt;%
+  mutate(across(everything(), as.numeric)) %&gt;%
+  mutate(across(everything(), ~ as.numeric(scale(.x)), .names = &quot;{.col}_std&quot;)) %&gt;%
+  dplyr::select(ends_with(&quot;_std&quot;)) %&gt;%
+  as.data.frame()
+
+# Standardized variable names
+simple_vars_std &lt;- paste0(simple_vars, &quot;_std&quot;)
+response_std &lt;- &quot;log_TBL_Zn_nmol_g_std&quot;
+
+# ------------------------------------------------------------
+# 3. Model formula
+# ------------------------------------------------------------
 form_simple &lt;- reformulate(simple_vars_std, response = response_std)
 
 # ------------------------------------------------------------
-# 2. Fit simplified MLR
+# 4. Fit simplified MLR
 # ------------------------------------------------------------
-simple_mod &lt;- lm(form_simple, data = std_vars)
+simple_mod &lt;- lm(form_simple, data = simple_std_vars)
+simple_mod_summary &lt;- summary(simple_mod)
 
-summary(simple_mod)</code></pre>
-<pre><code>## 
-## Call:
-## lm(formula = form_simple, data = std_vars)
-## 
-## Residuals:
-##      Min       1Q   Median       3Q      Max 
-## -1.41467 -0.14053 -0.02402  0.15040  1.32191 
-## 
-## Coefficients:
-##                  Estimate Std. Error t value Pr(&gt;|t|)    
-## (Intercept)    -7.928e-17  1.585e-02    0.00        1    
-## log_Zn_nM_std   9.044e-01  1.645e-02   54.98   &lt;2e-16 ***
-## log_DOC_nM_std -4.374e-01  1.639e-02  -26.69   &lt;2e-16 ***
-## log_Ca_nM_std  -3.878e-01  1.608e-02  -24.12   &lt;2e-16 ***
-## ---
-## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
-## 
-## Residual standard error: 0.299 on 352 degrees of freedom
-## Multiple R-squared:  0.9113, Adjusted R-squared:  0.9106 
-## F-statistic:  1206 on 3 and 352 DF,  p-value: &lt; 2.2e-16</code></pre>
-<p>Compare predictive ability</p>
-<pre class="r"><code># Function to extract metrics
-get_metrics &lt;- function(model, name) {
-  data.frame(
-    Model = name,
-    R2 = summary(model)$r.squared,
-    Adj_R2 = summary(model)$adj.r.squared,
-    RMSE = sqrt(mean(residuals(model)^2)),
-    AIC = AIC(model)
+# ------------------------------------------------------------
+# 5. Coefficients table
+# ------------------------------------------------------------
+coef_tab &lt;- as.data.frame(simple_mod_summary$coefficients)
+coef_tab$Term &lt;- rownames(coef_tab)
+coef_tab &lt;- coef_tab %&gt;%
+  dplyr::relocate(Term)
+
+coef_tab</code></pre>
+<pre><code>##                          Term      Estimate Std. Error       t value
+## (Intercept)       (Intercept) -7.928310e-17 0.01584738 -5.002915e-15
+## log_Zn_nM_std   log_Zn_nM_std  9.044235e-01 0.01644902  5.498342e+01
+## log_DOC_nM_std log_DOC_nM_std -4.374006e-01 0.01638565 -2.669413e+01
+## log_Ca_nM_std   log_Ca_nM_std -3.877683e-01 0.01607833 -2.411745e+01
+##                     Pr(&gt;|t|)
+## (Intercept)     1.000000e+00
+## log_Zn_nM_std  7.302210e-175
+## log_DOC_nM_std  1.328269e-86
+## log_Ca_nM_std   1.477015e-76</code></pre>
+<pre class="r"><code># ------------------------------------------------------------
+# 6. Model stats
+# ------------------------------------------------------------
+model_stats &lt;- data.frame(
+  Metric = c(
+    &quot;Residual standard error&quot;,
+    &quot;R-squared&quot;,
+    &quot;Adjusted R-squared&quot;,
+    &quot;F-statistic&quot;,
+    &quot;Numerator df&quot;,
+    &quot;Denominator df&quot;
+  ),
+  Value = c(
+    simple_mod_summary$sigma,
+    simple_mod_summary$r.squared,
+    simple_mod_summary$adj.r.squared,
+    unname(simple_mod_summary$fstatistic[&quot;value&quot;]),
+    unname(simple_mod_summary$fstatistic[&quot;numdf&quot;]),
+    unname(simple_mod_summary$fstatistic[&quot;dendf&quot;])
   )
-}
+)
 
-metrics_full   &lt;- get_metrics(full_mod, &quot;Full Model&quot;)
-metrics_simple &lt;- get_metrics(simple_mod, &quot;Simple Model&quot;)
-
-model_comparison &lt;- bind_rows(metrics_full, metrics_simple)
-
-model_comparison</code></pre>
-<pre><code>##          Model        R2    Adj_R2      RMSE        AIC
-## 1   Full Model 0.9456705 0.9439332 0.2327593  -1.633965
-## 2 Simple Model 0.9113499 0.9105943 0.2973233 156.674278</code></pre>
+model_stats</code></pre>
+<pre><code>##                    Metric        Value
+## 1 Residual standard error    0.2990078
+## 2               R-squared    0.9113499
+## 3      Adjusted R-squared    0.9105943
+## 4             F-statistic 1206.2217142
+## 5            Numerator df    3.0000000
+## 6          Denominator df  352.0000000</code></pre>
+<pre class="r"><code># ------------------------------------------------------------
+# 7. Save
+# ------------------------------------------------------------
+write.xlsx(
+  list(
+    Coefficients = coef_tab,
+    Model_Summary = model_stats
+  ),
+  file = file.path(out_dir, &quot;Simple_MLR.xlsx&quot;),
+  overwrite = TRUE
+)</code></pre>
 </div>
 </div>
 <div id="assessing-variables-by-typology" class="section level1">
@@ -950,15 +1017,15 @@ summary_table</code></pre>
 <pre><code>## # A tibble: 1,124 × 7
 ##    Variable      Typology      Mean   Median     Mode Variance       SE
 ##    &lt;chr&gt;         &lt;chr&gt;        &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;
-##  1 BL_Ca_mol_kg  Main Stem 3.98e-10 3.95e-10 4.20e-10 3.19e-22 1.58e-12
+##  1 BL_Ca_mol_kg  Main Stem 3.98e-10 3.96e-10 4.21e-10 3.37e-22 1.63e-12
 ##  2 BL_Ca_mol_kg  NP Tribs  1.70e-10 1.88e-10 2.08e-10 4.32e-21 1.76e-11
-##  3 BL_Ca_mol_kg  P Tribs   3.68e-10 3.80e-10 2.56e-10 2.20e-21 4.74e-12
-##  4 BL_Ca_mol_kg  PD Tribs  3.91e-10 3.94e-10 4.15e-10 7.32e-22 2.50e-12
-##  5 BL_Ca_nmol_g  Main Stem 3.98e- 4 3.95e- 4 4.20e- 4 3.19e-10 1.58e- 6
+##  3 BL_Ca_mol_kg  P Tribs   3.67e-10 3.79e-10 4.20e-10 2.23e-21 4.90e-12
+##  4 BL_Ca_mol_kg  PD Tribs  3.91e-10 3.94e-10 4.15e-10 7.21e-22 2.43e-12
+##  5 BL_Ca_nmol_g  Main Stem 3.98e- 4 3.96e- 4 4.21e- 4 3.37e-10 1.63e- 6
 ##  6 BL_Ca_nmol_g  NP Tribs  1.70e- 4 1.88e- 4 2.08e- 4 4.32e- 9 1.76e- 5
-##  7 BL_Ca_nmol_g  P Tribs   3.68e- 4 3.80e- 4 2.56e- 4 2.20e- 9 4.74e- 6
-##  8 BL_Ca_nmol_g  PD Tribs  3.91e- 4 3.94e- 4 4.15e- 4 7.32e-10 2.50e- 6
-##  9 BL_Ca_nmol_kg Main Stem 3.98e- 1 3.95e- 1 4.20e- 1 3.19e- 4 1.58e- 3
+##  7 BL_Ca_nmol_g  P Tribs   3.67e- 4 3.79e- 4 4.20e- 4 2.23e- 9 4.90e- 6
+##  8 BL_Ca_nmol_g  PD Tribs  3.91e- 4 3.94e- 4 4.15e- 4 7.21e-10 2.43e- 6
+##  9 BL_Ca_nmol_kg Main Stem 3.98e- 1 3.96e- 1 4.21e- 1 3.37e- 4 1.63e- 3
 ## 10 BL_Ca_nmol_kg NP Tribs  1.70e- 1 1.88e- 1 2.08e- 1 4.32e- 3 1.76e- 2
 ## # ℹ 1,114 more rows</code></pre>
 <p>Export to excel</p>
@@ -988,14 +1055,367 @@ saveWorkbook(wb, file_path, overwrite = TRUE)</code></pre>
 </div>
 <div id="check-of-anova-assumptions" class="section level2">
 <h2>2. Check of ANOVA Assumptions</h2>
-<p>To determine whether variables significantly differ by typology, we
-could use a parametric ANOVA which assumes variables are normally
-distributed and have homogeneity of variance by typology. We already
-determined that most variables were not normally distributed, even after
-log-transforming them. Now we will assess homogeneity of variance by
-typology.</p>
-<div id="a.-homogeneity-of-variance" class="section level3">
-<h3>a. Homogeneity of Variance</h3>
+<div id="a.-normality" class="section level3">
+<h3>a. Normality</h3>
+<pre class="r"><code>library(dplyr)
+library(writexl)
+
+# Set alpha for normality
+alpha &lt;- 0.05
+
+# Identify numeric variables (same as before)
+numeric_vars &lt;- dat %&gt;%
+  dplyr::select(where(is.numeric)) %&gt;%
+  names()
+
+# Initialize results dataframe
+shapiro_results &lt;- data.frame(
+  Variable = character(),
+  W_statistic = numeric(),
+  p_value = numeric(),
+  Normal = logical(),
+  stringsAsFactors = FALSE
+)
+
+# Loop over variables
+for (var in numeric_vars) {
+  
+  # Remove NA values (required for Shapiro test)
+  x &lt;- dat[[var]]
+  x &lt;- x[!is.na(x)]
+  
+  # Shapiro test only works for 3 &lt;= n &lt;= 5000
+  if (length(x) &gt;= 3 &amp;&amp; length(x) &lt;= 5000) {
+    
+    test &lt;- shapiro.test(x)
+    
+    W_val &lt;- test$statistic
+    p_val &lt;- test$p.value
+    
+    normal &lt;- p_val &gt; alpha
+    
+  } else {
+    # If sample size invalid, return NA
+    W_val &lt;- NA
+    p_val &lt;- NA
+    normal &lt;- NA
+  }
+  
+  # Append results
+  shapiro_results &lt;- rbind(
+    shapiro_results,
+    data.frame(
+      Variable = var,
+      W_statistic = W_val,
+      p_value = p_val,
+      Normal = normal
+    )
+  )
+}
+
+# View results
+shapiro_results</code></pre>
+<pre><code>##                            Variable W_statistic      p_value Normal
+## W                       Elevation_m  0.95238141 2.557238e-09  FALSE
+## W1             Relative_elevation_m  0.65305416 2.729738e-26  FALSE
+## W2       Upstream_from_main_stem_km  0.84177821 1.892292e-18  FALSE
+## W3                   Developed_lulc  0.86659645 6.091459e-17  FALSE
+## W4                               pH  0.96588489 2.160952e-07  FALSE
+## W5                           Temp_C  0.97210227 2.346452e-06  FALSE
+## W6                           DOC_uM  0.72214439 6.372144e-24  FALSE
+## W7                            Ca_uM  0.95224195 2.453064e-09  FALSE
+## W8                            Mg_uM  0.98368644 4.693157e-04  FALSE
+## W9                            Na_uM  0.84090706 1.687741e-18  FALSE
+## W10                            K_uM  0.79461021 6.856268e-21  FALSE
+## W11                          SO4_uM  0.87151269 1.279827e-16  FALSE
+## W12                           Cl_uM  0.86582746 5.433326e-17  FALSE
+## W13                          DIC_uM  0.96629121 2.506057e-07  FALSE
+## W14                           Zn_uM  0.77618053 9.916199e-22  FALSE
+## W15                           Cu_uM  0.48045861 6.689658e-31  FALSE
+## W16                       Free_Zn_M  0.79032129 4.322613e-21  FALSE
+## W17                          ZnOH_M  0.34962197 1.230991e-33  FALSE
+## W18                       Zn_OH_2_M  0.13323290 2.600671e-37  FALSE
+## W19                         ZnCO3_M  0.40866111 1.836518e-32  FALSE
+## W20                        ZnHCO3_M  0.83674024 9.826478e-19  FALSE
+## W21                         ZnSO4_M  0.73201687 1.509497e-23  FALSE
+## W22                          ZnCl_M  0.62987750 5.298655e-27  FALSE
+## W23                           ZnS_M  0.17786047 1.277752e-36  FALSE
+## W24                       TOrg_Zn_M  0.76043749 2.086805e-22  FALSE
+## W25                    BL_Zn_mol_kg  0.52952088 9.875603e-30  FALSE
+## W26                    BL_Ca_mol_kg  0.71198308 2.687267e-24  FALSE
+## W27                     BL_H_mol_kg  0.26549973 3.615388e-35  FALSE
+## W28                    BL_Mg_mol_kg  0.99389988 1.634528e-01   TRUE
+## W29                    BL_Na_mol_kg  0.83419508 7.097014e-19  FALSE
+## W30                  BL_ZnOH_mol_kg  0.40209571 1.345657e-32  FALSE
+## W31                          HCO3_M  0.96635383 2.564165e-07  FALSE
+## W32                        H2_CO3_M  0.74857287 6.782268e-23  FALSE
+## W33                            HS_M  0.13560774 2.825764e-37  FALSE
+## W34                           H2S_M  0.11820798 1.544738e-37  FALSE
+## W35                        MgHCO3_M  0.98588718 1.511639e-03  FALSE
+## W36                         MgCO3_M  0.31767992 3.094716e-34  FALSE
+## W37                         MgSO4_M  0.79307182 5.805891e-21  FALSE
+## W38                        CaHCO3_M  0.98349517 4.251351e-04  FALSE
+## W39                         CaCO3_M  0.33895937 7.717907e-34  FALSE
+## W40                         CaSO4_M  0.88484732 1.068336e-15  FALSE
+## W41                        TOrg_H_M  0.51139821 3.563525e-30  FALSE
+## W42                       TOrg_Ca_M  0.77348735 7.551776e-22  FALSE
+## W43                       TOrg_Mg_M  0.71412351 3.216926e-24  FALSE
+## W44                       TOrg_Na_M  0.47305615 4.536475e-31  FALSE
+## W45                        TOrg_K_M  0.09202475 6.339127e-38  FALSE
+## W46                Zn_chronic_tox_M  0.93891592 6.266230e-11  FALSE
+## W47                  Zn_acute_tox_M  0.99316620 1.058067e-01   TRUE
+## W48                           DOC_M  0.72214439 6.372144e-24  FALSE
+## W49                          DOC_nM  0.72214439 6.372144e-24  FALSE
+## W50                            Ca_M  0.95224195 2.453064e-09  FALSE
+## W51                           Ca_nM  0.95224195 2.453064e-09  FALSE
+## W52                            Mg_M  0.98368644 4.693157e-04  FALSE
+## W53                           Mg_nM  0.98368644 4.693157e-04  FALSE
+## W54                            Na_M  0.84090706 1.687741e-18  FALSE
+## W55                           Na_nM  0.84090706 1.687741e-18  FALSE
+## W56                             K_M  0.79461021 6.856268e-21  FALSE
+## W57                            K_nM  0.79461021 6.856268e-21  FALSE
+## W58                           SO4_M  0.87151269 1.279827e-16  FALSE
+## W59                          SO4_nM  0.87151269 1.279827e-16  FALSE
+## W60                            Cl_M  0.86582746 5.433326e-17  FALSE
+## W61                           Cl_nM  0.86582746 5.433326e-17  FALSE
+## W62                           DIC_M  0.96629121 2.506057e-07  FALSE
+## W63                          DIC_nM  0.96629121 2.506057e-07  FALSE
+## W64                            Zn_M  0.77618053 9.916199e-22  FALSE
+## W65                           Zn_nM  0.77618053 9.916199e-22  FALSE
+## W66                            Cu_M  0.48045861 6.689658e-31  FALSE
+## W67                           Cu_nM  0.48045861 6.689658e-31  FALSE
+## W68                      Free_Zn_uM  0.79032129 4.322613e-21  FALSE
+## W69                      Free_Zn_nM  0.79032129 4.322613e-21  FALSE
+## W70                         ZnOH_uM  0.34962197 1.230991e-33  FALSE
+## W71                         ZnOH_nM  0.34962197 1.230991e-33  FALSE
+## W72                      Zn_OH_2_uM  0.13323290 2.600671e-37  FALSE
+## W73                      Zn_OH_2_nM  0.13323290 2.600671e-37  FALSE
+## W74                        ZnCO3_uM  0.40866111 1.836518e-32  FALSE
+## W75                        ZnCO3_nM  0.40866111 1.836518e-32  FALSE
+## W76                       ZnHCO3_uM  0.83674024 9.826478e-19  FALSE
+## W77                       ZnHCO3_nM  0.83674024 9.826478e-19  FALSE
+## W78                        ZnSO4_uM  0.73201687 1.509497e-23  FALSE
+## W79                        ZnSO4_nM  0.73201687 1.509497e-23  FALSE
+## W80                         ZnCl_uM  0.62987750 5.298655e-27  FALSE
+## W81                         ZnCl_nM  0.62987750 5.298655e-27  FALSE
+## W82                          ZnS_uM  0.17786047 1.277752e-36  FALSE
+## W83                          ZnS_nM  0.17786047 1.277752e-36  FALSE
+## W84                      TOrg_Zn_uM  0.76043749 2.086805e-22  FALSE
+## W85                      TOrg_Zn_nM  0.76043749 2.086805e-22  FALSE
+## W86                         HCO3_uM  0.96635383 2.564165e-07  FALSE
+## W87                         HCO3_nM  0.96635383 2.564165e-07  FALSE
+## W88                       H2_CO3_uM  0.74857287 6.782268e-23  FALSE
+## W89                       H2_CO3_nM  0.74857287 6.782268e-23  FALSE
+## W90                           HS_uM  0.13560774 2.825764e-37  FALSE
+## W91                           HS_nM  0.13560774 2.825764e-37  FALSE
+## W92                          H2S_uM  0.11820798 1.544738e-37  FALSE
+## W93                          H2S_nM  0.11820798 1.544738e-37  FALSE
+## W94                       MgHCO3_uM  0.98588718 1.511639e-03  FALSE
+## W95                       MgHCO3_nM  0.98588718 1.511639e-03  FALSE
+## W96                        MgCO3_uM  0.31767992 3.094716e-34  FALSE
+## W97                        MgCO3_nM  0.31767992 3.094716e-34  FALSE
+## W98                        MgSO4_uM  0.79307182 5.805891e-21  FALSE
+## W99                        MgSO4_nM  0.79307182 5.805891e-21  FALSE
+## W100                      CaHCO3_uM  0.98349517 4.251351e-04  FALSE
+## W101                      CaHCO3_nM  0.98349517 4.251351e-04  FALSE
+## W102                       CaCO3_uM  0.33895937 7.717907e-34  FALSE
+## W103                       CaCO3_nM  0.33895937 7.717907e-34  FALSE
+## W104                       CaSO4_uM  0.88484732 1.068336e-15  FALSE
+## W105                       CaSO4_nM  0.88484732 1.068336e-15  FALSE
+## W106                      TOrg_H_uM  0.51139821 3.563525e-30  FALSE
+## W107                      TOrg_H_nM  0.51139821 3.563525e-30  FALSE
+## W108                     TOrg_Ca_uM  0.77348735 7.551776e-22  FALSE
+## W109                     TOrg_Ca_nM  0.77348735 7.551776e-22  FALSE
+## W110                     TOrg_Mg_uM  0.71412351 3.216926e-24  FALSE
+## W111                     TOrg_Mg_nM  0.71412351 3.216926e-24  FALSE
+## W112                     TOrg_Na_uM  0.47305615 4.536475e-31  FALSE
+## W113                     TOrg_Na_nM  0.47305615 4.536475e-31  FALSE
+## W114                      TOrg_K_uM  0.09202475 6.339127e-38  FALSE
+## W115                      TOrg_K_nM  0.09202475 6.339127e-38  FALSE
+## W116              Zn_chronic_tox_uM  0.93891592 6.266230e-11  FALSE
+## W117              Zn_chronic_tox_nM  0.93891592 6.266230e-11  FALSE
+## W118                Zn_acute_tox_uM  0.99316620 1.058067e-01   TRUE
+## W119                Zn_acute_tox_nM  0.99316620 1.058067e-01   TRUE
+## W120                  BL_Zn_nmol_kg  0.52952088 9.875603e-30  FALSE
+## W121                   BL_Zn_nmol_g  0.52952088 9.875603e-30  FALSE
+## W122                   BL_Zn_umol_g  0.52952088 9.875603e-30  FALSE
+## W123                  BL_Ca_nmol_kg  0.71198308 2.687267e-24  FALSE
+## W124                   BL_Ca_nmol_g  0.71198308 2.687267e-24  FALSE
+## W125                   BL_Ca_umol_g  0.71198308 2.687267e-24  FALSE
+## W126                   BL_H_nmol_kg  0.26549973 3.615388e-35  FALSE
+## W127                    BL_H_nmol_g  0.26549973 3.615388e-35  FALSE
+## W128                    BL_H_umol_g  0.26549973 3.615388e-35  FALSE
+## W129                  BL_Mg_nmol_kg  0.99389988 1.634528e-01   TRUE
+## W130                   BL_Mg_nmol_g  0.99389988 1.634528e-01   TRUE
+## W131                   BL_Mg_umol_g  0.99389988 1.634528e-01   TRUE
+## W132                  BL_Na_nmol_kg  0.83419508 7.097014e-19  FALSE
+## W133                   BL_Na_nmol_g  0.83419508 7.097014e-19  FALSE
+## W134                   BL_Na_umol_g  0.83419508 7.097014e-19  FALSE
+## W135                BL_ZnOH_nmol_kg  0.40209571 1.345657e-32  FALSE
+## W136                 BL_ZnOH_nmol_g  0.40209571 1.345657e-32  FALSE
+## W137                 BL_ZnOH_umol_g  0.40209571 1.345657e-32  FALSE
+## W138                  TBL_Zn_nmol_g  0.58689846 3.101033e-28  FALSE
+## W139                  TBL_Zn_umol_g  0.58689846 3.101033e-28  FALSE
+## W140                  TBL_Zn_mol_kg  0.58689846 3.101033e-28  FALSE
+## W141                    rel_prop_Zn  0.93182052 1.094674e-11  FALSE
+## W142                log_Elevation_m  0.94826451 7.722935e-10  FALSE
+## W143 log_Upstream_from_main_stem_km  0.82918019 6.853049e-16  FALSE
+## W144                     log_Temp_C  0.93146129 1.005377e-11  FALSE
+## W145                     log_DOC_uM  0.99335436 1.183917e-01   TRUE
+## W146                      log_Ca_uM  0.72734011 1.000245e-23  FALSE
+## W147                      log_Mg_uM  0.81729585 8.938898e-20  FALSE
+## W148                      log_Na_uM  0.98084333 1.127908e-04  FALSE
+## W149                       log_K_uM  0.97165959 1.962405e-06  FALSE
+## W150                     log_SO4_uM  0.94800328 7.172541e-10  FALSE
+## W151                      log_Cl_uM  0.97426084 5.733425e-06  FALSE
+## W152                     log_DIC_uM  0.70782261 1.899832e-24  FALSE
+## W153                      log_Zn_uM  0.90940037 8.815841e-14  FALSE
+## W154                      log_Cu_uM  0.98815609 5.377217e-03  FALSE
+## W155                  log_Free_Zn_M  0.94192506 1.366722e-10  FALSE
+## W156                     log_ZnOH_M  0.96402746 1.111413e-07  FALSE
+## W157                  log_Zn_OH_2_M  0.95774202 1.342946e-08  FALSE
+## W158                    log_ZnCO3_M  0.93632014 3.261644e-11  FALSE
+## W159                   log_ZnHCO3_M  0.91219740 1.533592e-13  FALSE
+## W160                    log_ZnSO4_M  0.95725997 1.151072e-08  FALSE
+## W161                     log_ZnCl_M  0.96600023 2.253546e-07  FALSE
+## W162                      log_ZnS_M  0.17724936 1.249611e-36  FALSE
+## W163                  log_TOrg_Zn_M  0.98158877 1.624635e-04  FALSE
+## W164               log_BL_Zn_mol_kg  0.96268015 6.945514e-08  FALSE
+## W165               log_BL_Ca_mol_kg  0.49328028 1.324855e-30  FALSE
+## W166                log_BL_H_mol_kg  0.96932459 7.827400e-07  FALSE
+## W167               log_BL_Mg_mol_kg  0.95046317 1.452605e-09  FALSE
+## W168               log_BL_Na_mol_kg  0.97976391 6.720789e-05  FALSE
+## W169             log_BL_ZnOH_mol_kg  0.96997366 1.006682e-06  FALSE
+## W170                     log_HCO3_M  0.67832729 1.803208e-25  FALSE
+## W171                   log_H2_CO3_M  0.96818630 5.069614e-07  FALSE
+## W172                       log_HS_M  0.96318893 8.285122e-08  FALSE
+## W173                      log_H2S_M  0.96180123 5.138079e-08  FALSE
+## W174                   log_MgHCO3_M  0.70985993 2.250359e-24  FALSE
+## W175                    log_MgCO3_M  0.87108086 1.198056e-16  FALSE
+## W176                    log_MgSO4_M  0.95684094 1.007547e-08  FALSE
+## W177                   log_CaHCO3_M  0.68847979 3.976920e-25  FALSE
+## W178                    log_CaCO3_M  0.85632270 1.373076e-17  FALSE
+## W179                    log_CaSO4_M  0.92962745 6.541038e-12  FALSE
+## W180                   log_TOrg_H_M  0.97751136 2.370962e-05  FALSE
+## W181                  log_TOrg_Ca_M  0.98748168 3.663164e-03  FALSE
+## W182                  log_TOrg_Mg_M  0.99468226 2.560620e-01   TRUE
+## W183                  log_TOrg_Na_M  0.98989485 1.482084e-02  FALSE
+## W184                   log_TOrg_K_M  0.97791318 2.844796e-05  FALSE
+## W185           log_Zn_chronic_tox_M  0.97089952 1.448734e-06  FALSE
+## W186             log_Zn_acute_tox_M  0.89716957 8.920388e-15  FALSE
+## W187                      log_DOC_M  0.99335436 1.183917e-01   TRUE
+## W188                     log_DOC_nM  0.99335436 1.183917e-01   TRUE
+## W189                       log_Ca_M  0.72734011 1.000245e-23  FALSE
+## W190                      log_Ca_nM  0.72734011 1.000245e-23  FALSE
+## W191                       log_Mg_M  0.81729585 8.938898e-20  FALSE
+## W192                      log_Mg_nM  0.81729585 8.938898e-20  FALSE
+## W193                       log_Na_M  0.98084333 1.127908e-04  FALSE
+## W194                      log_Na_nM  0.98084333 1.127908e-04  FALSE
+## W195                        log_K_M  0.97165959 1.962405e-06  FALSE
+## W196                       log_K_nM  0.97165959 1.962405e-06  FALSE
+## W197                      log_SO4_M  0.94800328 7.172541e-10  FALSE
+## W198                     log_SO4_nM  0.94800328 7.172541e-10  FALSE
+## W199                       log_Cl_M  0.97426084 5.733425e-06  FALSE
+## W200                      log_Cl_nM  0.97426084 5.733425e-06  FALSE
+## W201                      log_DIC_M  0.70782261 1.899832e-24  FALSE
+## W202                     log_DIC_nM  0.70782261 1.899832e-24  FALSE
+## W203                       log_Zn_M  0.90940037 8.815841e-14  FALSE
+## W204                      log_Zn_nM  0.90940037 8.815841e-14  FALSE
+## W205                       log_Cu_M  0.98815609 5.377217e-03  FALSE
+## W206                      log_Cu_nM  0.98815609 5.377217e-03  FALSE
+## W207                 log_Free_Zn_uM  0.94192506 1.366722e-10  FALSE
+## W208                 log_Free_Zn_nM  0.94192506 1.366722e-10  FALSE
+## W209                    log_ZnOH_uM  0.96402746 1.111413e-07  FALSE
+## W210                    log_ZnOH_nM  0.96402746 1.111413e-07  FALSE
+## W211                 log_Zn_OH_2_uM  0.95774202 1.342946e-08  FALSE
+## W212                 log_Zn_OH_2_nM  0.95774202 1.342946e-08  FALSE
+## W213                   log_ZnCO3_uM  0.93632014 3.261644e-11  FALSE
+## W214                   log_ZnCO3_nM  0.93632014 3.261644e-11  FALSE
+## W215                  log_ZnHCO3_uM  0.91219740 1.533592e-13  FALSE
+## W216                  log_ZnHCO3_nM  0.91219740 1.533592e-13  FALSE
+## W217                   log_ZnSO4_uM  0.95725997 1.151072e-08  FALSE
+## W218                   log_ZnSO4_nM  0.95725997 1.151072e-08  FALSE
+## W219                    log_ZnCl_uM  0.96600023 2.253546e-07  FALSE
+## W220                    log_ZnCl_nM  0.96600023 2.253546e-07  FALSE
+## W221                     log_ZnS_uM  0.17724936 1.249611e-36  FALSE
+## W222                     log_ZnS_nM  0.17724936 1.249611e-36  FALSE
+## W223                 log_TOrg_Zn_uM  0.98158877 1.624635e-04  FALSE
+## W224                 log_TOrg_Zn_nM  0.98158877 1.624635e-04  FALSE
+## W225                    log_HCO3_uM  0.67832729 1.803208e-25  FALSE
+## W226                    log_HCO3_nM  0.67832729 1.803208e-25  FALSE
+## W227                  log_H2_CO3_uM  0.96818630 5.069614e-07  FALSE
+## W228                  log_H2_CO3_nM  0.96818630 5.069614e-07  FALSE
+## W229                      log_HS_uM  0.96318893 8.285122e-08  FALSE
+## W230                      log_HS_nM  0.96318893 8.285122e-08  FALSE
+## W231                     log_H2S_uM  0.96180123 5.138079e-08  FALSE
+## W232                     log_H2S_nM  0.96180123 5.138079e-08  FALSE
+## W233                  log_MgHCO3_uM  0.70985993 2.250359e-24  FALSE
+## W234                  log_MgHCO3_nM  0.70985993 2.250359e-24  FALSE
+## W235                   log_MgCO3_uM  0.87108086 1.198056e-16  FALSE
+## W236                   log_MgCO3_nM  0.87108086 1.198056e-16  FALSE
+## W237                   log_MgSO4_uM  0.95684094 1.007547e-08  FALSE
+## W238                   log_MgSO4_nM  0.95684094 1.007547e-08  FALSE
+## W239                  log_CaHCO3_uM  0.68847979 3.976920e-25  FALSE
+## W240                  log_CaHCO3_nM  0.68847979 3.976920e-25  FALSE
+## W241                   log_CaCO3_uM  0.85632270 1.373076e-17  FALSE
+## W242                   log_CaCO3_nM  0.85632270 1.373076e-17  FALSE
+## W243                   log_CaSO4_uM  0.92962745 6.541038e-12  FALSE
+## W244                   log_CaSO4_nM  0.92962745 6.541038e-12  FALSE
+## W245                  log_TOrg_H_uM  0.97751136 2.370962e-05  FALSE
+## W246                  log_TOrg_H_nM  0.97751136 2.370962e-05  FALSE
+## W247                 log_TOrg_Ca_uM  0.98748168 3.663164e-03  FALSE
+## W248                 log_TOrg_Ca_nM  0.98748168 3.663164e-03  FALSE
+## W249                 log_TOrg_Mg_uM  0.99468226 2.560620e-01   TRUE
+## W250                 log_TOrg_Mg_nM  0.99468226 2.560620e-01   TRUE
+## W251                 log_TOrg_Na_uM  0.98989485 1.482084e-02  FALSE
+## W252                 log_TOrg_Na_nM  0.98989485 1.482084e-02  FALSE
+## W253                  log_TOrg_K_uM  0.97791318 2.844796e-05  FALSE
+## W254                  log_TOrg_K_nM  0.97791318 2.844796e-05  FALSE
+## W255          log_Zn_chronic_tox_uM  0.97089952 1.448734e-06  FALSE
+## W256          log_Zn_chronic_tox_nM  0.97089952 1.448734e-06  FALSE
+## W257            log_Zn_acute_tox_uM  0.89716957 8.920388e-15  FALSE
+## W258            log_Zn_acute_tox_nM  0.89716957 8.920388e-15  FALSE
+## W259              log_BL_Zn_nmol_kg  0.96268015 6.945514e-08  FALSE
+## W260               log_BL_Zn_nmol_g  0.96268015 6.945514e-08  FALSE
+## W261               log_BL_Zn_umol_g  0.96268015 6.945514e-08  FALSE
+## W262              log_BL_Ca_nmol_kg  0.49328028 1.324855e-30  FALSE
+## W263               log_BL_Ca_nmol_g  0.49328028 1.324855e-30  FALSE
+## W264               log_BL_Ca_umol_g  0.49328028 1.324855e-30  FALSE
+## W265               log_BL_H_nmol_kg  0.96932459 7.827400e-07  FALSE
+## W266                log_BL_H_nmol_g  0.96932459 7.827400e-07  FALSE
+## W267                log_BL_H_umol_g  0.96932459 7.827400e-07  FALSE
+## W268              log_BL_Mg_nmol_kg  0.95046317 1.452605e-09  FALSE
+## W269               log_BL_Mg_nmol_g  0.95046317 1.452605e-09  FALSE
+## W270               log_BL_Mg_umol_g  0.95046317 1.452605e-09  FALSE
+## W271              log_BL_Na_nmol_kg  0.97976391 6.720789e-05  FALSE
+## W272               log_BL_Na_nmol_g  0.97976391 6.720789e-05  FALSE
+## W273               log_BL_Na_umol_g  0.97976391 6.720789e-05  FALSE
+## W274            log_BL_ZnOH_nmol_kg  0.96997366 1.006682e-06  FALSE
+## W275             log_BL_ZnOH_nmol_g  0.96997366 1.006682e-06  FALSE
+## W276             log_BL_ZnOH_umol_g  0.96997366 1.006682e-06  FALSE
+## W277              log_TBL_Zn_nmol_g  0.94719306 5.711130e-10  FALSE
+## W278              log_TBL_Zn_umol_g  0.94719306 5.711130e-10  FALSE
+## W279              log_TBL_Zn_mol_kg  0.94719306 5.711130e-10  FALSE
+## W280                log_rel_prop_Zn  0.95416274 4.379063e-09  FALSE</code></pre>
+<pre class="r"><code># Save
+library(openxlsx)
+
+# Load the existing workbook
+wb &lt;- loadWorkbook(&quot;Statistical_analyses_by_typology.xlsx&quot;)
+
+# Create sheet if it does NOT exist
+if(!&quot;Normality by Shapiro Wilk&quot; %in% names(wb)) {
+  addWorksheet(wb, &quot;Normality by Shapiro Wilk&quot;)
+}
+
+# Write your new table
+writeData(wb, &quot;Normality by Shapiro Wilk&quot;, shapiro_results)
+
+# Save the workbook (overwrite)
+saveWorkbook(wb, &quot;Statistical_analyses_by_typology.xlsx&quot;, overwrite = TRUE)</code></pre>
+</div>
+<div id="b.-homogeneity-of-variance" class="section level3">
+<h3>b. Homogeneity of Variance</h3>
 <p>Using the Levene Test</p>
 <pre class="r"><code>library(car)  # for leveneTest()
 library(dplyr)
@@ -1606,289 +2026,289 @@ for (var in numeric_vars) {
 <pre class="r"><code># View results
 levene_results</code></pre>
 <pre><code>##                           Variable    F_value      p_value Homogeneous
-## 1                      Elevation_m 16.2879350 6.191240e-10       FALSE
-## 2             Relative_elevation_m 23.8263217 4.622035e-14       FALSE
-## 3       Upstream_from_main_stem_km 14.7516371 4.545136e-09       FALSE
-## 4                   Developed_lulc 13.2573168 3.217558e-08       FALSE
-## 5                               pH  1.4966450 2.151747e-01        TRUE
-## 6                           Temp_C  8.8836876 1.088101e-05       FALSE
-## 7                           DOC_uM  8.8345713 1.162469e-05       FALSE
-## 8                            Ca_uM 14.9857590 3.350234e-09       FALSE
-## 9                            Mg_uM  3.4146394 1.763785e-02       FALSE
-## 10                           Na_uM 60.4363540 1.539675e-31       FALSE
-## 11                            K_uM 26.9125016 1.078461e-15       FALSE
-## 12                          SO4_uM 39.6096295 4.449970e-22       FALSE
-## 13                           Cl_uM 20.0691176 4.972156e-12       FALSE
-## 14                          DIC_uM  9.1855696 7.249807e-06       FALSE
-## 15                           Zn_uM 18.4565487 3.836013e-11       FALSE
-## 16                           Cu_uM 11.6176974 2.810497e-07       FALSE
-## 17                       Free_Zn_M  2.6158140 5.096105e-02        TRUE
-## 18                          ZnOH_M  7.2389282 1.002181e-04       FALSE
-## 19                       Zn_OH_2_M  4.1653694 6.432662e-03       FALSE
-## 20                         ZnCO3_M  8.8905386 1.078114e-05       FALSE
-## 21                        ZnHCO3_M  3.5111335 1.550059e-02       FALSE
-## 22                         ZnSO4_M 36.3842476 1.667087e-20       FALSE
-## 23                          ZnCl_M 11.4961285 3.303077e-07       FALSE
-## 24                           ZnS_M  6.4468184 2.930171e-04       FALSE
-## 25                       TOrg_Zn_M 31.9203511 2.837952e-18       FALSE
-## 26                    BL_Zn_mol_kg 24.8611974 1.299907e-14       FALSE
-## 27                    BL_Ca_mol_kg 30.3270924 1.839810e-17       FALSE
-## 28                     BL_H_mol_kg 31.0491560 7.867811e-18       FALSE
-## 29                    BL_Mg_mol_kg 10.3450941 1.531895e-06       FALSE
-## 30                    BL_Na_mol_kg 53.9726533 1.005031e-28       FALSE
-## 31                  BL_ZnOH_mol_kg  6.0510166 5.010761e-04       FALSE
-## 32                          HCO3_M  7.6668052 5.618200e-05       FALSE
-## 33                        H2_CO3_M 15.4591298 1.810571e-09       FALSE
-## 34                            HS_M  2.5046983 5.897421e-02        TRUE
-## 35                           H2S_M 11.8069105 2.186328e-07       FALSE
-## 36                        MgHCO3_M 18.1602360 5.596761e-11       FALSE
-## 37                         MgCO3_M  6.9896955 1.404358e-04       FALSE
-## 38                         MgSO4_M 77.5789861 1.528918e-38       FALSE
-## 39                        CaHCO3_M  8.0494211 3.350468e-05       FALSE
-## 40                         CaCO3_M  6.8594859 1.675186e-04       FALSE
-## 41                         CaSO4_M 38.0473445 2.550515e-21       FALSE
-## 42                        TOrg_H_M 18.6169254 3.127636e-11       FALSE
-## 43                       TOrg_Ca_M  9.3800874 5.582410e-06       FALSE
-## 44                       TOrg_Mg_M  7.1983547 1.058753e-04       FALSE
-## 45                       TOrg_Na_M 18.2266621 5.141999e-11       FALSE
-## 46                        TOrg_K_M  9.8491805 2.975145e-06       FALSE
-## 47                Zn_chronic_tox_M  3.7644747 1.103427e-02       FALSE
-## 48                  Zn_acute_tox_M  3.8622404 9.675457e-03       FALSE
-## 49                           DOC_M  8.8345713 1.162469e-05       FALSE
-## 50                          DOC_nM  8.8345713 1.162469e-05       FALSE
-## 51                            Ca_M 14.9857590 3.350234e-09       FALSE
-## 52                           Ca_nM 14.9857590 3.350234e-09       FALSE
-## 53                            Mg_M  3.4146394 1.763785e-02       FALSE
-## 54                           Mg_nM  3.4146394 1.763785e-02       FALSE
-## 55                            Na_M 60.4363540 1.539675e-31       FALSE
-## 56                           Na_nM 60.4363540 1.539675e-31       FALSE
-## 57                             K_M 26.9125016 1.078461e-15       FALSE
-## 58                            K_nM 26.9125016 1.078461e-15       FALSE
-## 59                           SO4_M 39.6096295 4.449970e-22       FALSE
-## 60                          SO4_nM 39.6096295 4.449970e-22       FALSE
-## 61                            Cl_M 20.0691176 4.972156e-12       FALSE
-## 62                           Cl_nM 20.0691176 4.972156e-12       FALSE
-## 63                           DIC_M  9.1855696 7.249807e-06       FALSE
-## 64                          DIC_nM  9.1855696 7.249807e-06       FALSE
-## 65                            Zn_M 18.4565487 3.836013e-11       FALSE
-## 66                           Zn_nM 18.4565487 3.836013e-11       FALSE
-## 67                            Cu_M 11.6176974 2.810497e-07       FALSE
-## 68                           Cu_nM 11.6176974 2.810497e-07       FALSE
-## 69                      Free_Zn_uM  2.6158140 5.096105e-02        TRUE
-## 70                      Free_Zn_nM  2.6158140 5.096105e-02        TRUE
-## 71                         ZnOH_uM  7.2389282 1.002181e-04       FALSE
-## 72                         ZnOH_nM  7.2389282 1.002181e-04       FALSE
-## 73                      Zn_OH_2_uM  4.1653694 6.432662e-03       FALSE
-## 74                      Zn_OH_2_nM  4.1653694 6.432662e-03       FALSE
-## 75                        ZnCO3_uM  8.8905386 1.078114e-05       FALSE
-## 76                        ZnCO3_nM  8.8905386 1.078114e-05       FALSE
-## 77                       ZnHCO3_uM  3.5111335 1.550059e-02       FALSE
-## 78                       ZnHCO3_nM  3.5111335 1.550059e-02       FALSE
-## 79                        ZnSO4_uM 36.3842476 1.667087e-20       FALSE
-## 80                        ZnSO4_nM 36.3842476 1.667087e-20       FALSE
-## 81                         ZnCl_uM 11.4961285 3.303077e-07       FALSE
-## 82                         ZnCl_nM 11.4961285 3.303077e-07       FALSE
-## 83                          ZnS_uM  6.4468184 2.930171e-04       FALSE
-## 84                          ZnS_nM  6.4468184 2.930171e-04       FALSE
-## 85                      TOrg_Zn_uM 31.9203511 2.837952e-18       FALSE
-## 86                      TOrg_Zn_nM 31.9203511 2.837952e-18       FALSE
-## 87                         HCO3_uM  7.6668052 5.618200e-05       FALSE
-## 88                         HCO3_nM  7.6668052 5.618200e-05       FALSE
-## 89                       H2_CO3_uM 15.4591298 1.810571e-09       FALSE
-## 90                       H2_CO3_nM 15.4591298 1.810571e-09       FALSE
-## 91                           HS_uM  2.5046983 5.897421e-02        TRUE
-## 92                           HS_nM  2.5046983 5.897421e-02        TRUE
-## 93                          H2S_uM 11.8069105 2.186328e-07       FALSE
-## 94                          H2S_nM 11.8069105 2.186328e-07       FALSE
-## 95                       MgHCO3_uM 18.1602360 5.596761e-11       FALSE
-## 96                       MgHCO3_nM 18.1602360 5.596761e-11       FALSE
-## 97                        MgCO3_uM  6.9896955 1.404358e-04       FALSE
-## 98                        MgCO3_nM  6.9896955 1.404358e-04       FALSE
-## 99                        MgSO4_uM 77.5789861 1.528918e-38       FALSE
-## 100                       MgSO4_nM 77.5789861 1.528918e-38       FALSE
-## 101                      CaHCO3_uM  8.0494211 3.350468e-05       FALSE
-## 102                      CaHCO3_nM  8.0494211 3.350468e-05       FALSE
-## 103                       CaCO3_uM  6.8594859 1.675186e-04       FALSE
-## 104                       CaCO3_nM  6.8594859 1.675186e-04       FALSE
-## 105                       CaSO4_uM 38.0473445 2.550515e-21       FALSE
-## 106                       CaSO4_nM 38.0473445 2.550515e-21       FALSE
-## 107                      TOrg_H_uM 18.6169254 3.127636e-11       FALSE
-## 108                      TOrg_H_nM 18.6169254 3.127636e-11       FALSE
-## 109                     TOrg_Ca_uM  9.3800874 5.582410e-06       FALSE
-## 110                     TOrg_Ca_nM  9.3800874 5.582410e-06       FALSE
-## 111                     TOrg_Mg_uM  7.1983547 1.058753e-04       FALSE
-## 112                     TOrg_Mg_nM  7.1983547 1.058753e-04       FALSE
-## 113                     TOrg_Na_uM 18.2266621 5.141999e-11       FALSE
-## 114                     TOrg_Na_nM 18.2266621 5.141999e-11       FALSE
-## 115                      TOrg_K_uM  9.8491805 2.975145e-06       FALSE
-## 116                      TOrg_K_nM  9.8491805 2.975145e-06       FALSE
-## 117              Zn_chronic_tox_uM  3.7644747 1.103427e-02       FALSE
-## 118              Zn_chronic_tox_nM  3.7644747 1.103427e-02       FALSE
-## 119                Zn_acute_tox_uM  3.8622404 9.675457e-03       FALSE
-## 120                Zn_acute_tox_nM  3.8622404 9.675457e-03       FALSE
-## 121                  BL_Zn_nmol_kg 24.8611974 1.299907e-14       FALSE
-## 122                   BL_Zn_nmol_g 24.8611974 1.299907e-14       FALSE
-## 123                   BL_Zn_umol_g 24.8611974 1.299907e-14       FALSE
-## 124                  BL_Ca_nmol_kg 30.3270924 1.839810e-17       FALSE
-## 125                   BL_Ca_nmol_g 30.3270924 1.839810e-17       FALSE
-## 126                   BL_Ca_umol_g 30.3270924 1.839810e-17       FALSE
-## 127                   BL_H_nmol_kg 31.0491560 7.867811e-18       FALSE
-## 128                    BL_H_nmol_g 31.0491560 7.867811e-18       FALSE
-## 129                    BL_H_umol_g 31.0491560 7.867811e-18       FALSE
-## 130                  BL_Mg_nmol_kg 10.3450941 1.531895e-06       FALSE
-## 131                   BL_Mg_nmol_g 10.3450941 1.531895e-06       FALSE
-## 132                   BL_Mg_umol_g 10.3450941 1.531895e-06       FALSE
-## 133                  BL_Na_nmol_kg 53.9726533 1.005031e-28       FALSE
-## 134                   BL_Na_nmol_g 53.9726533 1.005031e-28       FALSE
-## 135                   BL_Na_umol_g 53.9726533 1.005031e-28       FALSE
-## 136                BL_ZnOH_nmol_kg  6.0510166 5.010761e-04       FALSE
-## 137                 BL_ZnOH_nmol_g  6.0510166 5.010761e-04       FALSE
-## 138                 BL_ZnOH_umol_g  6.0510166 5.010761e-04       FALSE
-## 139                  TBL_Zn_nmol_g  6.9831444 1.416872e-04       FALSE
-## 140                  TBL_Zn_umol_g  6.9831444 1.416872e-04       FALSE
-## 141                  TBL_Zn_mol_kg  6.9831444 1.416872e-04       FALSE
-## 142                    rel_prop_Zn 19.5649046 9.397220e-12       FALSE
-## 143                log_Elevation_m 16.7223768 3.535573e-10       FALSE
-## 144 log_Upstream_from_main_stem_km 11.4656423 4.613542e-07       FALSE
-## 145                     log_Temp_C  8.3232582 2.315337e-05       FALSE
-## 146                     log_DOC_uM  3.2708024 2.137579e-02       FALSE
-## 147                      log_Ca_uM 39.3996100 5.621684e-22       FALSE
-## 148                      log_Mg_uM 37.7946419 3.388216e-21       FALSE
-## 149                      log_Na_uM  2.5484969 5.567842e-02        TRUE
-## 150                       log_K_uM 20.0659089 4.992306e-12       FALSE
-## 151                     log_SO4_uM 26.9294223 1.056687e-15       FALSE
-## 152                      log_Cl_uM  3.1174991 2.622292e-02       FALSE
-## 153                     log_DIC_uM 40.6911186 1.341870e-22       FALSE
-## 154                      log_Zn_uM  8.5478066 1.710527e-05       FALSE
-## 155                      log_Cu_uM  2.4302465 6.501885e-02        TRUE
-## 156                  log_Free_Zn_M  6.0239849 5.197796e-04       FALSE
-## 157                     log_ZnOH_M  0.6571298 5.789332e-01        TRUE
-## 158                  log_Zn_OH_2_M  1.2937353 2.763660e-01        TRUE
-## 159                    log_ZnCO3_M  4.8877142 2.423850e-03       FALSE
-## 160                   log_ZnHCO3_M  9.5738127 4.304052e-06       FALSE
-## 161                    log_ZnSO4_M 16.4817366 4.821171e-10       FALSE
-## 162                     log_ZnCl_M  7.0547459 1.285952e-04       FALSE
-## 163                      log_ZnS_M  6.4323875 2.988045e-04       FALSE
-## 164                  log_TOrg_Zn_M  1.1099455 3.450230e-01        TRUE
-## 165               log_BL_Zn_mol_kg  4.1131014 6.902249e-03       FALSE
-## 166               log_BL_Ca_mol_kg 45.6952081 5.791912e-25       FALSE
-## 167                log_BL_H_mol_kg  0.9848005 3.999879e-01        TRUE
-## 168               log_BL_Mg_mol_kg 19.5768114 9.256794e-12       FALSE
-## 169               log_BL_Na_mol_kg  5.7768316 7.266695e-04       FALSE
-## 170             log_BL_ZnOH_mol_kg  1.6963853 1.674647e-01        TRUE
-## 171                     log_HCO3_M 47.7446078 6.525791e-26       FALSE
-## 172                   log_H2_CO3_M  1.0399793 3.748858e-01        TRUE
-## 173                       log_HS_M  1.3552303 2.563147e-01        TRUE
-## 174                      log_H2S_M  0.7639116 5.149110e-01        TRUE
-## 175                   log_MgHCO3_M 62.5676075 1.911434e-32       FALSE
-## 176                    log_MgCO3_M 15.3045639 2.213071e-09       FALSE
-## 177                    log_MgSO4_M 31.2869097 5.953238e-18       FALSE
-## 178                   log_CaHCO3_M 46.0946655 3.776570e-25       FALSE
-## 179                    log_CaCO3_M 12.9715046 4.687746e-08       FALSE
-## 180                    log_CaSO4_M 39.6975534 4.035520e-22       FALSE
-## 181                   log_TOrg_H_M  8.6475373 1.495440e-05       FALSE
-## 182                  log_TOrg_Ca_M  6.9847895 1.413719e-04       FALSE
-## 183                  log_TOrg_Mg_M  0.7103622 5.463343e-01        TRUE
-## 184                  log_TOrg_Na_M  5.9707538 5.586766e-04       FALSE
-## 185                   log_TOrg_K_M  7.2253545 1.020762e-04       FALSE
-## 186           log_Zn_chronic_tox_M  8.0249447 3.463044e-05       FALSE
-## 187             log_Zn_acute_tox_M 13.6881722 1.826707e-08       FALSE
-## 188                      log_DOC_M  3.2708024 2.137579e-02       FALSE
-## 189                     log_DOC_nM  3.2708024 2.137579e-02       FALSE
-## 190                       log_Ca_M 39.3996100 5.621684e-22       FALSE
-## 191                      log_Ca_nM 39.3996100 5.621684e-22       FALSE
-## 192                       log_Mg_M 37.7946419 3.388216e-21       FALSE
-## 193                      log_Mg_nM 37.7946419 3.388216e-21       FALSE
-## 194                       log_Na_M  2.5484969 5.567842e-02        TRUE
-## 195                      log_Na_nM  2.5484969 5.567842e-02        TRUE
-## 196                        log_K_M 20.0659089 4.992306e-12       FALSE
-## 197                       log_K_nM 20.0659089 4.992306e-12       FALSE
-## 198                      log_SO4_M 26.9294223 1.056687e-15       FALSE
-## 199                     log_SO4_nM 26.9294223 1.056687e-15       FALSE
-## 200                       log_Cl_M  3.1174991 2.622292e-02       FALSE
-## 201                      log_Cl_nM  3.1174991 2.622292e-02       FALSE
-## 202                      log_DIC_M 40.6911186 1.341870e-22       FALSE
-## 203                     log_DIC_nM 40.6911186 1.341870e-22       FALSE
-## 204                       log_Zn_M  8.5478066 1.710527e-05       FALSE
-## 205                      log_Zn_nM  8.5478066 1.710527e-05       FALSE
-## 206                       log_Cu_M  2.4302465 6.501885e-02        TRUE
-## 207                      log_Cu_nM  2.4302465 6.501885e-02        TRUE
-## 208                 log_Free_Zn_uM  6.0239849 5.197796e-04       FALSE
-## 209                 log_Free_Zn_nM  6.0239849 5.197796e-04       FALSE
-## 210                    log_ZnOH_uM  0.6571298 5.789332e-01        TRUE
-## 211                    log_ZnOH_nM  0.6571298 5.789332e-01        TRUE
-## 212                 log_Zn_OH_2_uM  1.2937353 2.763660e-01        TRUE
-## 213                 log_Zn_OH_2_nM  1.2937353 2.763660e-01        TRUE
-## 214                   log_ZnCO3_uM  4.8877142 2.423850e-03       FALSE
-## 215                   log_ZnCO3_nM  4.8877142 2.423850e-03       FALSE
-## 216                  log_ZnHCO3_uM  9.5738127 4.304052e-06       FALSE
-## 217                  log_ZnHCO3_nM  9.5738127 4.304052e-06       FALSE
-## 218                   log_ZnSO4_uM 16.4817366 4.821171e-10       FALSE
-## 219                   log_ZnSO4_nM 16.4817366 4.821171e-10       FALSE
-## 220                    log_ZnCl_uM  7.0547459 1.285952e-04       FALSE
-## 221                    log_ZnCl_nM  7.0547459 1.285952e-04       FALSE
-## 222                     log_ZnS_uM  6.4323875 2.988045e-04       FALSE
-## 223                     log_ZnS_nM  6.4323875 2.988045e-04       FALSE
-## 224                 log_TOrg_Zn_uM  1.1099455 3.450230e-01        TRUE
-## 225                 log_TOrg_Zn_nM  1.1099455 3.450230e-01        TRUE
-## 226                    log_HCO3_uM 47.7446078 6.525791e-26       FALSE
-## 227                    log_HCO3_nM 47.7446078 6.525791e-26       FALSE
-## 228                  log_H2_CO3_uM  1.0399793 3.748858e-01        TRUE
-## 229                  log_H2_CO3_nM  1.0399793 3.748858e-01        TRUE
-## 230                      log_HS_uM  1.3552303 2.563147e-01        TRUE
-## 231                      log_HS_nM  1.3552303 2.563147e-01        TRUE
-## 232                     log_H2S_uM  0.7639116 5.149110e-01        TRUE
-## 233                     log_H2S_nM  0.7639116 5.149110e-01        TRUE
-## 234                  log_MgHCO3_uM 62.5676075 1.911434e-32       FALSE
-## 235                  log_MgHCO3_nM 62.5676075 1.911434e-32       FALSE
-## 236                   log_MgCO3_uM 15.3045639 2.213071e-09       FALSE
-## 237                   log_MgCO3_nM 15.3045639 2.213071e-09       FALSE
-## 238                   log_MgSO4_uM 31.2869097 5.953238e-18       FALSE
-## 239                   log_MgSO4_nM 31.2869097 5.953238e-18       FALSE
-## 240                  log_CaHCO3_uM 46.0946655 3.776570e-25       FALSE
-## 241                  log_CaHCO3_nM 46.0946655 3.776570e-25       FALSE
-## 242                   log_CaCO3_uM 12.9715046 4.687746e-08       FALSE
-## 243                   log_CaCO3_nM 12.9715046 4.687746e-08       FALSE
-## 244                   log_CaSO4_uM 39.6975534 4.035520e-22       FALSE
-## 245                   log_CaSO4_nM 39.6975534 4.035520e-22       FALSE
-## 246                  log_TOrg_H_uM  8.6475373 1.495440e-05       FALSE
-## 247                  log_TOrg_H_nM  8.6475373 1.495440e-05       FALSE
-## 248                 log_TOrg_Ca_uM  6.9847895 1.413719e-04       FALSE
-## 249                 log_TOrg_Ca_nM  6.9847895 1.413719e-04       FALSE
-## 250                 log_TOrg_Mg_uM  0.7103622 5.463343e-01        TRUE
-## 251                 log_TOrg_Mg_nM  0.7103622 5.463343e-01        TRUE
-## 252                 log_TOrg_Na_uM  5.9707538 5.586766e-04       FALSE
-## 253                 log_TOrg_Na_nM  5.9707538 5.586766e-04       FALSE
-## 254                  log_TOrg_K_uM  7.2253545 1.020762e-04       FALSE
-## 255                  log_TOrg_K_nM  7.2253545 1.020762e-04       FALSE
-## 256          log_Zn_chronic_tox_uM  8.0249447 3.463044e-05       FALSE
-## 257          log_Zn_chronic_tox_nM  8.0249447 3.463044e-05       FALSE
-## 258            log_Zn_acute_tox_uM 13.6881722 1.826707e-08       FALSE
-## 259            log_Zn_acute_tox_nM 13.6881722 1.826707e-08       FALSE
-## 260              log_BL_Zn_nmol_kg  4.1131014 6.902249e-03       FALSE
-## 261               log_BL_Zn_nmol_g  4.1131014 6.902249e-03       FALSE
-## 262               log_BL_Zn_umol_g  4.1131014 6.902249e-03       FALSE
-## 263              log_BL_Ca_nmol_kg 45.6952081 5.791912e-25       FALSE
-## 264               log_BL_Ca_nmol_g 45.6952081 5.791912e-25       FALSE
-## 265               log_BL_Ca_umol_g 45.6952081 5.791912e-25       FALSE
-## 266               log_BL_H_nmol_kg  0.9848005 3.999879e-01        TRUE
-## 267                log_BL_H_nmol_g  0.9848005 3.999879e-01        TRUE
-## 268                log_BL_H_umol_g  0.9848005 3.999879e-01        TRUE
-## 269              log_BL_Mg_nmol_kg 19.5768114 9.256794e-12       FALSE
-## 270               log_BL_Mg_nmol_g 19.5768114 9.256794e-12       FALSE
-## 271               log_BL_Mg_umol_g 19.5768114 9.256794e-12       FALSE
-## 272              log_BL_Na_nmol_kg  5.7768316 7.266695e-04       FALSE
-## 273               log_BL_Na_nmol_g  5.7768316 7.266695e-04       FALSE
-## 274               log_BL_Na_umol_g  5.7768316 7.266695e-04       FALSE
-## 275            log_BL_ZnOH_nmol_kg  1.6963853 1.674647e-01        TRUE
-## 276             log_BL_ZnOH_nmol_g  1.6963853 1.674647e-01        TRUE
-## 277             log_BL_ZnOH_umol_g  1.6963853 1.674647e-01        TRUE
-## 278              log_TBL_Zn_nmol_g  3.3071141 2.036412e-02       FALSE
-## 279              log_TBL_Zn_umol_g  3.3071141 2.036412e-02       FALSE
-## 280              log_TBL_Zn_mol_kg  3.3071141 2.036412e-02       FALSE
-## 281                log_rel_prop_Zn  7.7886273 4.765310e-05       FALSE</code></pre>
-<p>Export results to excel</p>
-<pre class="r"><code>library(openxlsx)
+## 1                      Elevation_m 11.9676693 1.766604e-07       FALSE
+## 2             Relative_elevation_m 24.6206920 1.744276e-14       FALSE
+## 3       Upstream_from_main_stem_km 15.4229456 1.897654e-09       FALSE
+## 4                   Developed_lulc  9.1591297 7.512112e-06       FALSE
+## 5                               pH  1.4177575 2.373022e-01        TRUE
+## 6                           Temp_C  9.2003326 7.107364e-06       FALSE
+## 7                           DOC_uM  8.1363473 2.979496e-05       FALSE
+## 8                            Ca_uM 14.2240430 9.052529e-09       FALSE
+## 9                            Mg_uM  4.1253309 6.789410e-03       FALSE
+## 10                           Na_uM 61.9662870 3.434999e-32       FALSE
+## 11                            K_uM 25.5671319 5.498332e-15       FALSE
+## 12                          SO4_uM 23.7045019 5.369447e-14       FALSE
+## 13                           Cl_uM 20.8259478 1.919899e-12       FALSE
+## 14                          DIC_uM  9.3186003 6.063034e-06       FALSE
+## 15                           Zn_uM 16.8777817 2.894573e-10       FALSE
+## 16                           Cu_uM 13.2650985 3.184787e-08       FALSE
+## 17                       Free_Zn_M  2.6545759 4.842464e-02       FALSE
+## 18                          ZnOH_M  7.2630440 9.700009e-05       FALSE
+## 19                       Zn_OH_2_M  4.1631161 6.452235e-03       FALSE
+## 20                         ZnCO3_M  8.8200295 1.185450e-05       FALSE
+## 21                        ZnHCO3_M  4.1386625 6.668491e-03       FALSE
+## 22                         ZnSO4_M 34.5094081 1.416894e-19       FALSE
+## 23                          ZnCl_M 11.1292978 5.380607e-07       FALSE
+## 24                           ZnS_M  6.4905697 2.761476e-04       FALSE
+## 25                       TOrg_Zn_M 31.8517953 3.074428e-18       FALSE
+## 26                    BL_Zn_mol_kg 24.9658247 1.143984e-14       FALSE
+## 27                    BL_Ca_mol_kg 30.6864426 1.204922e-17       FALSE
+## 28                     BL_H_mol_kg 30.8895289 9.489954e-18       FALSE
+## 29                    BL_Mg_mol_kg 10.6133437 1.070504e-06       FALSE
+## 30                    BL_Na_mol_kg 54.4772608 6.007792e-29       FALSE
+## 31                  BL_ZnOH_mol_kg  5.9894137 5.447207e-04       FALSE
+## 32                          HCO3_M  8.2366936 2.602145e-05       FALSE
+## 33                        H2_CO3_M 13.9174903 1.352295e-08       FALSE
+## 34                            HS_M  2.5993465 5.207756e-02        TRUE
+## 35                           H2S_M 11.7759202 2.278092e-07       FALSE
+## 36                        MgHCO3_M 20.5010601 2.886914e-12       FALSE
+## 37                         MgCO3_M  6.8941951 1.598256e-04       FALSE
+## 38                         MgSO4_M 56.3098432 9.387315e-30       FALSE
+## 39                        CaHCO3_M  8.0722457 3.248796e-05       FALSE
+## 40                         CaCO3_M  6.8762588 1.637558e-04       FALSE
+## 41                         CaSO4_M 24.8190305 1.368634e-14       FALSE
+## 42                        TOrg_H_M 15.4367441 1.863960e-09       FALSE
+## 43                       TOrg_Ca_M  7.9050965 4.071481e-05       FALSE
+## 44                       TOrg_Mg_M  7.8996714 4.101427e-05       FALSE
+## 45                       TOrg_Na_M 20.5308450 2.780847e-12       FALSE
+## 46                        TOrg_K_M  9.8908503 2.813574e-06       FALSE
+## 47                Zn_chronic_tox_M  2.6545423 4.842678e-02       FALSE
+## 48                  Zn_acute_tox_M  3.3245533 1.989522e-02       FALSE
+## 49                           DOC_M  8.1363473 2.979496e-05       FALSE
+## 50                          DOC_nM  8.1363473 2.979496e-05       FALSE
+## 51                            Ca_M 14.2240430 9.052529e-09       FALSE
+## 52                           Ca_nM 14.2240430 9.052529e-09       FALSE
+## 53                            Mg_M  4.1253309 6.789410e-03       FALSE
+## 54                           Mg_nM  4.1253309 6.789410e-03       FALSE
+## 55                            Na_M 61.9662870 3.434999e-32       FALSE
+## 56                           Na_nM 61.9662870 3.434999e-32       FALSE
+## 57                             K_M 25.5671319 5.498332e-15       FALSE
+## 58                            K_nM 25.5671319 5.498332e-15       FALSE
+## 59                           SO4_M 23.7045019 5.369447e-14       FALSE
+## 60                          SO4_nM 23.7045019 5.369447e-14       FALSE
+## 61                            Cl_M 20.8259478 1.919899e-12       FALSE
+## 62                           Cl_nM 20.8259478 1.919899e-12       FALSE
+## 63                           DIC_M  9.3186003 6.063034e-06       FALSE
+## 64                          DIC_nM  9.3186003 6.063034e-06       FALSE
+## 65                            Zn_M 16.8777817 2.894573e-10       FALSE
+## 66                           Zn_nM 16.8777817 2.894573e-10       FALSE
+## 67                            Cu_M 13.2650985 3.184787e-08       FALSE
+## 68                           Cu_nM 13.2650985 3.184787e-08       FALSE
+## 69                      Free_Zn_uM  2.6545759 4.842464e-02       FALSE
+## 70                      Free_Zn_nM  2.6545759 4.842464e-02       FALSE
+## 71                         ZnOH_uM  7.2630440 9.700009e-05       FALSE
+## 72                         ZnOH_nM  7.2630440 9.700009e-05       FALSE
+## 73                      Zn_OH_2_uM  4.1631161 6.452235e-03       FALSE
+## 74                      Zn_OH_2_nM  4.1631161 6.452235e-03       FALSE
+## 75                        ZnCO3_uM  8.8200295 1.185450e-05       FALSE
+## 76                        ZnCO3_nM  8.8200295 1.185450e-05       FALSE
+## 77                       ZnHCO3_uM  4.1386625 6.668491e-03       FALSE
+## 78                       ZnHCO3_nM  4.1386625 6.668491e-03       FALSE
+## 79                        ZnSO4_uM 34.5094081 1.416894e-19       FALSE
+## 80                        ZnSO4_nM 34.5094081 1.416894e-19       FALSE
+## 81                         ZnCl_uM 11.1292978 5.380607e-07       FALSE
+## 82                         ZnCl_nM 11.1292978 5.380607e-07       FALSE
+## 83                          ZnS_uM  6.4905697 2.761476e-04       FALSE
+## 84                          ZnS_nM  6.4905697 2.761476e-04       FALSE
+## 85                      TOrg_Zn_uM 31.8517953 3.074428e-18       FALSE
+## 86                      TOrg_Zn_nM 31.8517953 3.074428e-18       FALSE
+## 87                         HCO3_uM  8.2366936 2.602145e-05       FALSE
+## 88                         HCO3_nM  8.2366936 2.602145e-05       FALSE
+## 89                       H2_CO3_uM 13.9174903 1.352295e-08       FALSE
+## 90                       H2_CO3_nM 13.9174903 1.352295e-08       FALSE
+## 91                           HS_uM  2.5993465 5.207756e-02        TRUE
+## 92                           HS_nM  2.5993465 5.207756e-02        TRUE
+## 93                          H2S_uM 11.7759202 2.278092e-07       FALSE
+## 94                          H2S_nM 11.7759202 2.278092e-07       FALSE
+## 95                       MgHCO3_uM 20.5010601 2.886914e-12       FALSE
+## 96                       MgHCO3_nM 20.5010601 2.886914e-12       FALSE
+## 97                        MgCO3_uM  6.8941951 1.598256e-04       FALSE
+## 98                        MgCO3_nM  6.8941951 1.598256e-04       FALSE
+## 99                        MgSO4_uM 56.3098432 9.387315e-30       FALSE
+## 100                       MgSO4_nM 56.3098432 9.387315e-30       FALSE
+## 101                      CaHCO3_uM  8.0722457 3.248796e-05       FALSE
+## 102                      CaHCO3_nM  8.0722457 3.248796e-05       FALSE
+## 103                       CaCO3_uM  6.8762588 1.637558e-04       FALSE
+## 104                       CaCO3_nM  6.8762588 1.637558e-04       FALSE
+## 105                       CaSO4_uM 24.8190305 1.368634e-14       FALSE
+## 106                       CaSO4_nM 24.8190305 1.368634e-14       FALSE
+## 107                      TOrg_H_uM 15.4367441 1.863960e-09       FALSE
+## 108                      TOrg_H_nM 15.4367441 1.863960e-09       FALSE
+## 109                     TOrg_Ca_uM  7.9050965 4.071481e-05       FALSE
+## 110                     TOrg_Ca_nM  7.9050965 4.071481e-05       FALSE
+## 111                     TOrg_Mg_uM  7.8996714 4.101427e-05       FALSE
+## 112                     TOrg_Mg_nM  7.8996714 4.101427e-05       FALSE
+## 113                     TOrg_Na_uM 20.5308450 2.780847e-12       FALSE
+## 114                     TOrg_Na_nM 20.5308450 2.780847e-12       FALSE
+## 115                      TOrg_K_uM  9.8908503 2.813574e-06       FALSE
+## 116                      TOrg_K_nM  9.8908503 2.813574e-06       FALSE
+## 117              Zn_chronic_tox_uM  2.6545423 4.842678e-02       FALSE
+## 118              Zn_chronic_tox_nM  2.6545423 4.842678e-02       FALSE
+## 119                Zn_acute_tox_uM  3.3245533 1.989522e-02       FALSE
+## 120                Zn_acute_tox_nM  3.3245533 1.989522e-02       FALSE
+## 121                  BL_Zn_nmol_kg 24.9658247 1.143984e-14       FALSE
+## 122                   BL_Zn_nmol_g 24.9658247 1.143984e-14       FALSE
+## 123                   BL_Zn_umol_g 24.9658247 1.143984e-14       FALSE
+## 124                  BL_Ca_nmol_kg 30.6864426 1.204922e-17       FALSE
+## 125                   BL_Ca_nmol_g 30.6864426 1.204922e-17       FALSE
+## 126                   BL_Ca_umol_g 30.6864426 1.204922e-17       FALSE
+## 127                   BL_H_nmol_kg 30.8895289 9.489954e-18       FALSE
+## 128                    BL_H_nmol_g 30.8895289 9.489954e-18       FALSE
+## 129                    BL_H_umol_g 30.8895289 9.489954e-18       FALSE
+## 130                  BL_Mg_nmol_kg 10.6133437 1.070504e-06       FALSE
+## 131                   BL_Mg_nmol_g 10.6133437 1.070504e-06       FALSE
+## 132                   BL_Mg_umol_g 10.6133437 1.070504e-06       FALSE
+## 133                  BL_Na_nmol_kg 54.4772608 6.007792e-29       FALSE
+## 134                   BL_Na_nmol_g 54.4772608 6.007792e-29       FALSE
+## 135                   BL_Na_umol_g 54.4772608 6.007792e-29       FALSE
+## 136                BL_ZnOH_nmol_kg  5.9894137 5.447207e-04       FALSE
+## 137                 BL_ZnOH_nmol_g  5.9894137 5.447207e-04       FALSE
+## 138                 BL_ZnOH_umol_g  5.9894137 5.447207e-04       FALSE
+## 139                  TBL_Zn_nmol_g  6.8627131 1.667879e-04       FALSE
+## 140                  TBL_Zn_umol_g  6.8627131 1.667879e-04       FALSE
+## 141                  TBL_Zn_mol_kg  6.8627131 1.667879e-04       FALSE
+## 142                    rel_prop_Zn 20.2310637 4.054555e-12       FALSE
+## 143                log_Elevation_m 12.0685060 1.545656e-07       FALSE
+## 144 log_Upstream_from_main_stem_km 12.0854368 2.091109e-07       FALSE
+## 145                     log_Temp_C  8.2997552 2.389917e-05       FALSE
+## 146                     log_DOC_uM  1.9005310 1.291564e-01        TRUE
+## 147                      log_Ca_uM 39.3125174 6.194408e-22       FALSE
+## 148                      log_Mg_uM 36.3241408 1.784779e-20       FALSE
+## 149                      log_Na_uM  2.4175077 6.611194e-02        TRUE
+## 150                       log_K_uM 18.8047574 2.463146e-11       FALSE
+## 151                     log_SO4_uM 20.7526027 2.104939e-12       FALSE
+## 152                      log_Cl_uM  2.6481866 4.883404e-02       FALSE
+## 153                     log_DIC_uM 43.5106732 6.115198e-24       FALSE
+## 154                      log_Zn_uM  7.1940716 1.064909e-04       FALSE
+## 155                      log_Cu_uM  2.1830778 8.973177e-02        TRUE
+## 156                  log_Free_Zn_M  5.6316980 8.846721e-04       FALSE
+## 157                     log_ZnOH_M  0.7511016 5.223016e-01        TRUE
+## 158                  log_Zn_OH_2_M  1.1027370 3.480005e-01        TRUE
+## 159                    log_ZnCO3_M  4.7960745 2.743867e-03       FALSE
+## 160                   log_ZnHCO3_M  7.8957990 4.122938e-05       FALSE
+## 161                    log_ZnSO4_M 16.3487299 5.723847e-10       FALSE
+## 162                     log_ZnCl_M  7.0837495 1.236434e-04       FALSE
+## 163                      log_ZnS_M  6.4763252 2.815304e-04       FALSE
+## 164                  log_TOrg_Zn_M  0.4652861 7.066899e-01        TRUE
+## 165               log_BL_Zn_mol_kg  5.6400587 8.747023e-04       FALSE
+## 166               log_BL_Ca_mol_kg 46.0923616 3.785885e-25       FALSE
+## 167                log_BL_H_mol_kg  0.9421940 4.203351e-01        TRUE
+## 168               log_BL_Mg_mol_kg 19.1824836 1.525036e-11       FALSE
+## 169               log_BL_Na_mol_kg  5.6532810 8.591642e-04       FALSE
+## 170             log_BL_ZnOH_mol_kg  1.8868655 1.314346e-01        TRUE
+## 171                     log_HCO3_M 51.6603357 1.082704e-27       FALSE
+## 172                   log_H2_CO3_M  1.1756325 3.189095e-01        TRUE
+## 173                       log_HS_M  1.6613478 1.750400e-01        TRUE
+## 174                      log_H2S_M  0.7093222 5.469584e-01        TRUE
+## 175                   log_MgHCO3_M 65.3252469 1.332161e-33       FALSE
+## 176                    log_MgCO3_M 14.5248920 6.109792e-09       FALSE
+## 177                    log_MgSO4_M 22.5943277 2.116209e-13       FALSE
+## 178                   log_CaHCO3_M 46.5706394 2.271823e-25       FALSE
+## 179                    log_CaCO3_M 12.2373920 1.235951e-07       FALSE
+## 180                    log_CaSO4_M 37.7605388 3.520721e-21       FALSE
+## 181                   log_TOrg_H_M  7.4697853 7.333254e-05       FALSE
+## 182                  log_TOrg_Ca_M  5.1415156 1.718943e-03       FALSE
+## 183                  log_TOrg_Mg_M  0.2309627 8.748048e-01        TRUE
+## 184                  log_TOrg_Na_M  6.8141120 1.781374e-04       FALSE
+## 185                   log_TOrg_K_M  6.3183922 3.487309e-04       FALSE
+## 186           log_Zn_chronic_tox_M  6.2273140 3.945559e-04       FALSE
+## 187             log_Zn_acute_tox_M 13.0031416 4.496343e-08       FALSE
+## 188                      log_DOC_M  1.9005310 1.291564e-01        TRUE
+## 189                     log_DOC_nM  1.9005310 1.291564e-01        TRUE
+## 190                       log_Ca_M 39.3125174 6.194408e-22       FALSE
+## 191                      log_Ca_nM 39.3125174 6.194408e-22       FALSE
+## 192                       log_Mg_M 36.3241408 1.784779e-20       FALSE
+## 193                      log_Mg_nM 36.3241408 1.784779e-20       FALSE
+## 194                       log_Na_M  2.4175077 6.611194e-02        TRUE
+## 195                      log_Na_nM  2.4175077 6.611194e-02        TRUE
+## 196                        log_K_M 18.8047574 2.463146e-11       FALSE
+## 197                       log_K_nM 18.8047574 2.463146e-11       FALSE
+## 198                      log_SO4_M 20.7526027 2.104939e-12       FALSE
+## 199                     log_SO4_nM 20.7526027 2.104939e-12       FALSE
+## 200                       log_Cl_M  2.6481866 4.883404e-02       FALSE
+## 201                      log_Cl_nM  2.6481866 4.883404e-02       FALSE
+## 202                      log_DIC_M 43.5106732 6.115198e-24       FALSE
+## 203                     log_DIC_nM 43.5106732 6.115198e-24       FALSE
+## 204                       log_Zn_M  7.1940716 1.064909e-04       FALSE
+## 205                      log_Zn_nM  7.1940716 1.064909e-04       FALSE
+## 206                       log_Cu_M  2.1830778 8.973177e-02        TRUE
+## 207                      log_Cu_nM  2.1830778 8.973177e-02        TRUE
+## 208                 log_Free_Zn_uM  5.6316980 8.846721e-04       FALSE
+## 209                 log_Free_Zn_nM  5.6316980 8.846721e-04       FALSE
+## 210                    log_ZnOH_uM  0.7511016 5.223016e-01        TRUE
+## 211                    log_ZnOH_nM  0.7511016 5.223016e-01        TRUE
+## 212                 log_Zn_OH_2_uM  1.1027370 3.480005e-01        TRUE
+## 213                 log_Zn_OH_2_nM  1.1027370 3.480005e-01        TRUE
+## 214                   log_ZnCO3_uM  4.7960745 2.743867e-03       FALSE
+## 215                   log_ZnCO3_nM  4.7960745 2.743867e-03       FALSE
+## 216                  log_ZnHCO3_uM  7.8957990 4.122938e-05       FALSE
+## 217                  log_ZnHCO3_nM  7.8957990 4.122938e-05       FALSE
+## 218                   log_ZnSO4_uM 16.3487299 5.723847e-10       FALSE
+## 219                   log_ZnSO4_nM 16.3487299 5.723847e-10       FALSE
+## 220                    log_ZnCl_uM  7.0837495 1.236434e-04       FALSE
+## 221                    log_ZnCl_nM  7.0837495 1.236434e-04       FALSE
+## 222                     log_ZnS_uM  6.4763252 2.815304e-04       FALSE
+## 223                     log_ZnS_nM  6.4763252 2.815304e-04       FALSE
+## 224                 log_TOrg_Zn_uM  0.4652861 7.066899e-01        TRUE
+## 225                 log_TOrg_Zn_nM  0.4652861 7.066899e-01        TRUE
+## 226                    log_HCO3_uM 51.6603357 1.082704e-27       FALSE
+## 227                    log_HCO3_nM 51.6603357 1.082704e-27       FALSE
+## 228                  log_H2_CO3_uM  1.1756325 3.189095e-01        TRUE
+## 229                  log_H2_CO3_nM  1.1756325 3.189095e-01        TRUE
+## 230                      log_HS_uM  1.6613478 1.750400e-01        TRUE
+## 231                      log_HS_nM  1.6613478 1.750400e-01        TRUE
+## 232                     log_H2S_uM  0.7093222 5.469584e-01        TRUE
+## 233                     log_H2S_nM  0.7093222 5.469584e-01        TRUE
+## 234                  log_MgHCO3_uM 65.3252469 1.332161e-33       FALSE
+## 235                  log_MgHCO3_nM 65.3252469 1.332161e-33       FALSE
+## 236                   log_MgCO3_uM 14.5248920 6.109792e-09       FALSE
+## 237                   log_MgCO3_nM 14.5248920 6.109792e-09       FALSE
+## 238                   log_MgSO4_uM 22.5943277 2.116209e-13       FALSE
+## 239                   log_MgSO4_nM 22.5943277 2.116209e-13       FALSE
+## 240                  log_CaHCO3_uM 46.5706394 2.271823e-25       FALSE
+## 241                  log_CaHCO3_nM 46.5706394 2.271823e-25       FALSE
+## 242                   log_CaCO3_uM 12.2373920 1.235951e-07       FALSE
+## 243                   log_CaCO3_nM 12.2373920 1.235951e-07       FALSE
+## 244                   log_CaSO4_uM 37.7605388 3.520721e-21       FALSE
+## 245                   log_CaSO4_nM 37.7605388 3.520721e-21       FALSE
+## 246                  log_TOrg_H_uM  7.4697853 7.333254e-05       FALSE
+## 247                  log_TOrg_H_nM  7.4697853 7.333254e-05       FALSE
+## 248                 log_TOrg_Ca_uM  5.1415156 1.718943e-03       FALSE
+## 249                 log_TOrg_Ca_nM  5.1415156 1.718943e-03       FALSE
+## 250                 log_TOrg_Mg_uM  0.2309627 8.748048e-01        TRUE
+## 251                 log_TOrg_Mg_nM  0.2309627 8.748048e-01        TRUE
+## 252                 log_TOrg_Na_uM  6.8141120 1.781374e-04       FALSE
+## 253                 log_TOrg_Na_nM  6.8141120 1.781374e-04       FALSE
+## 254                  log_TOrg_K_uM  6.3183922 3.487309e-04       FALSE
+## 255                  log_TOrg_K_nM  6.3183922 3.487309e-04       FALSE
+## 256          log_Zn_chronic_tox_uM  6.2273140 3.945559e-04       FALSE
+## 257          log_Zn_chronic_tox_nM  6.2273140 3.945559e-04       FALSE
+## 258            log_Zn_acute_tox_uM 13.0031416 4.496343e-08       FALSE
+## 259            log_Zn_acute_tox_nM 13.0031416 4.496343e-08       FALSE
+## 260              log_BL_Zn_nmol_kg  5.6400587 8.747023e-04       FALSE
+## 261               log_BL_Zn_nmol_g  5.6400587 8.747023e-04       FALSE
+## 262               log_BL_Zn_umol_g  5.6400587 8.747023e-04       FALSE
+## 263              log_BL_Ca_nmol_kg 46.0923616 3.785885e-25       FALSE
+## 264               log_BL_Ca_nmol_g 46.0923616 3.785885e-25       FALSE
+## 265               log_BL_Ca_umol_g 46.0923616 3.785885e-25       FALSE
+## 266               log_BL_H_nmol_kg  0.9421940 4.203351e-01        TRUE
+## 267                log_BL_H_nmol_g  0.9421940 4.203351e-01        TRUE
+## 268                log_BL_H_umol_g  0.9421940 4.203351e-01        TRUE
+## 269              log_BL_Mg_nmol_kg 19.1824836 1.525036e-11       FALSE
+## 270               log_BL_Mg_nmol_g 19.1824836 1.525036e-11       FALSE
+## 271               log_BL_Mg_umol_g 19.1824836 1.525036e-11       FALSE
+## 272              log_BL_Na_nmol_kg  5.6532810 8.591642e-04       FALSE
+## 273               log_BL_Na_nmol_g  5.6532810 8.591642e-04       FALSE
+## 274               log_BL_Na_umol_g  5.6532810 8.591642e-04       FALSE
+## 275            log_BL_ZnOH_nmol_kg  1.8868655 1.314346e-01        TRUE
+## 276             log_BL_ZnOH_nmol_g  1.8868655 1.314346e-01        TRUE
+## 277             log_BL_ZnOH_umol_g  1.8868655 1.314346e-01        TRUE
+## 278              log_TBL_Zn_nmol_g  3.7997977 1.052276e-02       FALSE
+## 279              log_TBL_Zn_umol_g  3.7997977 1.052276e-02       FALSE
+## 280              log_TBL_Zn_mol_kg  3.7997977 1.052276e-02       FALSE
+## 281                log_rel_prop_Zn  7.5287299 6.771343e-05       FALSE</code></pre>
+<pre class="r"><code># Save
+library(openxlsx)
 
 # Load the existing workbook
 wb &lt;- loadWorkbook(&quot;Statistical_analyses_by_typology.xlsx&quot;)
@@ -1991,6 +2411,7 @@ na_counts</code></pre>
 ##   Variable                       NA_count
 ##   &lt;chr&gt;                             &lt;int&gt;
 ## 1 log_Upstream_from_main_stem_km      106</code></pre>
+<pre class="r"><code>dat$log_Upstream_from_main_stem_km &lt;- NULL</code></pre>
 </div>
 <div id="iii.-check-for-zero-variance" class="section level3">
 <h3>iii. Check for zero variance</h3>
@@ -2069,17 +2490,17 @@ combined_kruskal &lt;- bind_rows(combined_list)
 
 # View
 str(combined_kruskal)</code></pre>
-<pre><code>## &#39;data.frame&#39;:    1124 obs. of  8 variables:
+<pre><code>## &#39;data.frame&#39;:    1120 obs. of  8 variables:
 ##  $ Typology   : chr  &quot;NP Tribs&quot; &quot;PD Tribs&quot; &quot;P Tribs&quot; &quot;Main Stem&quot; ...
-##  $ dat[[v]]   : num  257 226 181 124 327 ...
+##  $ dat[[v]]   : num  257 219 179 130 327 ...
 ##  $ groups     : chr  &quot;a&quot; &quot;a&quot; &quot;b&quot; &quot;c&quot; ...
 ##  $ Variable   : chr  &quot;Elevation_m&quot; &quot;Elevation_m&quot; &quot;Elevation_m&quot; &quot;Elevation_m&quot; ...
-##  $ Chi_sq     : num  68 68 68 68 179 ...
+##  $ Chi_sq     : num  55.8 55.8 55.8 55.8 179 ...
 ##  $ df         : num  3 3 3 3 3 3 3 3 3 3 ...
-##  $ p_value    : num  1.15e-14 1.15e-14 1.15e-14 1.15e-14 1.14e-38 ...
+##  $ p_value    : num  4.59e-12 4.59e-12 4.59e-12 4.59e-12 1.45e-38 ...
 ##  $ Significant: logi  TRUE TRUE TRUE TRUE TRUE TRUE ...</code></pre>
-<p>Export to excel</p>
-<pre class="r"><code>library(openxlsx)
+<pre class="r"><code># Save
+library(openxlsx)
 
 # Load the existing workbook
 wb &lt;- loadWorkbook(&quot;Statistical_analyses_by_typology.xlsx&quot;)
@@ -2481,28 +2902,28 @@ library(ggplot2)
 # 1. Colors by response variable
 #-------------------------------------------------
 response_colors &lt;- c(
-  &quot;Total Zn (nM)&quot;                  = &quot;slategray&quot;,
-  &quot;Free Zn (nM)&quot;                   = &quot;darkslategray3&quot;,
+  &quot;Total Zn (nM)&quot;                      = &quot;slategray&quot;,
+  &quot;Free Zn (nM)&quot;                       = &quot;darkslategray3&quot;,
   &quot;Relative Available Zn (Free/Total)&quot; = &quot;darkslategray&quot;,
-  &quot;Bioavailable Zn&quot;                = &quot;turquoise3&quot;
+  &quot;Bioavailable Zn&quot;                    = &quot;turquoise3&quot;
 )
 
 # Facet order
 response_order &lt;- c(
   &quot;Total Zn (nM)&quot;,
   &quot;Free Zn (nM)&quot;,
-  &quot;Relative Available Zn (Free/Total)&quot;,
-  &quot;Bioavailable Zn&quot;
+  &quot;Bioavailable Zn&quot;,
+  &quot;Relative Available Zn (Free/Total)&quot;
 )
 
 #-------------------------------------------------
 # 2. Define letter nudges
 #-------------------------------------------------
 letter_nudge &lt;- c(
-  &quot;Total Zn (nM)&quot;                  = 1,
-  &quot;Free Zn (nM)&quot;                   = 1,
+  &quot;Total Zn (nM)&quot;                      = 1,
+  &quot;Free Zn (nM)&quot;                       = 1,
   &quot;Relative Available Zn (Free/Total)&quot; = 0.05,
-  &quot;Bioavailable Zn&quot;                = 2
+  &quot;Bioavailable Zn&quot;                    = 2
 )
 
 #-------------------------------------------------
@@ -2561,10 +2982,10 @@ letters_long_trace &lt;- letters_df %&gt;%
 # 5c. Facet strip labels with a., b., c., d.
 #-------------------------------------------------
 facet_labs &lt;- c(
-  &quot;Total Zn (nM)&quot;                    = &quot;a. Total&quot;,
-  &quot;Free Zn (nM)&quot;                     = &quot;b. Free&quot;,
-  &quot;Relative Available Zn (Free/Total)&quot; = &quot;d. Relative Available&quot;,
-  &quot;Bioavailable Zn&quot;                  = &quot;c. Bioavailable&quot;
+  &quot;Total Zn (nM)&quot;                      = &quot;a. Total&quot;,
+  &quot;Free Zn (nM)&quot;                       = &quot;b. Free&quot;,
+  &quot;Bioavailable Zn&quot;                    = &quot;c. Bioavailable&quot;,
+  &quot;Relative Available Zn (Free/Total)&quot; = &quot;d. Relative Available&quot;
 )
 
 #-------------------------------------------------
@@ -3086,9 +3507,9 @@ overlap_Zn_by_typology</code></pre>
 ##   Typology  Overlap_Zn_Chronic Overlap_Zn_Acute
 ##   &lt;fct&gt;                  &lt;dbl&gt;            &lt;dbl&gt;
 ## 1 NP Tribs             0.148                  0
-## 2 P Tribs              0.0212                 0
-## 3 PD Tribs             0.00115                0
-## 4 Main Stem            0.0252                 0</code></pre>
+## 2 P Tribs              0.0205                 0
+## 3 PD Tribs             0.00112                0
+## 4 Main Stem            0.0227                 0</code></pre>
 <pre class="r"><code># Save
 out_dir &lt;- &quot;Toxicity plots&quot;
 if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
@@ -3099,16 +3520,13 @@ write.xlsx(
   overwrite = TRUE
 )</code></pre>
 </div>
-</div>
-</div>
-<div id="other-plots" class="section level1">
-<h1>Other Plots</h1>
+<div id="g.-bioavailability-by-site-within-network" class="section level3">
+<h3>g. Bioavailability by site within network</h3>
 <p>Import the dataset</p>
-<pre class="r"><code>setwd(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/5. Statistical data analysis&quot;)
+<pre class="r"><code>setwd(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/6. Statistical data analysis&quot;)
 
 library(readxl)
-dat &lt;- read_excel(&quot;Bioavailability_Master_Spreadsheet_Clean3.xlsx&quot;)
-
+dat &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/5. Cluster analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx&quot;)
 
 # Colors for each Typology
 typology_colors &lt;- c(
@@ -3117,267 +3535,7 @@ typology_colors &lt;- c(
   &quot;NP Tribs&quot;        = &quot;#009E73&quot;,
   &quot;Main Stem&quot;       = &quot;#999999&quot;
 )</code></pre>
-<div id="sites-within-each-typology" class="section level2">
-<h2>Sites within Each Typology</h2>
-<pre class="r"><code>library(dplyr)
-
-np_tribs &lt;- dat %&gt;%
-  filter(Typology == &quot;NP Tribs&quot;) %&gt;%   
-  dplyr::select(Site, Typology) %&gt;%          
-  distinct()  
-
-p_tribs &lt;- dat %&gt;%
-  filter(Typology == &quot;P Tribs&quot;) %&gt;%   
-  dplyr::select(Site, Typology) %&gt;%          
-  distinct()  
-
-pd_tribs &lt;- dat %&gt;%
-  filter(Typology == &quot;PD Tribs&quot;) %&gt;%   
-  dplyr::select(Site, Typology) %&gt;%          
-  distinct()  
-
-ms &lt;- dat %&gt;%
-  filter(Typology == &quot;Main Stem&quot;) %&gt;%   
-  dplyr::select(Site, Typology) %&gt;%          
-  distinct()  
-
-np_tribs</code></pre>
-<pre><code>## # A tibble: 5 × 2
-##   Site   Typology
-##   &lt;chr&gt;  &lt;chr&gt;   
-## 1 MCA3.3 NP Tribs
-## 2 MCA3.2 NP Tribs
-## 3 MTN4   NP Tribs
-## 4 NBO3   NP Tribs
-## 5 WBK2   NP Tribs</code></pre>
-<pre class="r"><code>p_tribs</code></pre>
-<pre><code>## # A tibble: 38 × 2
-##    Site        Typology
-##    &lt;chr&gt;       &lt;chr&gt;   
-##  1 MTN4        P Tribs 
-##  2 MCA4        P Tribs 
-##  3 MCA1        P Tribs 
-##  4 MCA2        P Tribs 
-##  5 MCA3.1      P Tribs 
-##  6 WBK2        P Tribs 
-##  7 WBK3        P Tribs 
-##  8 BSL5.1      P Tribs 
-##  9 Mill Branch P Tribs 
-## 10 Gum Hollow  P Tribs 
-## # ℹ 28 more rows</code></pre>
-<pre class="r"><code>pd_tribs</code></pre>
-<pre><code>## # A tibble: 16 × 2
-##    Site     Typology
-##    &lt;chr&gt;    &lt;chr&gt;   
-##  1 MTN1.1   PD Tribs
-##  2 WBK1     PD Tribs
-##  3 BSL1.1   PD Tribs
-##  4 BSL1.3   PD Tribs
-##  5 BSL2.1   PD Tribs
-##  6 BSL2.2   PD Tribs
-##  7 BSL2.3   PD Tribs
-##  8 BSL3.1   PD Tribs
-##  9 BSL3.2   PD Tribs
-## 10 BSL3.3   PD Tribs
-## 11 NBO2     PD Tribs
-## 12 Downtown PD Tribs
-## 13 MTN4     PD Tribs
-## 14 MCA1     PD Tribs
-## 15 MCA4     PD Tribs
-## 16 MCA3.1   PD Tribs</code></pre>
-<pre class="r"><code>ms</code></pre>
-<pre><code>## # A tibble: 17 × 2
-##    Site     Typology 
-##    &lt;chr&gt;    &lt;chr&gt;    
-##  1 EFK13.8  Main Stem
-##  2 EFK16.2  Main Stem
-##  3 Downtown Main Stem
-##  4 BSL1.2   Main Stem
-##  5 EFK23.5  Main Stem
-##  6 EFK18.2  Main Stem
-##  7 EFK11.3  Main Stem
-##  8 EFK10.0  Main Stem
-##  9 EFK7.9   Main Stem
-## 10 EFK5.4   Main Stem
-## 11 BCK0.9   Main Stem
-## 12 EFK2.0   Main Stem
-## 13 NBO2     Main Stem
-## 14 EFK20    Main Stem
-## 15 BSL2.2   Main Stem
-## 16 BSL1.1   Main Stem
-## 17 BSL1.3   Main Stem</code></pre>
-<pre class="r"><code># Save
-out_dir &lt;- &quot;Sites with several typologies&quot;
-if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
-
-library(openxlsx)
-
-# Create workbook
-wb &lt;- createWorkbook()
-
-# Add worksheets and write data
-addWorksheet(wb, &quot;NP Tribs&quot;)
-writeData(wb, &quot;NP Tribs&quot;, np_tribs)
-
-addWorksheet(wb, &quot;P Tribs&quot;)
-writeData(wb, &quot;P Tribs&quot;, p_tribs)
-
-addWorksheet(wb, &quot;PD Tribs&quot;)
-writeData(wb, &quot;PD Tribs&quot;, pd_tribs)
-
-addWorksheet(wb, &quot;Main Stem&quot;)
-writeData(wb, &quot;Main Stem&quot;, ms)
-
-# Save workbook
-saveWorkbook(
-  wb,
-  file = file.path(out_dir, &quot;Sites_by_typology.xlsx&quot;),
-  overwrite = TRUE
-)</code></pre>
-</div>
-<div id="identify-sites-with-1-typology-assignment" class="section level2">
-<h2>Identify Sites with &gt;1 Typology Assignment</h2>
-<pre class="r"><code># Determine which sites fall into more than 1 typology
-sites_multiple_typology &lt;- dat %&gt;%
-  distinct(Site, Typology) %&gt;%        # unique Site–Typology pairs
-  group_by(Site) %&gt;%                  
-  summarise(
-    n_typologies = n(),               
-    typologies = paste(sort(Typology), collapse = &quot;, &quot;)
-  ) %&gt;%
-  filter(n_typologies &gt; 1)            # keep sites with &gt;1 typology
-
-sites_multiple_typology</code></pre>
-<pre><code>## # A tibble: 27 × 3
-##    Site     n_typologies typologies                  
-##    &lt;chr&gt;           &lt;int&gt; &lt;chr&gt;                       
-##  1 BCK0.9              2 Main Stem, P Tribs          
-##  2 BSL1.1              3 Main Stem, P Tribs, PD Tribs
-##  3 BSL1.2              2 Main Stem, P Tribs          
-##  4 BSL1.3              3 Main Stem, P Tribs, PD Tribs
-##  5 BSL2.2              3 Main Stem, P Tribs, PD Tribs
-##  6 BSL2.3              2 P Tribs, PD Tribs           
-##  7 BSL3.1              2 P Tribs, PD Tribs           
-##  8 BSL3.2              2 P Tribs, PD Tribs           
-##  9 BSL3.3              2 P Tribs, PD Tribs           
-## 10 Downtown            3 Main Stem, P Tribs, PD Tribs
-## # ℹ 17 more rows</code></pre>
-<pre class="r"><code># Save
-library(openxlsx)
-
-# Create workbook
-wb &lt;- createWorkbook()
-
-# Add worksheets and write data
-addWorksheet(wb, &quot;Sites&quot;)
-writeData(wb, &quot;Sites&quot;, sites_multiple_typology)
-
-# Save workbook
-saveWorkbook(
-  wb,
-  file = file.path(out_dir, &quot;Sites_with_many_typologies.xlsx&quot;),
-  overwrite = TRUE)</code></pre>
-</div>
-<div id="number-of-samples-per-typology-within-sites-with-1-typology" class="section level2">
-<h2>Number of Samples per Typology within Sites with &gt;1 Typology</h2>
-<pre class="r"><code>site_typology_sample_counts &lt;- dat %&gt;%
-  filter(Site %in% sites_multiple_typology$Site) %&gt;% 
-  count(Site, Typology, name = &quot;n_samples&quot;) %&gt;%
-  arrange(Site, desc(n_samples))
-
-site_typology_sample_counts</code></pre>
-<pre><code>## # A tibble: 60 × 3
-##    Site   Typology  n_samples
-##    &lt;chr&gt;  &lt;chr&gt;         &lt;int&gt;
-##  1 BCK0.9 Main Stem        10
-##  2 BCK0.9 P Tribs           1
-##  3 BSL1.1 PD Tribs          8
-##  4 BSL1.1 Main Stem         2
-##  5 BSL1.1 P Tribs           1
-##  6 BSL1.2 Main Stem        10
-##  7 BSL1.2 P Tribs           1
-##  8 BSL1.3 PD Tribs          9
-##  9 BSL1.3 Main Stem         1
-## 10 BSL1.3 P Tribs           1
-## # ℹ 50 more rows</code></pre>
-<pre class="r"><code># Save
-library(openxlsx)
-
-# Create workbook
-wb &lt;- createWorkbook()
-
-# Add worksheets and write data
-addWorksheet(wb, &quot;Sites&quot;)
-writeData(wb, &quot;Sites&quot;, site_typology_sample_counts)
-
-# Save workbook
-saveWorkbook(
-  wb,
-  file = file.path(out_dir, &quot;Site_typology_sample_counts.xlsx&quot;),
-  overwrite = TRUE)</code></pre>
-</div>
-<div id="bioavailability-by-site-within-network" class="section level2">
-<h2>Bioavailability by Site within Network</h2>
-<pre class="r"><code>library(dplyr)
-library(ggplot2)
-
-#-------------------------------------------------
-# 1) Prep all sites + order by elevation
-#-------------------------------------------------
-all_sites &lt;- dat %&gt;%
-  mutate(
-    Network = factor(Network)
-  ) %&gt;%
-  group_by(Site) %&gt;%
-  mutate(site_elev = median(Relative_elevation_m, na.rm = TRUE)) %&gt;%
-  ungroup() %&gt;%
-  mutate(
-    Site = factor(Site, levels = unique(Site[order(site_elev)]))
-  )
-
-#-------------------------------------------------
-# 2) Plot (NO typology coloring)
-#-------------------------------------------------
-sites_by_network &lt;- ggplot(
-  all_sites,
-  aes(x = Site, y = log_TBL_Zn_nmol_g)
-) +
-  geom_boxplot(
-    fill = &quot;grey70&quot;,      # single neutral fill
-    color = &quot;black&quot;,
-    outlier.alpha = 0.6
-  ) +
-  facet_grid(~Network, scales = &quot;free_x&quot;, space = &quot;free_x&quot;, switch = &quot;x&quot;) +
-  labs(
-    title = &quot;Bioavailable Zn Across All Sites&quot;,
-    x = &quot;Site (ordered by relative elevation)&quot;,
-    y = &quot;Log TBL Zn (nmol/g wet weight)&quot;
-  ) +
-  theme_test() +
-  theme(
-    axis.text.x = element_text(angle = 30, hjust = 1),
-    plot.title  = element_text(hjust = 0.5, face = &quot;bold&quot;)
-  )
-
-# View
-sites_by_network
-
-#-------------------------------------------------
-# 3) Save
-#-------------------------------------------------
-out_dir &lt;- &quot;Plots by site within typology&quot;
-if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
-
-ggsave(
-  filename = file.path(out_dir, &quot;Sites_by_network.png&quot;),
-  plot     = sites_by_network,
-  width    = 20,
-  height   = 6,
-  dpi      = 300
-)</code></pre>
-</div>
-<div id="colored-by-typology" class="section level2">
-<h2>Colored by typology</h2>
+<p>Colored by typology</p>
 <pre class="r"><code>library(dplyr)
 library(ggplot2)
 
@@ -3430,70 +3588,10 @@ ggsave(
   dpi      = 300
 )</code></pre>
 </div>
-<div id="table" class="section level2">
-<h2>Table</h2>
-<pre class="r"><code>library(dplyr)
-library(tidyr)
-
-# Count observations per Site × Typology
-site_typology_counts &lt;- dat %&gt;%
-  group_by(Network, Site, Typology) %&gt;%
-  summarise(n_obs = n(), .groups = &quot;drop&quot;)
-
-# Determine dominant Typology per Site
-site_dominant &lt;- site_typology_counts %&gt;%
-  group_by(Network, Site) %&gt;%
-  slice_max(order_by = n_obs, n = 1, with_ties = FALSE) %&gt;%
-  rename(Dominant_Typology = Typology,
-         Dominant_n = n_obs) %&gt;%
-  ungroup()
-
-# Join back for full site-level table
-site_summary_table &lt;- site_typology_counts %&gt;%
-  left_join(site_dominant %&gt;%
-              dplyr::select(Network, Site, Dominant_Typology),
-            by = c(&quot;Network&quot;, &quot;Site&quot;)) %&gt;%
-  arrange(Network, Site, desc(n_obs))
-
-# Merged table
-nested_table &lt;- site_summary_table %&gt;%
-  group_by(Network, Site) %&gt;%
-  summarise(
-    Typologies_Observed = paste0(Typology, &quot; (n=&quot;, n_obs, &quot;)&quot;, collapse = &quot;; &quot;),
-    Dominant_Typology   = first(Dominant_Typology),
-    .groups = &quot;drop&quot;
-  ) %&gt;%
-  mutate(
-    Dominant_Typology = factor(Dominant_Typology)
-  ) %&gt;%
-  arrange(Dominant_Typology, Network, Site)
-
-nested_table</code></pre>
-<pre><code>## # A tibble: 43 × 4
-##    Network Site    Typologies_Observed             Dominant_Typology
-##    &lt;chr&gt;   &lt;chr&gt;   &lt;chr&gt;                           &lt;fct&gt;            
-##  1 BSL     BSL1.2  Main Stem (n=10); P Tribs (n=1) Main Stem        
-##  2 EFK     EFK10.0 Main Stem (n=10); P Tribs (n=1) Main Stem        
-##  3 EFK     EFK11.3 Main Stem (n=10); P Tribs (n=1) Main Stem        
-##  4 EFK     EFK13.8 Main Stem (n=10); P Tribs (n=1) Main Stem        
-##  5 EFK     EFK16.2 Main Stem (n=10); P Tribs (n=1) Main Stem        
-##  6 EFK     EFK18.2 Main Stem (n=9); P Tribs (n=1)  Main Stem        
-##  7 EFK     EFK2.0  Main Stem (n=10); P Tribs (n=1) Main Stem        
-##  8 EFK     EFK20   Main Stem (n=9); P Tribs (n=1)  Main Stem        
-##  9 EFK     EFK23.5 Main Stem (n=11)                Main Stem        
-## 10 EFK     EFK5.4  Main Stem (n=10); P Tribs (n=1) Main Stem        
-## # ℹ 33 more rows</code></pre>
-<pre class="r"><code># Save
-library(openxlsx)
-
-write.xlsx(
-  nested_table,
-  file = file.path(out_dir, &quot;Sites_by_network_typology.xlsx&quot;),
-  overwrite = TRUE
-)</code></pre>
 </div>
-<div id="interaction-effect-of-typology-and-developed-lulc" class="section level2">
-<h2>Interaction effect of Typology and Developed LULC</h2>
+</div>
+<div id="interaction-effect-of-typology-and-developed-lulc" class="section level1">
+<h1>Interaction effect of Typology and Developed LULC</h1>
 <p>Interaction effect for each BLM predictor ~ Typology *
 Developed_lulc</p>
 <pre class="r"><code>library(dplyr)
@@ -3560,7 +3658,8 @@ saveWorkbook(
   file = file.path(out_dir, &quot;interaction_results.xlsx&quot;),
   overwrite = TRUE
 )</code></pre>
-<p>All sites</p>
+<div id="all-sites" class="section level2">
+<h2>1. All sites</h2>
 <pre class="r"><code>library(dplyr)
 library(tidyr)
 library(ggplot2)
@@ -3632,8 +3731,9 @@ ggsave(
   dpi      = 300
 )</code></pre>
 <pre><code>## `geom_smooth()` using formula = &#39;y ~ x&#39;</code></pre>
-<div id="main-stem" class="section level3">
-<h3>Main Stem</h3>
+</div>
+<div id="main-stem" class="section level2">
+<h2>2. Main Stem</h2>
 <p>As a function of Developed LC</p>
 <pre class="r"><code>library(dplyr)
 library(tidyr)
@@ -3681,8 +3781,8 @@ ggsave(
 )</code></pre>
 <pre><code>## `geom_smooth()` using formula = &#39;y ~ x&#39;</code></pre>
 </div>
-<div id="pd-tribs" class="section level3">
-<h3>PD Tribs</h3>
+<div id="pd-tribs" class="section level2">
+<h2>3. PD Tribs</h2>
 <pre class="r"><code>library(dplyr)
 library(tidyr)
 library(ggplot2)
@@ -3728,35 +3828,9 @@ ggsave(
   dpi      = 300
 )</code></pre>
 <pre><code>## `geom_smooth()` using formula = &#39;y ~ x&#39;</code></pre>
-<p>Relationship of DOC and developed lulc</p>
-<pre class="r"><code>library(dplyr)
-
-doc_model &lt;- dat %&gt;%
-  filter(Typology == &quot;PD Tribs&quot;) %&gt;%
-  lm(log_DOC_nM ~ Developed_lulc, data = .)
-
-summary(doc_model)</code></pre>
-<pre><code>## 
-## Call:
-## lm(formula = log_DOC_nM ~ Developed_lulc, data = .)
-## 
-## Residuals:
-##      Min       1Q   Median       3Q      Max 
-## -0.45867 -0.19472  0.01857  0.16065  0.57361 
-## 
-## Coefficients:
-##                 Estimate Std. Error t value Pr(&gt;|t|)    
-## (Intercept)    4.6042662  0.0734752  62.664  &lt; 2e-16 ***
-## Developed_lulc 0.0031141  0.0009699   3.211  0.00172 ** 
-## ---
-## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
-## 
-## Residual standard error: 0.2371 on 115 degrees of freedom
-## Multiple R-squared:  0.08228,    Adjusted R-squared:  0.0743 
-## F-statistic: 10.31 on 1 and 115 DF,  p-value: 0.001716</code></pre>
 </div>
-<div id="perennial-tribs" class="section level3">
-<h3>Perennial Tribs</h3>
+<div id="perennial-tribs" class="section level2">
+<h2>4. Perennial Tribs</h2>
 <pre class="r"><code>library(dplyr)
 library(tidyr)
 library(ggplot2)
@@ -3803,8 +3877,8 @@ ggsave(
 )</code></pre>
 <pre><code>## `geom_smooth()` using formula = &#39;y ~ x&#39;</code></pre>
 </div>
-<div id="np-tribs" class="section level3">
-<h3>NP Tribs</h3>
+<div id="np-tribs" class="section level2">
+<h2>5. NP Tribs</h2>
 <pre class="r"><code>library(dplyr)
 library(tidyr)
 library(ggplot2)
@@ -3852,8 +3926,8 @@ ggsave(
 <pre><code>## `geom_smooth()` using formula = &#39;y ~ x&#39;</code></pre>
 </div>
 </div>
-<div id="interaction-of-typology-and-time" class="section level2">
-<h2>Interaction of Typology and Time</h2>
+<div id="interaction-of-typology-and-time" class="section level1">
+<h1>Interaction of Typology and Time</h1>
 <pre class="r"><code>library(dplyr)
 library(tidyr)
 library(purrr)
@@ -3914,7 +3988,8 @@ saveWorkbook(
   file = file.path(out_dir, &quot;interaction_results.xlsx&quot;),
   overwrite = TRUE
 )</code></pre>
-<p>All sites</p>
+<div id="all-sites-1" class="section level2">
+<h2>1. All sites</h2>
 <pre class="r"><code>library(dplyr)
 library(tidyr)
 library(ggplot2)
@@ -3983,8 +4058,9 @@ ggsave(
   dpi      = 300
 )</code></pre>
 <pre><code>## `geom_smooth()` using formula = &#39;y ~ x&#39;</code></pre>
-<div id="main-stem-1" class="section level3">
-<h3>Main Stem</h3>
+</div>
+<div id="main-stem-1" class="section level2">
+<h2>2. Main Stem</h2>
 <pre class="r"><code>library(dplyr)
 library(tidyr)
 library(ggplot2)
@@ -4035,8 +4111,8 @@ ggsave(
 )</code></pre>
 <pre><code>## `geom_smooth()` using formula = &#39;y ~ x&#39;</code></pre>
 </div>
-<div id="pd-tribs-1" class="section level3">
-<h3>PD Tribs</h3>
+<div id="pd-tribs-1" class="section level2">
+<h2>3. PD Tribs</h2>
 <pre class="r"><code>library(dplyr)
 library(tidyr)
 library(ggplot2)
@@ -4087,8 +4163,8 @@ ggsave(
 )</code></pre>
 <pre><code>## `geom_smooth()` using formula = &#39;y ~ x&#39;</code></pre>
 </div>
-<div id="p-tribs" class="section level3">
-<h3>P Tribs</h3>
+<div id="p-tribs" class="section level2">
+<h2>4. P Tribs</h2>
 <pre class="r"><code>library(dplyr)
 library(tidyr)
 library(ggplot2)
@@ -4139,8 +4215,8 @@ ggsave(
 )</code></pre>
 <pre><code>## `geom_smooth()` using formula = &#39;y ~ x&#39;</code></pre>
 </div>
-<div id="np-tribs-1" class="section level3">
-<h3>NP Tribs</h3>
+<div id="np-tribs-1" class="section level2">
+<h2>5. NP Tribs</h2>
 <pre class="r"><code>library(dplyr)
 library(tidyr)
 library(ggplot2)
@@ -4190,7 +4266,6 @@ ggsave(
   dpi      = 300
 )</code></pre>
 <pre><code>## `geom_smooth()` using formula = &#39;y ~ x&#39;</code></pre>
-</div>
 </div>
 </div>
 

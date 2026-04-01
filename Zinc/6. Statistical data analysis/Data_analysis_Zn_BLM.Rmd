@@ -16,7 +16,7 @@ The objectives of this notebook will be to conduct statistical analyses of the B
 First, set the working directory
 
 ```{r}
-setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt")
+setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/6. Statistical data analysis")
 ```
 
 Import dataset
@@ -24,7 +24,7 @@ Import dataset
 ```{r}
 library(readxl)
 
-dat <- read_excel("Bioavailability_Master_Spreadsheet_Clean3.xlsx")
+dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/5. Cluster analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx")
 
 head(dat)
 ```
@@ -121,9 +121,10 @@ form_std <- reformulate(vars_to_select_std, response = response_std)
 
 # 1. Full MLR
 full_mod <- lm(form_std, data = std_vars)
+full_mod_summary <- summary(full_mod)
 
 # 2. Estimates (standardized partial slopes) + p-values
-coef_table <- summary(full_mod)$coefficients
+coef_table <- full_mod_summary$coefficients
 
 est_df <- data.frame(
   Predictor = rownames(coef_table),
@@ -156,14 +157,42 @@ final_table <- est_df %>%
 
 final_table
 
-# 6. Save
-library(openxlsx)
+# 6. Create full coefficient table for separate Excel sheet
+coef_tab <- as.data.frame(full_mod_summary$coefficients)
+coef_tab$Predictor <- rownames(coef_tab)
+coef_tab <- coef_tab %>%
+  relocate(Predictor)
 
+# 7. Create model summary table for separate Excel sheet
+model_stats <- data.frame(
+  Metric = c(
+    "Residual standard error",
+    "R-squared",
+    "Adjusted R-squared",
+    "F-statistic",
+    "Numerator df",
+    "Denominator df"
+  ),
+  Value = c(
+    full_mod_summary$sigma,
+    full_mod_summary$r.squared,
+    full_mod_summary$adj.r.squared,
+    unname(full_mod_summary$fstatistic["value"]),
+    unname(full_mod_summary$fstatistic["numdf"]),
+    unname(full_mod_summary$fstatistic["dendf"])
+  )
+)
+
+# 8. Save workbook
 out_dir <- "Multiple linear regression"
 dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
 
 write.xlsx(
-  final_table,
+  list(
+    Final_Table = final_table,
+    Full_Model_Coefficients = coef_tab,
+    Full_Model_Summary = model_stats
+  ),
   file = file.path(out_dir, "MLR.xlsx"),
   overwrite = TRUE
 )
@@ -255,7 +284,7 @@ ggsave(
 )
 ```
 
-## 5. Outlier detection
+## 4. Outlier detection
 
 ```{r}
 # 1. Get model diagnostics
@@ -391,53 +420,109 @@ writeData(
 saveWorkbook(wb, file_path, overwrite = TRUE)
 ```
 
-## 6. Simple MLR
+## 5. Simple MLR
 
-Here we test whether a simple mechanistic model (top 3 predictors from the full model) can perform nearly as well as your full chemistry model
+Here we test whether a simple mechanistic model (top 3 predictors from the full model) can perform as well as your full chemistry model
 
 ```{r}
 # Build a simplified MLR
+
+library(dplyr)
+library(openxlsx)
 
 # ------------------------------------------------------------
 # 1. Define simplified predictor set
 # ------------------------------------------------------------
 simple_vars <- c("log_Zn_nM", "log_DOC_nM", "log_Ca_nM")
-simple_vars_std <- paste0(simple_vars, "_std")
 
-# Model formula
+# ------------------------------------------------------------
+# 2. Standardize response + simplified predictors
+# ------------------------------------------------------------
+simple_std_vars <- dat %>%
+  dplyr::select(log_TBL_Zn_nmol_g, all_of(simple_vars)) %>%
+  mutate(across(everything(), as.numeric)) %>%
+  mutate(across(everything(), ~ as.numeric(scale(.x)), .names = "{.col}_std")) %>%
+  dplyr::select(ends_with("_std")) %>%
+  as.data.frame()
+
+# Standardized variable names
+simple_vars_std <- paste0(simple_vars, "_std")
+response_std <- "log_TBL_Zn_nmol_g_std"
+
+# ------------------------------------------------------------
+# 3. Model formula
+# ------------------------------------------------------------
 form_simple <- reformulate(simple_vars_std, response = response_std)
 
 # ------------------------------------------------------------
-# 2. Fit simplified MLR
+# 4. Fit simplified MLR
 # ------------------------------------------------------------
-simple_mod <- lm(form_simple, data = std_vars)
+simple_mod <- lm(form_simple, data = simple_std_vars)
+simple_mod_summary <- summary(simple_mod)
 
-summary(simple_mod)
-```
+# ------------------------------------------------------------
+# 5. Coefficients table
+# ------------------------------------------------------------
+coef_tab <- as.data.frame(simple_mod_summary$coefficients)
+coef_tab$Term <- rownames(coef_tab)
+coef_tab <- coef_tab %>%
+  dplyr::relocate(Term)
 
-Compare predictive ability
+coef_tab
 
-```{r}
-# Function to extract metrics
-get_metrics <- function(model, name) {
-  data.frame(
-    Model = name,
-    R2 = summary(model)$r.squared,
-    Adj_R2 = summary(model)$adj.r.squared,
-    RMSE = sqrt(mean(residuals(model)^2)),
-    AIC = AIC(model)
+# ------------------------------------------------------------
+# 6. Model stats
+# ------------------------------------------------------------
+model_stats <- data.frame(
+  Metric = c(
+    "Residual standard error",
+    "R-squared",
+    "Adjusted R-squared",
+    "F-statistic",
+    "Numerator df",
+    "Denominator df"
+  ),
+  Value = c(
+    simple_mod_summary$sigma,
+    simple_mod_summary$r.squared,
+    simple_mod_summary$adj.r.squared,
+    unname(simple_mod_summary$fstatistic["value"]),
+    unname(simple_mod_summary$fstatistic["numdf"]),
+    unname(simple_mod_summary$fstatistic["dendf"])
   )
-}
+)
 
-metrics_full   <- get_metrics(full_mod, "Full Model")
-metrics_simple <- get_metrics(simple_mod, "Simple Model")
+model_stats
 
-model_comparison <- bind_rows(metrics_full, metrics_simple)
-
-model_comparison
+# ------------------------------------------------------------
+# 7. Save
+# ------------------------------------------------------------
+write.xlsx(
+  list(
+    Coefficients = coef_tab,
+    Model_Summary = model_stats
+  ),
+  file = file.path(out_dir, "Simple_MLR.xlsx"),
+  overwrite = TRUE
+)
 ```
 
 # Assessing Variables by Typology
+
+Set order of typologies
+
+```{r}
+# Rearrange order
+dat$Typology <- as.factor(dat$Typology)
+dat$Typology <- factor(dat$Typology, 
+                          levels = c("NP Tribs",
+                                     "P Tribs",
+                                     "PD Tribs",
+                                     "Main Stem"))
+
+# Check
+levels(dat$Typology)
+```
 
 ## 1. Summary Statistics
 
@@ -511,9 +596,89 @@ saveWorkbook(wb, file_path, overwrite = TRUE)
 
 ## 2. Check of ANOVA Assumptions
 
-To determine whether variables significantly differ by typology, we could use a parametric ANOVA which assumes variables are normally distributed and have homogeneity of variance by typology. We already determined that most variables were not normally distributed, even after log-transforming them. Now we will assess homogeneity of variance by typology.
+### a. Normality
 
-### a. Homogeneity of Variance
+By Shapiro-Wilk
+
+```{r}
+library(dplyr)
+library(writexl)
+
+# Set alpha for normality
+alpha <- 0.05
+
+# Identify numeric variables (same as before)
+numeric_vars <- dat %>%
+  dplyr::select(where(is.numeric)) %>%
+  names()
+
+# Initialize results dataframe
+shapiro_results <- data.frame(
+  Variable = character(),
+  W_statistic = numeric(),
+  p_value = numeric(),
+  Normal = logical(),
+  stringsAsFactors = FALSE
+)
+
+# Loop over variables
+for (var in numeric_vars) {
+  
+  # Remove NA values (required for Shapiro test)
+  x <- dat[[var]]
+  x <- x[!is.na(x)]
+  
+  # Shapiro test only works for 3 <= n <= 5000
+  if (length(x) >= 3 && length(x) <= 5000) {
+    
+    test <- shapiro.test(x)
+    
+    W_val <- test$statistic
+    p_val <- test$p.value
+    
+    normal <- p_val > alpha
+    
+  } else {
+    # If sample size invalid, return NA
+    W_val <- NA
+    p_val <- NA
+    normal <- NA
+  }
+  
+  # Append results
+  shapiro_results <- rbind(
+    shapiro_results,
+    data.frame(
+      Variable = var,
+      W_statistic = W_val,
+      p_value = p_val,
+      Normal = normal
+    )
+  )
+}
+
+# View results
+shapiro_results
+
+# Save
+library(openxlsx)
+
+# Load the existing workbook
+wb <- loadWorkbook("Statistical_analyses_by_typology.xlsx")
+
+# Create sheet if it does NOT exist
+if(!"Normality by Shapiro Wilk" %in% names(wb)) {
+  addWorksheet(wb, "Normality by Shapiro Wilk")
+}
+
+# Write your new table
+writeData(wb, "Normality by Shapiro Wilk", shapiro_results)
+
+# Save the workbook (overwrite)
+saveWorkbook(wb, "Statistical_analyses_by_typology.xlsx", overwrite = TRUE)
+```
+
+### b. Homogeneity of Variance
 
 Using the Levene Test
 
@@ -565,11 +730,8 @@ for (var in numeric_vars) {
 
 # View results
 levene_results
-```
 
-Export results to excel
-
-```{r}
+# Save
 library(openxlsx)
 
 # Load the existing workbook
@@ -665,6 +827,8 @@ na_counts <- dat %>%
 
 # View results, should be 0
 na_counts
+
+dat$log_Upstream_from_main_stem_km <- NULL
 ```
 
 ### iii. Check for zero variance
@@ -746,11 +910,8 @@ combined_kruskal <- bind_rows(combined_list)
 
 # View
 str(combined_kruskal)
-```
 
-Export to excel
-
-```{r}
+# Save
 library(openxlsx)
 
 # Load the existing workbook
@@ -1169,28 +1330,28 @@ library(ggplot2)
 # 1. Colors by response variable
 #-------------------------------------------------
 response_colors <- c(
-  "Total Zn (nM)"                  = "slategray",
-  "Free Zn (nM)"                   = "darkslategray3",
+  "Total Zn (nM)"                      = "slategray",
+  "Free Zn (nM)"                       = "darkslategray3",
   "Relative Available Zn (Free/Total)" = "darkslategray",
-  "Bioavailable Zn"                = "turquoise3"
+  "Bioavailable Zn"                    = "turquoise3"
 )
 
 # Facet order
 response_order <- c(
   "Total Zn (nM)",
   "Free Zn (nM)",
-  "Relative Available Zn (Free/Total)",
-  "Bioavailable Zn"
+  "Bioavailable Zn",
+  "Relative Available Zn (Free/Total)"
 )
 
 #-------------------------------------------------
 # 2. Define letter nudges
 #-------------------------------------------------
 letter_nudge <- c(
-  "Total Zn (nM)"                  = 1,
-  "Free Zn (nM)"                   = 1,
+  "Total Zn (nM)"                      = 1,
+  "Free Zn (nM)"                       = 1,
   "Relative Available Zn (Free/Total)" = 0.05,
-  "Bioavailable Zn"                = 2
+  "Bioavailable Zn"                    = 2
 )
 
 #-------------------------------------------------
@@ -1249,10 +1410,10 @@ letters_long_trace <- letters_df %>%
 # 5c. Facet strip labels with a., b., c., d.
 #-------------------------------------------------
 facet_labs <- c(
-  "Total Zn (nM)"                    = "a. Total",
-  "Free Zn (nM)"                     = "b. Free",
-  "Relative Available Zn (Free/Total)" = "d. Relative Available",
-  "Bioavailable Zn"                  = "c. Bioavailable"
+  "Total Zn (nM)"                      = "a. Total",
+  "Free Zn (nM)"                       = "b. Free",
+  "Bioavailable Zn"                    = "c. Bioavailable",
+  "Relative Available Zn (Free/Total)" = "d. Relative Available"
 )
 
 #-------------------------------------------------
@@ -1797,16 +1958,15 @@ write.xlsx(
 )
 ```
 
-# Other Plots
+### g. Bioavailability by site within network
 
 Import the dataset
 
 ```{r}
-setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/5. Statistical data analysis")
+setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/6. Statistical data analysis")
 
 library(readxl)
-dat <- read_excel("Bioavailability_Master_Spreadsheet_Clean3.xlsx")
-
+dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/5. Cluster analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx")
 
 # Colors for each Typology
 typology_colors <- c(
@@ -1817,188 +1977,7 @@ typology_colors <- c(
 )
 ```
 
-## Sites within Each Typology
-
-```{r}
-library(dplyr)
-
-np_tribs <- dat %>%
-  filter(Typology == "NP Tribs") %>%   
-  dplyr::select(Site, Typology) %>%          
-  distinct()  
-
-p_tribs <- dat %>%
-  filter(Typology == "P Tribs") %>%   
-  dplyr::select(Site, Typology) %>%          
-  distinct()  
-
-pd_tribs <- dat %>%
-  filter(Typology == "PD Tribs") %>%   
-  dplyr::select(Site, Typology) %>%          
-  distinct()  
-
-ms <- dat %>%
-  filter(Typology == "Main Stem") %>%   
-  dplyr::select(Site, Typology) %>%          
-  distinct()  
-
-np_tribs
-p_tribs
-pd_tribs
-ms
-
-# Save
-out_dir <- "Sites with several typologies"
-if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
-
-library(openxlsx)
-
-# Create workbook
-wb <- createWorkbook()
-
-# Add worksheets and write data
-addWorksheet(wb, "NP Tribs")
-writeData(wb, "NP Tribs", np_tribs)
-
-addWorksheet(wb, "P Tribs")
-writeData(wb, "P Tribs", p_tribs)
-
-addWorksheet(wb, "PD Tribs")
-writeData(wb, "PD Tribs", pd_tribs)
-
-addWorksheet(wb, "Main Stem")
-writeData(wb, "Main Stem", ms)
-
-# Save workbook
-saveWorkbook(
-  wb,
-  file = file.path(out_dir, "Sites_by_typology.xlsx"),
-  overwrite = TRUE
-)
-```
-
-## Identify Sites with \>1 Typology Assignment
-
-```{r}
-# Determine which sites fall into more than 1 typology
-sites_multiple_typology <- dat %>%
-  distinct(Site, Typology) %>%        # unique Site–Typology pairs
-  group_by(Site) %>%                  
-  summarise(
-    n_typologies = n(),               
-    typologies = paste(sort(Typology), collapse = ", ")
-  ) %>%
-  filter(n_typologies > 1)            # keep sites with >1 typology
-
-sites_multiple_typology
-
-# Save
-library(openxlsx)
-
-# Create workbook
-wb <- createWorkbook()
-
-# Add worksheets and write data
-addWorksheet(wb, "Sites")
-writeData(wb, "Sites", sites_multiple_typology)
-
-# Save workbook
-saveWorkbook(
-  wb,
-  file = file.path(out_dir, "Sites_with_many_typologies.xlsx"),
-  overwrite = TRUE)
-```
-
-## Number of Samples per Typology within Sites with \>1 Typology
-
-```{r}
-site_typology_sample_counts <- dat %>%
-  filter(Site %in% sites_multiple_typology$Site) %>% 
-  count(Site, Typology, name = "n_samples") %>%
-  arrange(Site, desc(n_samples))
-
-site_typology_sample_counts
-
-# Save
-library(openxlsx)
-
-# Create workbook
-wb <- createWorkbook()
-
-# Add worksheets and write data
-addWorksheet(wb, "Sites")
-writeData(wb, "Sites", site_typology_sample_counts)
-
-# Save workbook
-saveWorkbook(
-  wb,
-  file = file.path(out_dir, "Site_typology_sample_counts.xlsx"),
-  overwrite = TRUE)
-```
-
-## Bioavailability by Site within Network
-
-```{r}
-library(dplyr)
-library(ggplot2)
-
-#-------------------------------------------------
-# 1) Prep all sites + order by elevation
-#-------------------------------------------------
-all_sites <- dat %>%
-  mutate(
-    Network = factor(Network)
-  ) %>%
-  group_by(Site) %>%
-  mutate(site_elev = median(Relative_elevation_m, na.rm = TRUE)) %>%
-  ungroup() %>%
-  mutate(
-    Site = factor(Site, levels = unique(Site[order(site_elev)]))
-  )
-
-#-------------------------------------------------
-# 2) Plot (NO typology coloring)
-#-------------------------------------------------
-sites_by_network <- ggplot(
-  all_sites,
-  aes(x = Site, y = log_TBL_Zn_nmol_g)
-) +
-  geom_boxplot(
-    fill = "grey70",      # single neutral fill
-    color = "black",
-    outlier.alpha = 0.6
-  ) +
-  facet_grid(~Network, scales = "free_x", space = "free_x", switch = "x") +
-  labs(
-    title = "Bioavailable Zn Across All Sites",
-    x = "Site (ordered by relative elevation)",
-    y = "Log TBL Zn (nmol/g wet weight)"
-  ) +
-  theme_test() +
-  theme(
-    axis.text.x = element_text(angle = 30, hjust = 1),
-    plot.title  = element_text(hjust = 0.5, face = "bold")
-  )
-
-# View
-sites_by_network
-
-#-------------------------------------------------
-# 3) Save
-#-------------------------------------------------
-out_dir <- "Plots by site within typology"
-if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
-
-ggsave(
-  filename = file.path(out_dir, "Sites_by_network.png"),
-  plot     = sites_by_network,
-  width    = 20,
-  height   = 6,
-  dpi      = 300
-)
-```
-
-## Colored by typology
+Colored by typology
 
 ```{r}
 library(dplyr)
@@ -2054,58 +2033,7 @@ ggsave(
 )
 ```
 
-## Table
-
-```{r}
-library(dplyr)
-library(tidyr)
-
-# Count observations per Site × Typology
-site_typology_counts <- dat %>%
-  group_by(Network, Site, Typology) %>%
-  summarise(n_obs = n(), .groups = "drop")
-
-# Determine dominant Typology per Site
-site_dominant <- site_typology_counts %>%
-  group_by(Network, Site) %>%
-  slice_max(order_by = n_obs, n = 1, with_ties = FALSE) %>%
-  rename(Dominant_Typology = Typology,
-         Dominant_n = n_obs) %>%
-  ungroup()
-
-# Join back for full site-level table
-site_summary_table <- site_typology_counts %>%
-  left_join(site_dominant %>%
-              dplyr::select(Network, Site, Dominant_Typology),
-            by = c("Network", "Site")) %>%
-  arrange(Network, Site, desc(n_obs))
-
-# Merged table
-nested_table <- site_summary_table %>%
-  group_by(Network, Site) %>%
-  summarise(
-    Typologies_Observed = paste0(Typology, " (n=", n_obs, ")", collapse = "; "),
-    Dominant_Typology   = first(Dominant_Typology),
-    .groups = "drop"
-  ) %>%
-  mutate(
-    Dominant_Typology = factor(Dominant_Typology)
-  ) %>%
-  arrange(Dominant_Typology, Network, Site)
-
-nested_table
-
-# Save
-library(openxlsx)
-
-write.xlsx(
-  nested_table,
-  file = file.path(out_dir, "Sites_by_network_typology.xlsx"),
-  overwrite = TRUE
-)
-```
-
-## Interaction effect of Typology and Developed LULC
+# Interaction effect of Typology and Developed LULC
 
 Interaction effect for each BLM predictor \~ Typology \* Developed_lulc
 
@@ -2171,7 +2099,7 @@ saveWorkbook(
 )
 ```
 
-All sites
+## 1. All sites
 
 ```{r}
 library(dplyr)
@@ -2247,7 +2175,7 @@ ggsave(
 
 ```
 
-### Main Stem
+## 2. Main Stem
 
 As a function of Developed LC
 
@@ -2298,7 +2226,7 @@ ggsave(
 )
 ```
 
-### PD Tribs
+## 3. PD Tribs
 
 ```{r}
 library(dplyr)
@@ -2347,19 +2275,7 @@ ggsave(
 )
 ```
 
-Relationship of DOC and developed lulc
-
-```{r}
-library(dplyr)
-
-doc_model <- dat %>%
-  filter(Typology == "PD Tribs") %>%
-  lm(log_DOC_nM ~ Developed_lulc, data = .)
-
-summary(doc_model)
-```
-
-### Perennial Tribs
+## 4. Perennial Tribs
 
 ```{r}
 library(dplyr)
@@ -2408,7 +2324,7 @@ ggsave(
 )
 ```
 
-### NP Tribs
+## 5. NP Tribs
 
 ```{r}
 library(dplyr)
@@ -2457,7 +2373,7 @@ ggsave(
 )
 ```
 
-## Interaction of Typology and Time
+# Interaction of Typology and Time
 
 ```{r}
 library(dplyr)
@@ -2522,7 +2438,7 @@ saveWorkbook(
 )
 ```
 
-All sites
+## 1. All sites
 
 ```{r}
 library(dplyr)
@@ -2594,7 +2510,7 @@ ggsave(
 )
 ```
 
-### Main Stem
+## 2. Main Stem
 
 ```{r}
 library(dplyr)
@@ -2647,7 +2563,7 @@ ggsave(
 )
 ```
 
-### PD Tribs
+## 3. PD Tribs
 
 ```{r}
 library(dplyr)
@@ -2700,7 +2616,7 @@ ggsave(
 )
 ```
 
-### P Tribs
+## 4. P Tribs
 
 ```{r}
 library(dplyr)
@@ -2753,7 +2669,7 @@ ggsave(
 )
 ```
 
-### NP Tribs
+## 5. NP Tribs
 
 ```{r}
 library(dplyr)

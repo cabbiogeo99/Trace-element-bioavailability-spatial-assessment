@@ -11,79 +11,23 @@ output:
 knitr::opts_chunk$set(fig.show = "hide", fig.keep = "none")
 ```
 
-The objectives of this notebook will be to conduct data and statistical analyses on the Bioavailability Master Spreadsheet Clean version 2 using only the baseline BLM assumptions (HA 10% Closed System)
+The objectives of this notebook will be to conduct statistical analyses of the Bioavailability Master Spreadsheet Clean version 2 assuming baseline BLM assumptions (HA 10% Closed System).
 
 First, set the working directory
 
 ```{r}
-setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/5. Statistical data analysis")
+setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/6. Statistical data analysis")
 ```
 
-# Identifying Stream Typologies
-
-Since this was already done in the Stat analysis Rmd in the Zinc folder, we just need to merge the column Typology from the dataset in that folder with this one:
+Import dataset
 
 ```{r}
 library(readxl)
 
-dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/4. Exploratory data analysis/Bioavailability_Master_Spreadsheet_Clean2.xlsx", 
+dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/5. Cluster analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx", 
     sheet = "HA 10% Closed System")
-
 head(dat)
-```
-
-First, omit pooled samples
-
-```{r}
-library(dplyr)
-
-dat <- dat %>%
-  filter(Flow_state != "Pooled")
-
-str(dat$Flow_state)
-```
-
-Upload the Zinc Bioavailability_Master_Spreadsheet_Clean3.xlsx and ensure Typology exists
-
-```{r}
-zn_dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/5. Statistical data analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx", 
-    sheet = "HA 10% Closed System")
-
-str(zn_dat$Typology)
-```
-
-Merge the Typology column to dat by Sample_ID
-
-```{r}
-library(dplyr)
-
-dat <- dat %>%
-  left_join(
-    zn_dat %>%
-      dplyr::select(Sample_ID, Typology),
-    by = "Sample_ID"
-  )
-
-# Check
-str(dat$Typology)
-```
-
-Save to Bioavailability_Master_Spreadsheet_Clean3.xlsx to this working directory
-
-```{r}
-library(openxlsx)
-
-# 1. Create a brand-new workbook
-wb <- createWorkbook()
-
-# 2. Add your sheet
-addWorksheet(wb, "HA 10% Closed System")
-
-# 3. Write your updated dat to the sheet
-writeData(wb, sheet = "HA 10% Closed System", dat)
-
-# 4. Save — overwrite the entire file
-saveWorkbook(wb, "Bioavailability_Master_Spreadsheet_Clean3.xlsx", overwrite = TRUE)
+unique(dat$Typology)
 ```
 
 # Identifying Important Predictors of Bioavailability
@@ -92,9 +36,9 @@ To determine the relative importance of each BLM predictor on trace element bioa
 
 total bioavailable element = sum of BLM predictors (as standardized log-transformed variables)
 
-## 1. Select and Inspect Variables
+## 1. Build and the MLR
 
-Use log-transformed and standardized variables, we'll first check for correlated variables by building a Spearman correlation matrix.
+Use log-transformed and standardized variables
 
 ```{r}
 library(MASS)
@@ -108,7 +52,7 @@ vars_to_select <- c("log_Cu_nM", "log_Temp_C", "pH", "log_DOC_nM",
                     "log_Mg_nM", "log_SO4_nM", "log_Na_nM",
                     "log_K_nM")
 
-# 0. Standardize variables
+# Standardize variables
 std_vars <- dat %>%
   dplyr::select(log_TBL_Cu_nmol_g, all_of(vars_to_select)) %>%
   mutate(across(everything(), as.numeric)) %>%
@@ -123,45 +67,12 @@ response_std <- "log_TBL_Cu_nmol_g_std"
 # Model formula using standardized columns
 form_std <- reformulate(vars_to_select_std, response = response_std)
 
-# Spearman correlation matrix
-cor_mat <- cor(
-  std_vars,
-  method = "spearman",
-  use    = "pairwise.complete.obs"
-)
-
-# Correlation plot with values
-corrplot(
-  cor_mat,
-  method        = "color",
-  type          = "upper",
-  order         = "hclust",
-  tl.col        = "black",
-  tl.cex        = 0.8,
-  addCoef.col   = "black",   # show correlation values
-  number.cex    = 0.7,       
-  diag          = FALSE
-)
-```
-
-The most correlated values:
-
--   0.92 Cl & Na
-
--   0.78 Na & SO4
-
--   0.78 DIC & Ca
-
--   0.72 Cu & K
-
-## 2. Build and the MLR
-
-```{r}
 # 1. Full MLR
 full_mod <- lm(form_std, data = std_vars)
+full_mod_summary <- summary(full_mod)
 
 # 2. Estimates (standardized partial slopes) + p-values
-coef_table <- summary(full_mod)$coefficients
+coef_table <- full_mod_summary$coefficients
 
 est_df <- data.frame(
   Predictor = rownames(coef_table),
@@ -194,14 +105,43 @@ final_table <- est_df %>%
 
 final_table
 
-# 6. Save
-library(openxlsx)
+# 6. Create full coefficient table for separate Excel sheet
+coef_tab <- as.data.frame(full_mod_summary$coefficients)
+coef_tab$Predictor <- rownames(coef_tab)
+coef_tab <- coef_tab %>%
+  relocate(Predictor)
 
+# 7. Create model summary table for separate Excel sheet
+model_stats <- data.frame(
+  Metric = c(
+    "Residual standard error",
+    "R-squared",
+    "Adjusted R-squared",
+    "F-statistic",
+    "Numerator df",
+    "Denominator df"
+  ),
+  Value = c(
+    full_mod_summary$sigma,
+    full_mod_summary$r.squared,
+    full_mod_summary$adj.r.squared,
+    unname(full_mod_summary$fstatistic["value"]),
+    unname(full_mod_summary$fstatistic["numdf"]),
+    unname(full_mod_summary$fstatistic["dendf"])
+  )
+)
+
+# 8. Save workbook
+library(openxlsx)
 out_dir <- "Multiple linear regression"
 dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
 
 write.xlsx(
-  final_table,
+  list(
+    Final_Table = final_table,
+    Full_Model_Coefficients = coef_tab,
+    Full_Model_Summary = model_stats
+  ),
   file = file.path(out_dir, "MLR.xlsx"),
   overwrite = TRUE
 )
@@ -431,48 +371,85 @@ saveWorkbook(wb, file_path, overwrite = TRUE)
 
 ## 5. Simple MLR
 
-Here we test whether a simple mechanistic model (top 3 predictors from the full model) can perform nearly as well as your full chemistry model
-
 ```{r}
-# Build a simplified MLR
+library(dplyr)
+library(openxlsx)
 
 # ------------------------------------------------------------
 # 1. Define simplified predictor set
 # ------------------------------------------------------------
 simple_vars <- c("log_Cu_nM", "log_DOC_nM", "pH")
-simple_vars_std <- paste0(simple_vars, "_std")
 
-# Model formula
+# ------------------------------------------------------------
+# 2. Standardize response + simplified predictors
+# ------------------------------------------------------------
+simple_std_vars <- dat %>%
+  dplyr::select(log_TBL_Cu_nmol_g, all_of(simple_vars)) %>%
+  mutate(across(everything(), as.numeric)) %>%
+  mutate(across(everything(), ~ as.numeric(scale(.x)), .names = "{.col}_std")) %>%
+  dplyr::select(ends_with("_std")) %>%
+  as.data.frame()
+
+# Standardized variable names
+simple_vars_std <- paste0(simple_vars, "_std")
+response_std <- "log_TBL_Cu_nmol_g_std"
+
+# ------------------------------------------------------------
+# 3. Model formula
+# ------------------------------------------------------------
 form_simple <- reformulate(simple_vars_std, response = response_std)
 
 # ------------------------------------------------------------
-# 2. Fit simplified MLR
+# 4. Fit simplified MLR
 # ------------------------------------------------------------
-simple_mod <- lm(form_simple, data = std_vars)
+simple_mod <- lm(form_simple, data = simple_std_vars)
+simple_mod_summary <- summary(simple_mod)
 
-summary(simple_mod)
-```
+# ------------------------------------------------------------
+# 5. Coefficients table
+# ------------------------------------------------------------
+coef_tab <- as.data.frame(simple_mod_summary$coefficients)
+coef_tab$Term <- rownames(coef_tab)
+coef_tab <- coef_tab %>%
+  dplyr::relocate(Term)
 
-Compare predictive ability
+coef_tab
 
-```{r}
-# Function to extract metrics
-get_metrics <- function(model, name) {
-  data.frame(
-    Model = name,
-    R2 = summary(model)$r.squared,
-    Adj_R2 = summary(model)$adj.r.squared,
-    RMSE = sqrt(mean(residuals(model)^2)),
-    AIC = AIC(model)
+# ------------------------------------------------------------
+# 6. Model stats
+# ------------------------------------------------------------
+model_stats <- data.frame(
+  Metric = c(
+    "Residual standard error",
+    "R-squared",
+    "Adjusted R-squared",
+    "F-statistic",
+    "Numerator df",
+    "Denominator df"
+  ),
+  Value = c(
+    simple_mod_summary$sigma,
+    simple_mod_summary$r.squared,
+    simple_mod_summary$adj.r.squared,
+    unname(simple_mod_summary$fstatistic["value"]),
+    unname(simple_mod_summary$fstatistic["numdf"]),
+    unname(simple_mod_summary$fstatistic["dendf"])
   )
-}
+)
 
-metrics_full   <- get_metrics(full_mod, "Full Model")
-metrics_simple <- get_metrics(simple_mod, "Simple Model")
+model_stats
 
-model_comparison <- bind_rows(metrics_full, metrics_simple)
-
-model_comparison
+# ------------------------------------------------------------
+# 7. Save
+# ------------------------------------------------------------
+write.xlsx(
+  list(
+    Coefficients = coef_tab,
+    Model_Summary = model_stats
+  ),
+  file = file.path(out_dir, "Simple_MLR.xlsx"),
+  overwrite = TRUE
+)
 ```
 
 # Assessing Variables by Typology
@@ -564,9 +541,89 @@ saveWorkbook(wb, file_path, overwrite = TRUE)
 
 ## 2. Check of ANOVA Assumptions
 
-To determine whether variables significantly differ by typology, we could use a parametric ANOVA which assumes variables are normally distributed and have homogeneity of variance by typology. We already determined that most variables were not normally distributed, even after log-transforming them. Now we will assess homogeneity of variance by typology.
+### a. Normality
 
-### a. Homogeneity of Variance
+By Shapiro-Wilk
+
+```{r}
+library(dplyr)
+library(writexl)
+
+# Set alpha for normality
+alpha <- 0.05
+
+# Identify numeric variables (same as before)
+numeric_vars <- dat %>%
+  dplyr::select(where(is.numeric)) %>%
+  names()
+
+# Initialize results dataframe
+shapiro_results <- data.frame(
+  Variable = character(),
+  W_statistic = numeric(),
+  p_value = numeric(),
+  Normal = logical(),
+  stringsAsFactors = FALSE
+)
+
+# Loop over variables
+for (var in numeric_vars) {
+  
+  # Remove NA values (required for Shapiro test)
+  x <- dat[[var]]
+  x <- x[!is.na(x)]
+  
+  # Shapiro test only works for 3 <= n <= 5000
+  if (length(x) >= 3 && length(x) <= 5000) {
+    
+    test <- shapiro.test(x)
+    
+    W_val <- test$statistic
+    p_val <- test$p.value
+    
+    normal <- p_val > alpha
+    
+  } else {
+    # If sample size invalid, return NA
+    W_val <- NA
+    p_val <- NA
+    normal <- NA
+  }
+  
+  # Append results
+  shapiro_results <- rbind(
+    shapiro_results,
+    data.frame(
+      Variable = var,
+      W_statistic = W_val,
+      p_value = p_val,
+      Normal = normal
+    )
+  )
+}
+
+# View results
+shapiro_results
+
+# Save
+library(openxlsx)
+
+# Load the existing workbook
+wb <- loadWorkbook("Statistical_analyses_by_typology.xlsx")
+
+# Create sheet if it does NOT exist
+if(!"Normality by Shapiro Wilk" %in% names(wb)) {
+  addWorksheet(wb, "Normality by Shapiro Wilk")
+}
+
+# Write your new table
+writeData(wb, "Normality by Shapiro Wilk", shapiro_results)
+
+# Save the workbook (overwrite)
+saveWorkbook(wb, "Statistical_analyses_by_typology.xlsx", overwrite = TRUE)
+```
+
+### b. Homogeneity of Variance
 
 Using the Levene Test
 
@@ -618,11 +675,8 @@ for (var in numeric_vars) {
 
 # View results
 levene_results
-```
 
-Export results to excel
-
-```{r}
+# Save
 library(openxlsx)
 
 # Load the existing workbook
@@ -718,6 +772,8 @@ na_counts <- dat %>%
 
 # View results, should be 0
 na_counts
+
+dat$log_Upstream_from_main_stem_km <- NULL
 ```
 
 ### iii. Check for zero variance
@@ -994,28 +1050,28 @@ library(ggplot2)
 # 1. Colors by response variable
 #-------------------------------------------------
 response_colors <- c(
-  "Total Cu (nM)"                    = "chocolate4",
-  "Free Cu (nM)"                     = "peru",
+  "Total Cu (nM)"                      = "chocolate4",
+  "Free Cu (nM)"                       = "peru",
   "Relative Available Cu (Free/Total)" = "tan4",
-  "Bioavailable Cu"                  = "chocolate1"
+  "Bioavailable Cu"                    = "chocolate1"
 )
 
 # Facet order
 response_order <- c(
   "Total Cu (nM)",
   "Free Cu (nM)",
-  "Relative Available Cu (Free/Total)",
-  "Bioavailable Cu"
+  "Bioavailable Cu",
+  "Relative Available Cu (Free/Total)"
 )
 
 #-------------------------------------------------
 # 2. Define letter nudges
 #-------------------------------------------------
 letter_nudge <- c(
-  "Total Cu (nM)"                    = 1,
-  "Free Cu (nM)"                     = 1,
+  "Total Cu (nM)"                      = 1,
+  "Free Cu (nM)"                       = 1,
   "Relative Available Cu (Free/Total)" = 0.05,
-  "Bioavailable Cu"                  = 2
+  "Bioavailable Cu"                    = 2
 )
 
 #-------------------------------------------------
@@ -1076,8 +1132,8 @@ letters_long_trace <- letters_df %>%
 facet_labs <- c(
   "Total Cu (nM)"                      = "a. Total",
   "Free Cu (nM)"                       = "b. Free",
-  "Relative Available Cu (Free/Total)" = "c. Relative Available",
-  "Bioavailable Cu"                    = "d. Bioavailable"
+  "Bioavailable Cu"                    = "c. Bioavailable",
+  "Relative Available Cu (Free/Total)" = "d. Relative Available"
 )
 
 #-------------------------------------------------
@@ -1748,9 +1804,7 @@ writeData(wb, "Overlap_Cu_by_Typology", overlap_results_by_typology)
 saveWorkbook(wb, file_path, overwrite = TRUE)
 ```
 
-# Other Plots
-
-## Bioavailability by Site within Network Colord by Typology
+## Bioavailability Plots by Site within Network
 
 ```{r}
 library(dplyr)
@@ -1758,7 +1812,6 @@ library(ggplot2)
 
 #-------------------------------------------------
 # 1) Prep all sites + order by elevation
-#    (DO NOT re-order Typology here — keep dat$Typology as-is)
 #-------------------------------------------------
 all_sites <- dat %>%
   mutate(
@@ -1810,21 +1863,4 @@ ggsave(
   dpi      = 300
 )
 
-```
-
-## Total Copper by LULC
-
-```{r}
-ggplot(dat, aes(x = Typology, y = log_Cu_nM)) +
-  
-  geom_point(size = 2, alpha = 0.7) +
-  
-  geom_smooth(method = "lm", color = "chocolate4") +
-  
-  labs(
-    x = "Developed Land Cover (%)",
-    y = "Log Total Cu (nM)"
-  ) +
-  
-  theme_classic(base_size = 14)
 ```

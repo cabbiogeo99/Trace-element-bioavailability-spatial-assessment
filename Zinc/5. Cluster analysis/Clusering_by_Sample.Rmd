@@ -409,4 +409,172 @@ write_xlsx(
 )
 ```
 
-\
+## 6. Sites within Each Typology
+
+```{r}
+library(dplyr)
+
+np_tribs <- dat %>%
+  filter(Typology == "NP Tribs") %>%   
+  dplyr::select(Site, Typology) %>%          
+  distinct()  
+
+p_tribs <- dat %>%
+  filter(Typology == "P Tribs") %>%   
+  dplyr::select(Site, Typology) %>%          
+  distinct()  
+
+pd_tribs <- dat %>%
+  filter(Typology == "PD Tribs") %>%   
+  dplyr::select(Site, Typology) %>%          
+  distinct()  
+
+ms <- dat %>%
+  filter(Typology == "Main Stem") %>%   
+  dplyr::select(Site, Typology) %>%          
+  distinct()  
+
+np_tribs
+p_tribs
+pd_tribs
+ms
+
+# Save
+out_dir <- "Sites with several typologies"
+if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+
+library(openxlsx)
+
+# Create workbook
+wb <- createWorkbook()
+
+# Add worksheets and write data
+addWorksheet(wb, "NP Tribs")
+writeData(wb, "NP Tribs", np_tribs)
+
+addWorksheet(wb, "P Tribs")
+writeData(wb, "P Tribs", p_tribs)
+
+addWorksheet(wb, "PD Tribs")
+writeData(wb, "PD Tribs", pd_tribs)
+
+addWorksheet(wb, "Main Stem")
+writeData(wb, "Main Stem", ms)
+
+# Save workbook
+saveWorkbook(
+  wb,
+  file = file.path(out_dir, "Sites_by_typology.xlsx"),
+  overwrite = TRUE
+)
+```
+
+### a. Identify Sites with \>1 Typology Assignment
+
+```{r}
+# Determine which sites fall into more than 1 typology
+sites_multiple_typology <- dat %>%
+  distinct(Site, Typology) %>%        # unique Site–Typology pairs
+  group_by(Site) %>%                  
+  summarise(
+    n_typologies = n(),               
+    typologies = paste(sort(Typology), collapse = ", ")
+  ) %>%
+  filter(n_typologies > 1)            # keep sites with >1 typology
+
+sites_multiple_typology
+
+# Save
+library(openxlsx)
+
+# Create workbook
+wb <- createWorkbook()
+
+# Add worksheets and write data
+addWorksheet(wb, "Sites")
+writeData(wb, "Sites", sites_multiple_typology)
+
+# Save workbook
+saveWorkbook(
+  wb,
+  file = file.path(out_dir, "Sites_with_many_typologies.xlsx"),
+  overwrite = TRUE)
+```
+
+### b. Number of Samples per Typology within Sites with \>1 Typology
+
+```{r}
+site_typology_sample_counts <- dat %>%
+  filter(Site %in% sites_multiple_typology$Site) %>% 
+  count(Site, Typology, name = "n_samples") %>%
+  arrange(Site, desc(n_samples))
+
+site_typology_sample_counts
+
+# Save
+library(openxlsx)
+
+# Create workbook
+wb <- createWorkbook()
+
+# Add worksheets and write data
+addWorksheet(wb, "Sites")
+writeData(wb, "Sites", site_typology_sample_counts)
+
+# Save workbook
+saveWorkbook(
+  wb,
+  file = file.path(out_dir, "Site_typology_sample_counts.xlsx"),
+  overwrite = TRUE)
+```
+
+### c. Dominant Typology for each Site
+
+```{r}
+library(dplyr)
+library(tidyr)
+
+# Count observations per Site × Typology
+site_typology_counts <- dat %>%
+  group_by(Network, Site, Typology) %>%
+  summarise(n_obs = n(), .groups = "drop")
+
+# Determine dominant Typology per Site
+site_dominant <- site_typology_counts %>%
+  group_by(Network, Site) %>%
+  slice_max(order_by = n_obs, n = 1, with_ties = FALSE) %>%
+  rename(Dominant_Typology = Typology,
+         Dominant_n = n_obs) %>%
+  ungroup()
+
+# Join back for full site-level table
+site_summary_table <- site_typology_counts %>%
+  left_join(site_dominant %>%
+              dplyr::select(Network, Site, Dominant_Typology),
+            by = c("Network", "Site")) %>%
+  arrange(Network, Site, desc(n_obs))
+
+# Merged table
+nested_table <- site_summary_table %>%
+  group_by(Network, Site) %>%
+  summarise(
+    Typologies_Observed = paste0(Typology, " (n=", n_obs, ")", collapse = "; "),
+    Dominant_Typology   = first(Dominant_Typology),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    Dominant_Typology = factor(Dominant_Typology)
+  ) %>%
+  arrange(Dominant_Typology, Network, Site)
+
+nested_table
+
+# Save
+library(openxlsx)
+
+write.xlsx(
+  nested_table,
+  file = file.path(out_dir, "Sites_by_network_typology.xlsx"),
+  overwrite = TRUE
+)
+```
