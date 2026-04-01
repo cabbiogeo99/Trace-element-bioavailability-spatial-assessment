@@ -653,7 +653,7 @@ pca_typology2</code></pre>
 <pre class="r"><code>#-------------------------------------------------
 # 5) Save plot
 #-------------------------------------------------
-out_dir &lt;- &quot;Identifying Typology2 Plots&quot;
+out_dir &lt;- &quot;Typology2 Plots&quot;
 
 if (!dir.exists(out_dir)) {
   dir.create(out_dir, recursive = TRUE)
@@ -880,7 +880,7 @@ saveWorkbook(
 <p>Rename Typology2</p>
 <pre class="r"><code>dat &lt;- dat %&gt;%
   mutate(
-    Typology2 = recode(
+    Typology2 = dplyr::recode(
       Typology2,
       `1` = &quot;Non-Perennial&quot;,
       `2` = &quot;Perennial Developed&quot;
@@ -908,7 +908,7 @@ ha10_dat &lt;- read_excel(file_path, sheet = sheet_name)
 # 2. Create Typology2 lookup table from dat
 # --------------------------------------------------
 typology_lookup &lt;- dat %&gt;%
-  select(Sample_ID, Typology2) %&gt;%
+  dplyr::select(Sample_ID, Typology2) %&gt;%
   distinct()
 
 # Optional check for duplicated Sample_ID values in lookup
@@ -938,6 +938,75 @@ write.xlsx(
 cat(&quot;File saved to:\n&quot;, output_path, &quot;\n&quot;)</code></pre>
 <pre><code>## File saved to:
 ##  C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/5. Cluster analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx</code></pre>
+</div>
+<div id="sites-within-typology2" class="section level2">
+<h2>6. Sites within Typology2</h2>
+<pre class="r"><code>library(dplyr)
+
+np_tribs &lt;- dat %&gt;%
+  filter(Typology2 == &quot;Non-Perennial&quot;) %&gt;%   
+  dplyr::select(Site, Typology2) %&gt;%          
+  distinct()  
+
+pd_tribs &lt;- dat %&gt;%
+  filter(Typology2 == &quot;Perennial Developed&quot;) %&gt;%   
+  dplyr::select(Site, Typology2) %&gt;%          
+  distinct()  
+
+np_tribs</code></pre>
+<pre><code>## # A tibble: 12 × 2
+##    Site   Typology2    
+##    &lt;chr&gt;  &lt;fct&gt;        
+##  1 MTN4   Non-Perennial
+##  2 MCA3.3 Non-Perennial
+##  3 MCA3.2 Non-Perennial
+##  4 MCA4   Non-Perennial
+##  5 MCA2   Non-Perennial
+##  6 MCA3.1 Non-Perennial
+##  7 WBK2   Non-Perennial
+##  8 WBK3   Non-Perennial
+##  9 BSL5.1 Non-Perennial
+## 10 NBO3   Non-Perennial
+## 11 BSL8   Non-Perennial
+## 12 NBO5   Non-Perennial</code></pre>
+<pre class="r"><code>pd_tribs</code></pre>
+<pre><code>## # A tibble: 31 × 2
+##    Site     Typology2          
+##    &lt;chr&gt;    &lt;fct&gt;              
+##  1 MTN1.1   Perennial Developed
+##  2 EFK13.8  Perennial Developed
+##  3 MCA1     Perennial Developed
+##  4 EFK16.2  Perennial Developed
+##  5 WBK1     Perennial Developed
+##  6 Downtown Perennial Developed
+##  7 BSL1.1   Perennial Developed
+##  8 BSL1.3   Perennial Developed
+##  9 BSL1.2   Perennial Developed
+## 10 BSL2.1   Perennial Developed
+## # ℹ 21 more rows</code></pre>
+<pre class="r"><code># Save
+out_dir &lt;- &quot;Typology2 Plots&quot;
+if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+
+library(openxlsx)
+
+# Create workbook
+wb &lt;- createWorkbook()
+
+# Add worksheets and write data
+addWorksheet(wb, &quot;NP Tribs&quot;)
+writeData(wb, &quot;NP Tribs&quot;, np_tribs)
+
+addWorksheet(wb, &quot;PD Tribs&quot;)
+writeData(wb, &quot;PD Tribs&quot;, pd_tribs)
+
+
+# Save workbook
+saveWorkbook(
+  wb,
+  file = file.path(out_dir, &quot;Sites_by_typology.xlsx&quot;),
+  overwrite = TRUE
+)</code></pre>
 </div>
 </div>
 

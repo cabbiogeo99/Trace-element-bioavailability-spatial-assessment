@@ -240,7 +240,7 @@ pca_typology2
 #-------------------------------------------------
 # 5) Save plot
 #-------------------------------------------------
-out_dir <- "Identifying Typology2 Plots"
+out_dir <- "Typology2 Plots"
 
 if (!dir.exists(out_dir)) {
   dir.create(out_dir, recursive = TRUE)
@@ -459,7 +459,7 @@ Rename Typology2
 ```{r}
 dat <- dat %>%
   mutate(
-    Typology2 = recode(
+    Typology2 = dplyr::recode(
       Typology2,
       `1` = "Non-Perennial",
       `2` = "Perennial Developed"
@@ -489,7 +489,7 @@ ha10_dat <- read_excel(file_path, sheet = sheet_name)
 # 2. Create Typology2 lookup table from dat
 # --------------------------------------------------
 typology_lookup <- dat %>%
-  select(Sample_ID, Typology2) %>%
+  dplyr::select(Sample_ID, Typology2) %>%
   distinct()
 
 # Optional check for duplicated Sample_ID values in lookup
@@ -516,4 +516,47 @@ write.xlsx(
 )
 
 cat("File saved to:\n", output_path, "\n")
+```
+
+## 6. Sites within Typology2
+
+```{r}
+library(dplyr)
+
+np_tribs <- dat %>%
+  filter(Typology2 == "Non-Perennial") %>%   
+  dplyr::select(Site, Typology2) %>%          
+  distinct()  
+
+pd_tribs <- dat %>%
+  filter(Typology2 == "Perennial Developed") %>%   
+  dplyr::select(Site, Typology2) %>%          
+  distinct()  
+
+np_tribs
+pd_tribs
+
+# Save
+out_dir <- "Typology2 Plots"
+if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+
+library(openxlsx)
+
+# Create workbook
+wb <- createWorkbook()
+
+# Add worksheets and write data
+addWorksheet(wb, "NP Tribs")
+writeData(wb, "NP Tribs", np_tribs)
+
+addWorksheet(wb, "PD Tribs")
+writeData(wb, "PD Tribs", pd_tribs)
+
+
+# Save workbook
+saveWorkbook(
+  wb,
+  file = file.path(out_dir, "Sites_by_typology.xlsx"),
+  overwrite = TRUE
+)
 ```

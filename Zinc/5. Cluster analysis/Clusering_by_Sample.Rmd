@@ -171,7 +171,7 @@ pca_cluster <- fviz_pca_biplot(
 pca_cluster
 
 # Define output directory
-out_dir <- "Identifying Typology Plots"
+out_dir <- "Typology Plots"
 # Create directory if it does not exist
 if (!dir.exists(out_dir)) {
   dir.create(out_dir, recursive = TRUE)
@@ -234,7 +234,7 @@ cluster_summary_table_pct
 Save table
 
 ```{r}
-out_dir <- "Identifying Typology2 Plots"
+out_dir <- "Typology2 Plots"
 
 library(openxlsx)
 
@@ -378,7 +378,7 @@ ha10_dat <- read_excel(file_path, sheet = sheet_name)
 #-------------------------------------------
 
 typology_lookup <- dat %>%
-  select(Sample_ID, Typology) %>%
+  dplyr::select(Sample_ID, Typology) %>%
   distinct()
 
 #-------------------------------------------
@@ -440,7 +440,7 @@ pd_tribs
 ms
 
 # Save
-out_dir <- "Sites with several typologies"
+out_dir <- "Typology Plots"
 if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
 
 library(openxlsx)
