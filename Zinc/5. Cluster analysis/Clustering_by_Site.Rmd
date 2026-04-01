@@ -1,0 +1,519 @@
+---
+title: "Clustering by Site"
+author: "Cecilia Albert-Black"
+output:
+  html_document:
+    self_contained: true
+output_file: "Data_analysis_Zn_BLM.html"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.show = "hide", fig.keep = "none")
+```
+
+The objectives of this notebook will be to conduct a cluster analysis using site-averaged BLM predictor variables to identify a typological classification of samples. This classification will be balled Typology2
+
+This will be conducted under the baseline BLM assumptions (HA 10% Closed System) within the Bioavailability Master Spreadsheet Clean version 2.
+
+First, set the working directory
+
+```{r}
+setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/5. Cluster analysis")
+```
+
+# Identifying Stream Typologies
+
+Using Site average values of BLM predictors.
+
+Import dataset
+
+```{r}
+library(readxl)
+
+dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/4. Exploratory data analysis/Bioavailability_Master_Spreadsheet_Clean2.xlsx", 
+    sheet = "HA 10% Closed System")
+
+head(dat)
+```
+
+Omit pooled samples
+
+```{r}
+library(dplyr)
+
+dat <- dat %>%
+  filter(Flow_state != "Pooled")
+
+# Check
+unique(dat$Flow_state)
+```
+
+## 1. Select variables by site
+
+We'll use the scaled, log-transformed BLM predictors to conduct a PCA
+
+```{r}
+library(dplyr)
+library(cluster)
+
+# Variables to select
+vars_to_select <- c("log_Temp_C", "pH", "log_DOC_uM",
+                    "log_DIC_uM", "log_Cl_uM", "log_Ca_uM", 
+                    "log_Mg_uM", "log_SO4_uM", "log_Na_uM", 
+                    "log_K_uM", "log_Zn_uM", "log_Cu_uM")
+
+# Scale sample-level chemistry variables
+scaled_blm_predict <- as.data.frame(
+  scale(dat[vars_to_select])
+)
+
+# Add Site back in
+scaled_blm_predict$Site <- dat$Site
+
+# Average scaled values by Site
+site_means_scaled <- scaled_blm_predict %>%
+  group_by(Site) %>%
+  summarise(
+    across(all_of(vars_to_select), ~ mean(.x, na.rm = TRUE))
+  ) %>%
+  ungroup()
+
+
+```
+
+## 2. K-means clustering
+
+### i. Identifying the number of clusters
+
+Run k-means using 2-5 and identify which number of clusters minimizes the overlap
+
+```{r}
+# Create numeric clustering dataset
+#    (remove Site before k-means)
+cluster_dat <- site_means_scaled %>%
+  dplyr::select(-Site)
+
+# Optional safety check
+sum(is.na(cluster_dat))
+sum(!is.finite(as.matrix(cluster_dat)))
+
+# Silhouette check for k = 2:10
+set.seed(123)
+
+sil_df <- lapply(2:5, function(k) {
+  
+  km <- kmeans(
+    cluster_dat,
+    centers = k,
+    nstart = 50
+  )
+  
+  sil <- silhouette(km$cluster, dist(cluster_dat))
+  
+  data.frame(
+    k = k,
+    mean_silhouette = mean(sil[, 3])
+  )
+}) %>%
+  bind_rows()
+
+sil_df
+```
+
+### ii. Clustering
+
+Run k-means using 2 clusters
+
+```{r}
+# Fit final k-means model
+set.seed(123)
+
+final_k <- 2
+
+km_final <- kmeans(
+  cluster_dat,
+  centers = final_k,
+  nstart = 50
+)
+
+# Make a Site-level cluster lookup table
+
+site_clusters <- site_means_scaled %>%
+  dplyr::select(Site) %>%
+  mutate(Typology2 = factor(km_final$cluster))
+
+site_clusters
+```
+
+```{r}
+# Join Site-level clusters back to sample-level dat
+dat_clustered <- dat %>%
+  left_join(site_clusters, by = "Site")
+
+# Check result
+head(dat_clustered)
+table(dat_clustered$Typology2, useNA = "ifany")
+```
+
+Assign Cluster to samples in dat
+
+```{r}
+library(dplyr)
+
+dat <- dat %>%
+  left_join(site_clusters, by = "Site")
+
+# Check that every sample received a cluster
+sum(is.na(dat$Typology2))
+
+# Look at distribution
+table(dat$Typology2)
+
+# Confirm clusters are consistent by site
+dat %>%
+  group_by(Site) %>%
+  summarise(n_clusters = n_distinct(Typology2))
+```
+
+## 3. Plot of clusters on PCA
+
+Overlay clusters on PCA
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(factoextra)
+
+#-------------------------------------------------
+# 0) Build Site-level table with clusters
+#-------------------------------------------------
+site_pca_df <- site_means_scaled %>%
+  mutate(Typology2 = factor(km_final$cluster))
+
+#-------------------------------------------------
+# 1) Force cluster order + set cluster colors
+#-------------------------------------------------
+typology2_colors <- c(
+  "1" = "#56B4E9",
+  "2" = "#D55E00"
+)
+
+site_pca_df$Typology2 <- factor(site_pca_df$Typology2, levels = c("1", "2", "4", "3"))
+
+#-------------------------------------------------
+# 2) Create numeric matrix for PCA
+#    (remove Site and Typology2 columns)
+#-------------------------------------------------
+pca_input <- site_pca_df %>%
+  dplyr::select(-Site, -Typology2)
+
+#-------------------------------------------------
+# 3) Run PCA on Site-level chemistry
+#-------------------------------------------------
+pca_result <- prcomp(pca_input, center = TRUE, scale. = TRUE)
+
+pca_summary <- summary(pca_result)
+
+# Optional: view variance explained
+pca_summary
+
+#-------------------------------------------------
+# 4) Make PCA biplot colored by Site-level cluster
+#-------------------------------------------------
+pca_typology2 <- fviz_pca_biplot(
+  pca_result,
+  geom.ind     = "point",
+  col.var      = "black",
+  habillage    = site_pca_df$Typology2,
+  addEllipses  = TRUE,
+  legend.title = "Typology2",
+  palette      = typology2_colors
+) +
+  labs(
+    title = "PCA Biplot of Sites by Typology2"
+  ) +
+  theme_classic(base_size = 14)
+
+# View plot
+pca_typology2
+
+#-------------------------------------------------
+# 5) Save plot
+#-------------------------------------------------
+out_dir <- "Identifying Typology2 Plots"
+
+if (!dir.exists(out_dir)) {
+  dir.create(out_dir, recursive = TRUE)
+}
+
+ggsave(
+  filename = file.path(out_dir, "PCA_Biplot_Sites_by_Typology2.png"),
+  plot     = pca_typology2,
+  width    = 8,
+  height   = 6,
+  dpi      = 300
+)
+```
+
+## 4. Characterizing clusters
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+#-------------------------------------------------
+# 0) Define inherent site characteristics
+#-------------------------------------------------
+site_char <- c("Type", "Regime", "Development")
+
+#-------------------------------------------------
+# 1) Make a SITE-LEVEL dataframe
+#    Keep one row per Site with its cluster
+#-------------------------------------------------
+site_level_chars <- dat_clustered %>%
+  dplyr::select(Site, all_of(site_char), Typology2) %>%
+  distinct()
+
+#-------------------------------------------------
+# 2) Count frequencies and compute relative frequency
+#    within each Variable x Cluster combination
+#-------------------------------------------------
+cluster_summary_table_pct <- site_level_chars %>%
+  pivot_longer(
+    cols = all_of(site_char),
+    names_to = "Variable",
+    values_to = "Value"
+  ) %>%
+  count(Variable, Typology2, Value, name = "Freq") %>%
+  group_by(Variable, Typology2) %>%
+  mutate(RelFreq = Freq / sum(Freq) * 100) %>%
+  ungroup()
+
+cluster_summary_table_pct
+
+# Save
+library(openxlsx)
+
+# 1. Create a brand-new workbook
+wb <- createWorkbook()
+
+# 2. Add a sheet
+addWorksheet(wb, sheetName = "Typology2")
+
+# 3. Write in the sheet with the dataset
+writeData(wb, sheet = "Typology2", cluster_summary_table_pct)
+
+# 4. Save
+saveWorkbook(
+  wb,
+  file = "Relative_freq_by_typology2.xlsx",
+  overwrite = TRUE
+)
+```
+
+Plot
+
+```{r}
+#-------------------------------------------------
+# 3) Combine variable + value for fill labels
+#-------------------------------------------------
+cluster_summary_table_pct <- cluster_summary_table_pct %>%
+  mutate(Value_labeled = paste0(Variable, ": ", Value))
+
+#-------------------------------------------------
+# 4) Set plotting order
+#-------------------------------------------------
+cluster_summary_table_pct$Value_labeled <- factor(
+  cluster_summary_table_pct$Value_labeled,
+  levels = c(
+    "Type: Tributaries",
+    "Type: Main Stem",
+    
+    "Development: Low",
+    "Development: Medium",
+    "Development: High",
+    
+    "Regime: NonPerennial",
+    "Regime: Perennial"
+  )
+)
+
+cluster_summary_table_pct$Variable <- factor(
+  cluster_summary_table_pct$Variable,
+  levels = c("Type", "Development", "Regime")
+)
+
+cluster_summary_table_pct$Typology2 <- factor(
+  cluster_summary_table_pct$Typology2,
+  levels = c("1", "2")
+)
+
+#-------------------------------------------------
+# 5) Define colors
+#-------------------------------------------------
+color_map <- c(
+  "Type: Tributaries" = "#dadaeb",
+  "Type: Main Stem" = "#756bb1",
+  
+  "Development: Low" = "#fdd49e",
+  "Development: Medium" = "orange2",
+  "Development: High" = "red3",
+  
+  "Regime: NonPerennial" = "lightblue",
+  "Regime: Perennial" = "#1f78a4"
+)
+
+# Legend labels without the variable prefix
+legend_labels <- gsub("^.*: ", "", levels(cluster_summary_table_pct$Value_labeled))
+
+#-------------------------------------------------
+# 6) Plot relative frequencies by cluster
+#-------------------------------------------------
+rel_freq <- ggplot(
+  cluster_summary_table_pct,
+  aes(y = Variable, x = RelFreq, fill = Value_labeled)
+) +
+  geom_bar(
+    stat = "identity",
+    position = "fill",
+    color = "white",
+    linewidth = 0.2
+  ) +
+  facet_wrap(~ Typology2, ncol = 1, strip.position = "left") +
+  scale_x_continuous(labels = scales::percent_format(scale = 1)) +
+  scale_fill_manual(
+    values = color_map,
+    labels = legend_labels
+  ) +
+  labs(
+    x = "Relative Frequency (%)",
+    y = NULL,
+    fill = "Category"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    strip.placement = "outside",
+    strip.text.y.left = element_text(angle = 0, face = "bold"),
+    panel.spacing = unit(0.6, "lines"),
+    legend.position = "right",
+    legend.box = "vertical",
+    legend.direction = "vertical"
+  ) +
+  guides(fill = guide_legend(ncol = 1))
+
+rel_freq
+
+# Save 
+ggsave(
+  filename = file.path(out_dir, "Relative_freq_plots_by_cluster.png"),
+  plot     = rel_freq,
+  width    = 8,
+  height   = 6,
+  dpi      = 300
+)
+```
+
+-   Cluster 1: Non-perennial tributary sites with medium-low developed land cover
+
+-   Cluster 2: Perennial tributaries and main stem sites with more developed land cover
+
+Identify which Sites fall into each Typology2
+
+```{r}
+library(dplyr)
+
+sites_by_typology2 <- dat %>%
+  distinct(Site, Typology2) %>%
+  group_by(Typology2) %>%
+  summarise(
+    Sites = paste(sort(Site), collapse = ", "),
+    n_sites = n(),
+    .groups = "drop"
+  )
+
+sites_by_typology2
+
+# Save
+library(openxlsx)
+
+# 1. Create a brand-new workbook
+wb <- createWorkbook()
+
+# 2. Add a sheet
+addWorksheet(wb, sheetName = "Typology2")
+
+# 3. Write in the sheet with the dataset
+writeData(wb, sheet = "Typology2", sites_by_typology2)
+
+# 4. Save
+saveWorkbook(
+  wb,
+  file = "sites_by_typology2.xlsx",
+  overwrite = TRUE
+)
+```
+
+Rename Typology2
+
+```{r}
+dat <- dat %>%
+  mutate(
+    Typology2 = recode(
+      Typology2,
+      `1` = "Non-Perennial",
+      `2` = "Perennial Developed"
+    )
+  )
+
+unique(dat$Typology2)
+```
+
+Save
+
+```{r}
+# --------------------------------------------------
+# 1. Read in Excel sheet
+# --------------------------------------------------
+library(readxl)
+library(dplyr)
+library(openxlsx)
+
+file_path <- "C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/5. Cluster analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx"
+
+sheet_name <- "HA 10% Closed System"
+
+ha10_dat <- read_excel(file_path, sheet = sheet_name)
+
+# --------------------------------------------------
+# 2. Create Typology2 lookup table from dat
+# --------------------------------------------------
+typology_lookup <- dat %>%
+  select(Sample_ID, Typology2) %>%
+  distinct()
+
+# Optional check for duplicated Sample_ID values in lookup
+typology_lookup %>%
+  count(Sample_ID) %>%
+  filter(n > 1)
+
+# --------------------------------------------------
+# 3. Join Typology2 onto Excel data by Sample_ID
+# --------------------------------------------------
+ha10_dat_updated <- ha10_dat %>%
+  left_join(typology_lookup, by = "Sample_ID")
+
+# --------------------------------------------------
+# 4. Save as a new Excel workbook in working directory
+# --------------------------------------------------
+output_path <- file.path(getwd(), "Bioavailability_Master_Spreadsheet_Clean3.xlsx")
+
+write.xlsx(
+  ha10_dat_updated,
+  file = output_path,
+  sheetName = sheet_name,
+  overwrite = TRUE
+)
+
+cat("File saved to:\n", output_path, "\n")
+```
