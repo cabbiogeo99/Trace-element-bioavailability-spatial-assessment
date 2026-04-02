@@ -570,28 +570,12 @@ Export to excel
 ```{r}
 library(openxlsx)
 
-# File name
 file_path <- "Statistical_analyses_by_typology.xlsx"
 
-# Load workbook if exists, otherwise create a new one
-if (file.exists(file_path)) {
-  wb <- loadWorkbook(file_path)
-} else {
-  wb <- createWorkbook()
-}
-
-
-# Create sheet if it does NOT exist
-if (!"Summary Stats" %in% names(wb)) {
-  addWorksheet(wb, "Summary Stats")
-}
-
-# Write data to the sheet
+wb <- createWorkbook()
+addWorksheet(wb, "Summary Stats")
 writeData(wb, "Summary Stats", summary_table)
-
-# Save workbook (overwrite = TRUE allows updating)
 saveWorkbook(wb, file_path, overwrite = TRUE)
-
 ```
 
 ## 2. Check of ANOVA Assumptions
@@ -1705,7 +1689,167 @@ ggsave(
 
 ```
 
-### e. BL-bound cations
+### e. All Zn Complexes
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(scales)
+
+#-------------------------------------------------
+# 1. Define variables of interest (already linear nM)
+#-------------------------------------------------
+vars <- c(
+  "Free_Zn_nM",
+  "ZnOH_nM",
+  "Zn_OH_2_nM",
+  "ZnCO3_nM",
+  "ZnHCO3_nM",
+  "ZnSO4_nM",
+  "ZnCl_nM",
+  "ZnS_nM",
+  "TOrg_Zn_nM"
+)
+
+#-------------------------------------------------
+# 2. Pivot to long format (NO log transformation)
+#-------------------------------------------------
+plot_dat <- dat %>%
+  dplyr::select(Typology, all_of(vars)) %>%
+  pivot_longer(
+    cols = all_of(vars),
+    names_to = "Species",
+    values_to = "conc_nM"
+  ) %>%
+  group_by(Typology, Species) %>%
+  summarize(
+    mean_conc = mean(conc_nM, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  group_by(Typology) %>%
+  mutate(
+    rel_conc = mean_conc / sum(mean_conc, na.rm = TRUE)
+  ) %>%
+  ungroup()
+
+#-------------------------------------------------
+# 3. Clean legend labels
+#-------------------------------------------------
+plot_dat <- plot_dat %>%
+  mutate(
+    Species = Species %>%
+      gsub("_nM", "", .) %>%
+      gsub("_", " ", .),
+    
+    Species = dplyr::recode(Species,
+      "Free Zn"   = "Zn²⁺",
+      "ZnOH"      = "ZnOH",
+      "Zn OH 2"   = "Zn(OH)₂",
+      "ZnCO3"     = "ZnCO₃",
+      "ZnHCO3"    = "ZnHCO₃",
+      "ZnSO4"     = "ZnSO₄",
+      "ZnCl"      = "ZnCl",
+      "ZnS_nM"    = "ZnS",
+      "TOrg Zn"   = "Organic-Zn"
+    )
+  )
+
+#-------------------------------------------------
+# 4. Order species by overall contribution
+#-------------------------------------------------
+plot_dat$Species <- factor(
+  plot_dat$Species,
+  levels = plot_dat %>%
+    group_by(Species) %>%
+    summarize(total = sum(mean_conc, na.rm = TRUE), .groups = "drop") %>%
+    arrange(desc(total)) %>%
+    pull(Species)
+)
+
+species_levels <- levels(plot_dat$Species)
+
+custom_colors <- colorRampPalette(c("brown", "yellow", "skyblue", "darkblue"))(
+  length(species_levels)
+)
+
+#-------------------------------------------------
+# 5. Plot stacked barplot
+#-------------------------------------------------
+zn_species <- ggplot(plot_dat, aes(x = Typology, y = rel_conc, fill = Species)) +
+  geom_col(color = "black") +
+  scale_fill_manual(values = custom_colors) +
+  scale_y_continuous(labels = percent_format(accuracy = 1)) +
+  labs(
+    x = "Typology",
+    y = "Mean Relative Proportion (%)",
+    fill = "Zn Species",
+    title = "Zinc Speciation by Typology"
+  ) +
+  theme_classic() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+zn_species
+
+#-------------------------------------------------
+# 6. Save
+#-------------------------------------------------
+ggsave(
+  filename = file.path(out_dir, "All_Zn_Complexes.png"),
+  plot     = zn_species,
+  width    = 7,
+  height   = 5,
+  dpi      = 300
+)
+```
+
+Table
+
+```{r}
+rel_table <- dat %>%
+  mutate(
+    total_zn_nM = rowSums(across(all_of(vars)), na.rm = TRUE)
+  ) %>%
+  filter(total_zn_nM > 0) %>%
+  pivot_longer(
+    cols = all_of(vars),
+    names_to = "Species",
+    values_to = "conc_nM"
+  ) %>%
+  mutate(
+    rel_conc = conc_nM / total_zn_nM
+  ) %>%
+  group_by(Typology, Species) %>%
+  summarize(
+    Mean   = mean(rel_conc, na.rm = TRUE) * 100,
+    SD     = sd(rel_conc, na.rm = TRUE) * 100,
+    Median = median(rel_conc, na.rm = TRUE) * 100,
+    .groups = "drop"
+  )
+
+# Wide format (Mean %)
+rel_table_wide <- rel_table %>%
+  dplyr::select(Typology, Species, Mean) %>%
+  pivot_wider(
+    names_from = Species,
+    values_from = Mean
+  )
+
+rel_table_wide
+
+# 4. Save
+library(openxlsx)
+
+write.xlsx(
+  rel_table_wide,
+  file = file.path(out_dir, "Zn_species_relative_proportions.xlsx"),
+  overwrite = TRUE
+)
+```
+
+### f. BL-bound cations
 
 ```{r}
 library(dplyr)
@@ -1818,7 +1962,7 @@ ggsave(
 
 ```
 
-### f. Toxicity
+### g. Toxicity
 
 Acute Zn toxicity
 
@@ -1955,81 +2099,6 @@ write.xlsx(
   overlap_Zn_by_typology,
   file = file.path(out_dir, "Probability_of_Zn_toxicity.xlsx"),
   overwrite = TRUE
-)
-```
-
-### g. Bioavailability by site within network
-
-Import the dataset
-
-```{r}
-setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/6. Statistical data analysis")
-
-library(readxl)
-dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/5. Cluster analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx")
-
-# Colors for each Typology
-typology_colors <- c(
-  "P Tribs"         = "#56B4E9",
-  "PD Tribs"        = "#D55E00",
-  "NP Tribs"        = "#009E73",
-  "Main Stem"       = "#999999"
-)
-```
-
-Colored by typology
-
-```{r}
-library(dplyr)
-library(ggplot2)
-
-#-------------------------------------------------
-# 1) Prep all sites + order by elevation
-#-------------------------------------------------
-all_sites <- dat %>%
-  mutate(
-    Typology = factor(Typology),
-    Network  = factor(Network)
-  ) %>%
-  group_by(Site) %>%
-  mutate(site_elev = median(Relative_elevation_m, na.rm = TRUE)) %>%
-  ungroup() %>%
-  mutate(
-    Site = factor(Site, levels = unique(Site[order(site_elev)]))
-  )
-
-#-------------------------------------------------
-# 2) Plot
-#-------------------------------------------------
-sites_by_network_typology <- ggplot(
-  all_sites,
-  aes(x = Site, y = log_TBL_Zn_nmol_g, fill = Typology)
-) +
-  geom_boxplot(color = "black", outlier.alpha = 0.6) +
-  facet_grid(~Network, scales = "free_x", space = "free_x", switch = "x") +
-  scale_fill_manual(values = typology_colors, drop = FALSE) +
-  labs(
-    title = "Bioavailable Zn Across All Sites",
-    x = "Site (ordered by relative elevation)",
-    y = "Log TBL Zn (nmol/g wet weight)",
-    fill = "Typology"
-  ) +
-  theme_test() +
-  theme(
-    axis.text.x = element_text(angle = 30, hjust = 1),
-    plot.title  = element_text(hjust = 0.5, face = "bold")
-  )
-
-# View
-sites_by_network_typology
-
-# Save 
-ggsave(
-  filename = file.path(out_dir, "Sites_by_network_typology.png"),
-  plot     = sites_by_network_typology,
-  width    = 20,
-  height   = 6,
-  dpi      = 300
 )
 ```
 

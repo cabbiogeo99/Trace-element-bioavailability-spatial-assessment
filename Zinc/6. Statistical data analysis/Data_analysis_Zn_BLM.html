@@ -366,7 +366,7 @@ assuming baseline BLM assumptions (HA 10% Closed System).</p>
 dat &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/5. Cluster analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx&quot;)
 
 head(dat)</code></pre>
-<pre><code>## # A tibble: 6 × 293
+<pre><code>## # A tibble: 6 × 294
 ##   Sample_ID Site    Date                Regime    Flow_state Network Elevation_m
 ##   &lt;chr&gt;     &lt;chr&gt;   &lt;dttm&gt;              &lt;chr&gt;     &lt;chr&gt;      &lt;chr&gt;         &lt;dbl&gt;
 ## 1 WaDE_62   MTN1.1  2023-06-23 00:00:00 NonPeren… Flowing    MTN            248.
@@ -375,7 +375,7 @@ head(dat)</code></pre>
 ## 4 WaDE_66   MCA3.3  2023-06-23 00:00:00 NonPeren… Flowing    MCA            280.
 ## 5 WaDE_67   MCA3.2  2023-06-23 00:00:00 NonPeren… Flowing    MCA            275.
 ## 6 WaDE_68   MCA4    2023-06-23 00:00:00 Perennial Flowing    MCA            261.
-## # ℹ 286 more variables: Relative_elevation_m &lt;dbl&gt;,
+## # ℹ 287 more variables: Relative_elevation_m &lt;dbl&gt;,
 ## #   Upstream_from_main_stem_km &lt;dbl&gt;, Developed_lulc &lt;dbl&gt;, Type &lt;chr&gt;,
 ## #   Development &lt;chr&gt;, Relative_elevation &lt;chr&gt;, pH &lt;dbl&gt;, Temp_C &lt;dbl&gt;,
 ## #   DOC_uM &lt;dbl&gt;, Ca_uM &lt;dbl&gt;, Mg_uM &lt;dbl&gt;, Na_uM &lt;dbl&gt;, K_uM &lt;dbl&gt;,
@@ -973,6 +973,18 @@ write.xlsx(
 </div>
 <div id="assessing-variables-by-typology" class="section level1">
 <h1>Assessing Variables by Typology</h1>
+<p>Set order of typologies</p>
+<pre class="r"><code># Rearrange order
+dat$Typology &lt;- as.factor(dat$Typology)
+dat$Typology &lt;- factor(dat$Typology, 
+                          levels = c(&quot;NP Tribs&quot;,
+                                     &quot;P Tribs&quot;,
+                                     &quot;PD Tribs&quot;,
+                                     &quot;Main Stem&quot;))
+
+# Check
+levels(dat$Typology)</code></pre>
+<pre><code>## [1] &quot;NP Tribs&quot;  &quot;P Tribs&quot;   &quot;PD Tribs&quot;  &quot;Main Stem&quot;</code></pre>
 <div id="summary-statistics" class="section level2">
 <h2>1. Summary Statistics</h2>
 <p>Mean and standard error by typology</p>
@@ -1016,47 +1028,33 @@ summary_table &lt;- dat %&gt;%
 summary_table</code></pre>
 <pre><code>## # A tibble: 1,124 × 7
 ##    Variable      Typology      Mean   Median     Mode Variance       SE
-##    &lt;chr&gt;         &lt;chr&gt;        &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;
-##  1 BL_Ca_mol_kg  Main Stem 3.98e-10 3.96e-10 4.21e-10 3.37e-22 1.63e-12
-##  2 BL_Ca_mol_kg  NP Tribs  1.70e-10 1.88e-10 2.08e-10 4.32e-21 1.76e-11
-##  3 BL_Ca_mol_kg  P Tribs   3.67e-10 3.79e-10 4.20e-10 2.23e-21 4.90e-12
-##  4 BL_Ca_mol_kg  PD Tribs  3.91e-10 3.94e-10 4.15e-10 7.21e-22 2.43e-12
-##  5 BL_Ca_nmol_g  Main Stem 3.98e- 4 3.96e- 4 4.21e- 4 3.37e-10 1.63e- 6
-##  6 BL_Ca_nmol_g  NP Tribs  1.70e- 4 1.88e- 4 2.08e- 4 4.32e- 9 1.76e- 5
-##  7 BL_Ca_nmol_g  P Tribs   3.67e- 4 3.79e- 4 4.20e- 4 2.23e- 9 4.90e- 6
-##  8 BL_Ca_nmol_g  PD Tribs  3.91e- 4 3.94e- 4 4.15e- 4 7.21e-10 2.43e- 6
-##  9 BL_Ca_nmol_kg Main Stem 3.98e- 1 3.96e- 1 4.21e- 1 3.37e- 4 1.63e- 3
-## 10 BL_Ca_nmol_kg NP Tribs  1.70e- 1 1.88e- 1 2.08e- 1 4.32e- 3 1.76e- 2
+##    &lt;chr&gt;         &lt;fct&gt;        &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;
+##  1 BL_Ca_mol_kg  NP Tribs  1.70e-10 1.88e-10 2.08e-10 4.32e-21 1.76e-11
+##  2 BL_Ca_mol_kg  P Tribs   3.67e-10 3.79e-10 4.20e-10 2.23e-21 4.90e-12
+##  3 BL_Ca_mol_kg  PD Tribs  3.91e-10 3.94e-10 4.15e-10 7.21e-22 2.43e-12
+##  4 BL_Ca_mol_kg  Main Stem 3.98e-10 3.96e-10 4.21e-10 3.37e-22 1.63e-12
+##  5 BL_Ca_nmol_g  NP Tribs  1.70e- 4 1.88e- 4 2.08e- 4 4.32e- 9 1.76e- 5
+##  6 BL_Ca_nmol_g  P Tribs   3.67e- 4 3.79e- 4 4.20e- 4 2.23e- 9 4.90e- 6
+##  7 BL_Ca_nmol_g  PD Tribs  3.91e- 4 3.94e- 4 4.15e- 4 7.21e-10 2.43e- 6
+##  8 BL_Ca_nmol_g  Main Stem 3.98e- 4 3.96e- 4 4.21e- 4 3.37e-10 1.63e- 6
+##  9 BL_Ca_nmol_kg NP Tribs  1.70e- 1 1.88e- 1 2.08e- 1 4.32e- 3 1.76e- 2
+## 10 BL_Ca_nmol_kg P Tribs   3.67e- 1 3.79e- 1 4.20e- 1 2.23e- 3 4.90e- 3
 ## # ℹ 1,114 more rows</code></pre>
 <p>Export to excel</p>
 <pre class="r"><code>library(openxlsx)
 
-# File name
 file_path &lt;- &quot;Statistical_analyses_by_typology.xlsx&quot;
 
-# Load workbook if exists, otherwise create a new one
-if (file.exists(file_path)) {
-  wb &lt;- loadWorkbook(file_path)
-} else {
-  wb &lt;- createWorkbook()
-}
-
-
-# Create sheet if it does NOT exist
-if (!&quot;Summary Stats&quot; %in% names(wb)) {
-  addWorksheet(wb, &quot;Summary Stats&quot;)
-}
-
-# Write data to the sheet
+wb &lt;- createWorkbook()
+addWorksheet(wb, &quot;Summary Stats&quot;)
 writeData(wb, &quot;Summary Stats&quot;, summary_table)
-
-# Save workbook (overwrite = TRUE allows updating)
 saveWorkbook(wb, file_path, overwrite = TRUE)</code></pre>
 </div>
 <div id="check-of-anova-assumptions" class="section level2">
 <h2>2. Check of ANOVA Assumptions</h2>
 <div id="a.-normality" class="section level3">
 <h3>a. Normality</h3>
+<p>By Shapiro-Wilk</p>
 <pre class="r"><code>library(dplyr)
 library(writexl)
 
@@ -1460,570 +1458,9 @@ for (var in numeric_vars) {
       Homogeneous = homogeneous
     )
   )
-}</code></pre>
-<pre><code>## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.
-## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
-## factor.</code></pre>
-<pre class="r"><code># View results
+}
+
+# View results
 levene_results</code></pre>
 <pre><code>##                           Variable    F_value      p_value Homogeneous
 ## 1                      Elevation_m 11.9676693 1.766604e-07       FALSE
@@ -3270,8 +2707,169 @@ ggsave(
   dpi      = 300
 )</code></pre>
 </div>
-<div id="e.-bl-bound-cations" class="section level3">
-<h3>e. BL-bound cations</h3>
+<div id="e.-all-zn-complexes" class="section level3">
+<h3>e. All Zn Complexes</h3>
+<pre class="r"><code>library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(scales)
+
+#-------------------------------------------------
+# 1. Define variables of interest (already linear nM)
+#-------------------------------------------------
+vars &lt;- c(
+  &quot;Free_Zn_nM&quot;,
+  &quot;ZnOH_nM&quot;,
+  &quot;Zn_OH_2_nM&quot;,
+  &quot;ZnCO3_nM&quot;,
+  &quot;ZnHCO3_nM&quot;,
+  &quot;ZnSO4_nM&quot;,
+  &quot;ZnCl_nM&quot;,
+  &quot;ZnS_nM&quot;,
+  &quot;TOrg_Zn_nM&quot;
+)
+
+#-------------------------------------------------
+# 2. Pivot to long format (NO log transformation)
+#-------------------------------------------------
+plot_dat &lt;- dat %&gt;%
+  dplyr::select(Typology, all_of(vars)) %&gt;%
+  pivot_longer(
+    cols = all_of(vars),
+    names_to = &quot;Species&quot;,
+    values_to = &quot;conc_nM&quot;
+  ) %&gt;%
+  group_by(Typology, Species) %&gt;%
+  summarize(
+    mean_conc = mean(conc_nM, na.rm = TRUE),
+    .groups = &quot;drop&quot;
+  ) %&gt;%
+  group_by(Typology) %&gt;%
+  mutate(
+    rel_conc = mean_conc / sum(mean_conc, na.rm = TRUE)
+  ) %&gt;%
+  ungroup()
+
+#-------------------------------------------------
+# 3. Clean legend labels
+#-------------------------------------------------
+plot_dat &lt;- plot_dat %&gt;%
+  mutate(
+    Species = Species %&gt;%
+      gsub(&quot;_nM&quot;, &quot;&quot;, .) %&gt;%
+      gsub(&quot;_&quot;, &quot; &quot;, .),
+    
+    Species = dplyr::recode(Species,
+      &quot;Free Zn&quot;   = &quot;Zn²⁺&quot;,
+      &quot;ZnOH&quot;      = &quot;ZnOH&quot;,
+      &quot;Zn OH 2&quot;   = &quot;Zn(OH)₂&quot;,
+      &quot;ZnCO3&quot;     = &quot;ZnCO₃&quot;,
+      &quot;ZnHCO3&quot;    = &quot;ZnHCO₃&quot;,
+      &quot;ZnSO4&quot;     = &quot;ZnSO₄&quot;,
+      &quot;ZnCl&quot;      = &quot;ZnCl&quot;,
+      &quot;ZnS_nM&quot;    = &quot;ZnS&quot;,
+      &quot;TOrg Zn&quot;   = &quot;Organic-Zn&quot;
+    )
+  )
+
+#-------------------------------------------------
+# 4. Order species by overall contribution
+#-------------------------------------------------
+plot_dat$Species &lt;- factor(
+  plot_dat$Species,
+  levels = plot_dat %&gt;%
+    group_by(Species) %&gt;%
+    summarize(total = sum(mean_conc, na.rm = TRUE), .groups = &quot;drop&quot;) %&gt;%
+    arrange(desc(total)) %&gt;%
+    pull(Species)
+)
+
+species_levels &lt;- levels(plot_dat$Species)
+
+custom_colors &lt;- colorRampPalette(c(&quot;brown&quot;, &quot;yellow&quot;, &quot;skyblue&quot;, &quot;darkblue&quot;))(
+  length(species_levels)
+)
+
+#-------------------------------------------------
+# 5. Plot stacked barplot
+#-------------------------------------------------
+zn_species &lt;- ggplot(plot_dat, aes(x = Typology, y = rel_conc, fill = Species)) +
+  geom_col(color = &quot;black&quot;) +
+  scale_fill_manual(values = custom_colors) +
+  scale_y_continuous(labels = percent_format(accuracy = 1)) +
+  labs(
+    x = &quot;Typology&quot;,
+    y = &quot;Mean Relative Proportion (%)&quot;,
+    fill = &quot;Zn Species&quot;,
+    title = &quot;Zinc Speciation by Typology&quot;
+  ) +
+  theme_classic() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+zn_species
+
+#-------------------------------------------------
+# 6. Save
+#-------------------------------------------------
+ggsave(
+  filename = file.path(out_dir, &quot;All_Zn_Complexes.png&quot;),
+  plot     = zn_species,
+  width    = 7,
+  height   = 5,
+  dpi      = 300
+)</code></pre>
+<p>Table</p>
+<pre class="r"><code>rel_table &lt;- dat %&gt;%
+  mutate(
+    total_zn_nM = rowSums(across(all_of(vars)), na.rm = TRUE)
+  ) %&gt;%
+  filter(total_zn_nM &gt; 0) %&gt;%
+  pivot_longer(
+    cols = all_of(vars),
+    names_to = &quot;Species&quot;,
+    values_to = &quot;conc_nM&quot;
+  ) %&gt;%
+  mutate(
+    rel_conc = conc_nM / total_zn_nM
+  ) %&gt;%
+  group_by(Typology, Species) %&gt;%
+  summarize(
+    Mean   = mean(rel_conc, na.rm = TRUE) * 100,
+    SD     = sd(rel_conc, na.rm = TRUE) * 100,
+    Median = median(rel_conc, na.rm = TRUE) * 100,
+    .groups = &quot;drop&quot;
+  )
+
+# Wide format (Mean %)
+rel_table_wide &lt;- rel_table %&gt;%
+  dplyr::select(Typology, Species, Mean) %&gt;%
+  pivot_wider(
+    names_from = Species,
+    values_from = Mean
+  )
+
+rel_table_wide</code></pre>
+<pre><code>## # A tibble: 4 × 10
+##   Typology  Free_Zn_nM TOrg_Zn_nM ZnCO3_nM ZnCl_nM ZnHCO3_nM ZnOH_nM ZnSO4_nM
+##   &lt;fct&gt;          &lt;dbl&gt;      &lt;dbl&gt;    &lt;dbl&gt;   &lt;dbl&gt;     &lt;dbl&gt;   &lt;dbl&gt;    &lt;dbl&gt;
+## 1 NP Tribs        31.3       63.0    0.576 0.00533      4.48   0.296    0.211
+## 2 P Tribs         22.4       57.8    2.93  0.00434     16.0    0.437    0.177
+## 3 PD Tribs        32.8       27.0    5.30  0.0166      34.0    0.537    0.193
+## 4 Main Stem       15.9       59.4    6.01  0.0140      16.2    0.668    0.362
+## # ℹ 2 more variables: ZnS_nM &lt;dbl&gt;, Zn_OH_2_nM &lt;dbl&gt;</code></pre>
+<pre class="r"><code># 4. Save
+library(openxlsx)
+
+write.xlsx(
+  rel_table_wide,
+  file = file.path(out_dir, &quot;Zn_species_relative_proportions.xlsx&quot;),
+  overwrite = TRUE
+)</code></pre>
+</div>
+<div id="f.-bl-bound-cations" class="section level3">
+<h3>f. BL-bound cations</h3>
 <pre class="r"><code>library(dplyr)
 library(tidyr)
 library(ggplot2)
@@ -3380,8 +2978,8 @@ ggsave(
   dpi      = 300
 )</code></pre>
 </div>
-<div id="f.-toxicity" class="section level3">
-<h3>f. Toxicity</h3>
+<div id="g.-toxicity" class="section level3">
+<h3>g. Toxicity</h3>
 <p>Acute Zn toxicity</p>
 <pre class="r"><code>library(dplyr)
 library(tidyr)
@@ -3520,74 +3118,6 @@ write.xlsx(
   overwrite = TRUE
 )</code></pre>
 </div>
-<div id="g.-bioavailability-by-site-within-network" class="section level3">
-<h3>g. Bioavailability by site within network</h3>
-<p>Import the dataset</p>
-<pre class="r"><code>setwd(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/6. Statistical data analysis&quot;)
-
-library(readxl)
-dat &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/5. Cluster analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx&quot;)
-
-# Colors for each Typology
-typology_colors &lt;- c(
-  &quot;P Tribs&quot;         = &quot;#56B4E9&quot;,
-  &quot;PD Tribs&quot;        = &quot;#D55E00&quot;,
-  &quot;NP Tribs&quot;        = &quot;#009E73&quot;,
-  &quot;Main Stem&quot;       = &quot;#999999&quot;
-)</code></pre>
-<p>Colored by typology</p>
-<pre class="r"><code>library(dplyr)
-library(ggplot2)
-
-#-------------------------------------------------
-# 1) Prep all sites + order by elevation
-#-------------------------------------------------
-all_sites &lt;- dat %&gt;%
-  mutate(
-    Typology = factor(Typology),
-    Network  = factor(Network)
-  ) %&gt;%
-  group_by(Site) %&gt;%
-  mutate(site_elev = median(Relative_elevation_m, na.rm = TRUE)) %&gt;%
-  ungroup() %&gt;%
-  mutate(
-    Site = factor(Site, levels = unique(Site[order(site_elev)]))
-  )
-
-#-------------------------------------------------
-# 2) Plot
-#-------------------------------------------------
-sites_by_network_typology &lt;- ggplot(
-  all_sites,
-  aes(x = Site, y = log_TBL_Zn_nmol_g, fill = Typology)
-) +
-  geom_boxplot(color = &quot;black&quot;, outlier.alpha = 0.6) +
-  facet_grid(~Network, scales = &quot;free_x&quot;, space = &quot;free_x&quot;, switch = &quot;x&quot;) +
-  scale_fill_manual(values = typology_colors, drop = FALSE) +
-  labs(
-    title = &quot;Bioavailable Zn Across All Sites&quot;,
-    x = &quot;Site (ordered by relative elevation)&quot;,
-    y = &quot;Log TBL Zn (nmol/g wet weight)&quot;,
-    fill = &quot;Typology&quot;
-  ) +
-  theme_test() +
-  theme(
-    axis.text.x = element_text(angle = 30, hjust = 1),
-    plot.title  = element_text(hjust = 0.5, face = &quot;bold&quot;)
-  )
-
-# View
-sites_by_network_typology
-
-# Save 
-ggsave(
-  filename = file.path(out_dir, &quot;Sites_by_network_typology.png&quot;),
-  plot     = sites_by_network_typology,
-  width    = 20,
-  height   = 6,
-  dpi      = 300
-)</code></pre>
-</div>
 </div>
 </div>
 <div id="interaction-effect-of-typology-and-developed-lulc" class="section level1">
@@ -3599,6 +3129,9 @@ library(tidyr)
 library(purrr)</code></pre>
 <pre><code>## 
 ## Attaching package: &#39;purrr&#39;</code></pre>
+<pre><code>## The following object is masked from &#39;package:scales&#39;:
+## 
+##     discard</code></pre>
 <pre><code>## The following object is masked from &#39;package:car&#39;:
 ## 
 ##     some</code></pre>

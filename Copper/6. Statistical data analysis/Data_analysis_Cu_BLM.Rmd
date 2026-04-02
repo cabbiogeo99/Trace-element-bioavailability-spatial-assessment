@@ -515,28 +515,12 @@ Export to excel
 ```{r}
 library(openxlsx)
 
-# File name
 file_path <- "Statistical_analyses_by_typology.xlsx"
 
-# Load workbook if exists, otherwise create a new one
-if (file.exists(file_path)) {
-  wb <- loadWorkbook(file_path)
-} else {
-  wb <- createWorkbook()
-}
-
-
-# Create sheet if it does NOT exist
-if (!"Summary Stats" %in% names(wb)) {
-  addWorksheet(wb, "Summary Stats")
-}
-
-# Write data to the sheet
+wb <- createWorkbook()
+addWorksheet(wb, "Summary Stats")
 writeData(wb, "Summary Stats", summary_table)
-
-# Save workbook (overwrite = TRUE allows updating)
 saveWorkbook(wb, file_path, overwrite = TRUE)
-
 ```
 
 ## 2. Check of ANOVA Assumptions
@@ -1437,7 +1421,170 @@ ggsave(
 
 ```
 
-### d. BL-bound cations
+### d. All species as relative proportion
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(scales)
+
+#-------------------------------------------------
+# 1. Define variables of interest
+#-------------------------------------------------
+vars <- c(
+  "Free_Cu_nM",
+  "CuOH_nM",
+  "Cu_OH_2_nM",
+  "CuCO3_nM",
+  "Cu_CO3_2_nM",
+  "CuHCO3_nM",
+  "CuSO4_nM",
+  "CuCl_nM",
+  "TOrg_Cu_nM"
+)
+
+#-------------------------------------------------
+# 2. Compute per-sample relative proportions
+#-------------------------------------------------
+plot_dat <- dat %>%
+  dplyr::select(Typology, all_of(vars)) %>%
+  mutate(total_cu_nM = rowSums(across(all_of(vars)), na.rm = TRUE)) %>%
+  filter(total_cu_nM > 0) %>%
+  pivot_longer(
+    cols = all_of(vars),
+    names_to = "Species",
+    values_to = "conc_nM"
+  ) %>%
+  mutate(rel_conc = conc_nM / total_cu_nM) %>%
+  group_by(Typology, Species) %>%
+  summarize(
+    mean_rel_conc = mean(rel_conc, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+#-------------------------------------------------
+# 3. Clean legend labels (remove units + underscores, then format)
+#-------------------------------------------------
+plot_dat <- plot_dat %>%
+  mutate(
+    Species = Species %>%
+      gsub("_nM", "", .) %>%
+      gsub("_", " ", .),
+    
+    Species = dplyr::recode(Species,
+      "Free Cu"   = "Cu²⁺",
+      "CuOH"      = "CuOH",
+      "Cu OH 2"   = "Cu(OH)₂",
+      "CuCO3"     = "CuCO₃",
+      "Cu CO3 2"  = "Cu(CO₃)₂",
+      "CuHCO3"    = "CuHCO₃",
+      "CuSO4"     = "CuSO₄",
+      "CuCl"      = "CuCl",
+      "TOrg Cu"   = "Organic-Cu"
+    )
+  )
+
+#-------------------------------------------------
+# 4. Order species by overall contribution
+#-------------------------------------------------
+plot_dat$Species <- factor(
+  plot_dat$Species,
+  levels = plot_dat %>%
+    group_by(Species) %>%
+    summarize(total = sum(mean_rel_conc, na.rm = TRUE), .groups = "drop") %>%
+    arrange(desc(total)) %>%
+    pull(Species)
+)
+
+species_levels <- levels(plot_dat$Species)
+
+custom_colors <- colorRampPalette(c("brown", "yellow", "skyblue", "darkblue"))(
+  length(species_levels)
+)
+
+#-------------------------------------------------
+# 5. Plot stacked barplot
+#-------------------------------------------------
+cu_species <- ggplot(plot_dat, aes(x = Typology, y = mean_rel_conc, fill = Species)) +
+  geom_col(color = "black") +
+  scale_fill_manual(values = custom_colors) +
+  scale_y_continuous(labels = percent_format(accuracy = 1)) +
+  labs(
+    x = "Typology",
+    y = "Mean Relative Proportion (%)",
+    fill = "Cu Species",
+    title = "Copper Speciation by Typology"
+  ) +
+  theme_classic() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+cu_species
+
+#-------------------------------------------------
+# 6. Save
+#-------------------------------------------------
+ggsave(
+  filename = file.path(out_dir, "All_Cu_Complexes.png"),
+  plot     = cu_species,
+  width    = 7,
+  height   = 5,
+  dpi      = 300
+)
+```
+
+Table
+
+```{r}
+library(dplyr)
+library(tidyr)
+
+rel_table <- dat %>%
+  mutate(
+    total_cu_nM = rowSums(across(all_of(vars)), na.rm = TRUE)
+  ) %>%
+  filter(total_cu_nM > 0) %>%
+  pivot_longer(
+    cols = all_of(vars),
+    names_to = "Species",
+    values_to = "conc_nM"
+  ) %>%
+  mutate(
+    rel_conc = conc_nM / total_cu_nM
+  ) %>%
+  group_by(Typology, Species) %>%
+  summarize(
+    Mean   = mean(rel_conc, na.rm = TRUE) * 100,
+    SD     = sd(rel_conc, na.rm = TRUE) * 100,
+    Median = median(rel_conc, na.rm = TRUE) * 100,
+    .groups = "drop"
+  )
+
+
+# Wide format (Mean %)
+
+rel_table_wide <- rel_table %>%
+  dplyr::select(Typology, Species, Mean) %>%
+  pivot_wider(
+    names_from = Species,
+    values_from = Mean
+  )
+
+rel_table_wide
+
+# Save
+library(openxlsx)
+
+write.xlsx(
+  rel_table_wide,
+  file = file.path(out_dir, "Cu_species_relative_proportions.xlsx"),
+  overwrite = TRUE
+)
+```
+
+### e. BL-bound cations
 
 ```{r}
 library(dplyr)
@@ -1550,7 +1697,7 @@ ggsave(
 
 ```
 
-### e. Toxicity
+### f. Toxicity
 
 Toxicity to daphnia
 
@@ -1802,65 +1949,4 @@ writeData(wb, "Overlap_Cu_by_Typology", overlap_results_by_typology)
 
 # 5. Save
 saveWorkbook(wb, file_path, overwrite = TRUE)
-```
-
-## Bioavailability Plots by Site within Network
-
-```{r}
-library(dplyr)
-library(ggplot2)
-
-#-------------------------------------------------
-# 1) Prep all sites + order by elevation
-#-------------------------------------------------
-all_sites <- dat %>%
-  mutate(
-    Network = factor(Network)
-  ) %>%
-  group_by(Site) %>%
-  mutate(site_elev = median(Relative_elevation_m, na.rm = TRUE)) %>%
-  ungroup() %>%
-  mutate(
-    Site = factor(Site, levels = unique(Site[order(site_elev)]))
-  )
-
-#-------------------------------------------------
-# 2) Plot (TBL Cu)
-#-------------------------------------------------
-sites_by_network_typology_cu <- ggplot(
-  all_sites,
-  aes(x = Site, y = log_TBL_Cu_nmol_g, fill = Typology)
-) +
-  geom_boxplot(color = "black", outlier.alpha = 0.6) +
-  facet_grid(~Network, scales = "free_x", space = "free_x", switch = "x") +
-  scale_fill_manual(values = typology_colors, drop = FALSE) +
-  labs(
-    title = "Bioavailable Cu Across All Sites",
-    x = "Site (ordered by relative elevation)",
-    y = "Log TBL Cu (nmol/g wet weight)",
-    fill = "Typology"
-  ) +
-  theme_test() +
-  theme(
-    axis.text.x = element_text(angle = 30, hjust = 1),
-    plot.title  = element_text(hjust = 0.5, face = "bold")
-  )
-
-# View
-sites_by_network_typology_cu
-
-#-------------------------------------------------
-# 3) Save
-#-------------------------------------------------
-out_dir <- "Plots by site within typology"
-if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
-
-ggsave(
-  filename = file.path(out_dir, "Sites_by_network_typology_Cu.png"),
-  plot     = sites_by_network_typology_cu,
-  width    = 10,
-  height   = 6,
-  dpi      = 300
-)
-
 ```
