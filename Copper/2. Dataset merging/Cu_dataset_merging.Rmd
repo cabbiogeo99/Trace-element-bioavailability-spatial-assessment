@@ -814,7 +814,6 @@ Cu_Speciation_ha60_cs_clean <- clean_blm_speciation(Cu_Speciation_ha60_cs)
 # 3. Preview one or more cleaned files
 # ------------------------------------------------------------
 head(Cu_Speciation_ha20_cs_clean)
-head(Cu_Speciation_ha80_cs_clean)
 
 
 # ------------------------------------------------------------

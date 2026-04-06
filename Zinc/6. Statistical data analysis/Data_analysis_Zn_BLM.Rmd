@@ -422,7 +422,7 @@ saveWorkbook(wb, file_path, overwrite = TRUE)
 
 ## 5. Simple MLR
 
-Here we test whether a simple mechanistic model (top 3 predictors from the full model) can perform as well as your full chemistry model
+Here we test whether a simple mechanistic model (top 3 predictors from the full model) can perform as well as your full chemistry model.
 
 ```{r}
 # Build a simplified MLR
@@ -503,6 +503,91 @@ write.xlsx(
     Model_Summary = model_stats
   ),
   file = file.path(out_dir, "Simple_MLR.xlsx"),
+  overwrite = TRUE
+)
+```
+
+Including DIC
+
+```{r}
+# Build a simplified MLR
+
+library(dplyr)
+library(openxlsx)
+
+# ------------------------------------------------------------
+# 1. Define simplified predictor set
+# ------------------------------------------------------------
+simple_vars <- c("log_Zn_nM", "log_DOC_nM", "log_Ca_nM", "log_DIC_nM")
+
+# ------------------------------------------------------------
+# 2. Standardize response + simplified predictors
+# ------------------------------------------------------------
+simple_std_vars <- dat %>%
+  dplyr::select(log_TBL_Zn_nmol_g, all_of(simple_vars)) %>%
+  mutate(across(everything(), as.numeric)) %>%
+  mutate(across(everything(), ~ as.numeric(scale(.x)), .names = "{.col}_std")) %>%
+  dplyr::select(ends_with("_std")) %>%
+  as.data.frame()
+
+# Standardized variable names
+simple_vars_std <- paste0(simple_vars, "_std")
+response_std <- "log_TBL_Zn_nmol_g_std"
+
+# ------------------------------------------------------------
+# 3. Model formula
+# ------------------------------------------------------------
+form_simple <- reformulate(simple_vars_std, response = response_std)
+
+# ------------------------------------------------------------
+# 4. Fit simplified MLR
+# ------------------------------------------------------------
+simple_mod <- lm(form_simple, data = simple_std_vars)
+simple_mod_summary <- summary(simple_mod)
+
+# ------------------------------------------------------------
+# 5. Coefficients table
+# ------------------------------------------------------------
+coef_tab <- as.data.frame(simple_mod_summary$coefficients)
+coef_tab$Term <- rownames(coef_tab)
+coef_tab <- coef_tab %>%
+  dplyr::relocate(Term)
+
+coef_tab
+
+# ------------------------------------------------------------
+# 6. Model stats
+# ------------------------------------------------------------
+model_stats <- data.frame(
+  Metric = c(
+    "Residual standard error",
+    "R-squared",
+    "Adjusted R-squared",
+    "F-statistic",
+    "Numerator df",
+    "Denominator df"
+  ),
+  Value = c(
+    simple_mod_summary$sigma,
+    simple_mod_summary$r.squared,
+    simple_mod_summary$adj.r.squared,
+    unname(simple_mod_summary$fstatistic["value"]),
+    unname(simple_mod_summary$fstatistic["numdf"]),
+    unname(simple_mod_summary$fstatistic["dendf"])
+  )
+)
+
+model_stats
+
+# ------------------------------------------------------------
+# 7. Save
+# ------------------------------------------------------------
+write.xlsx(
+  list(
+    Coefficients = coef_tab,
+    Model_Summary = model_stats
+  ),
+  file = file.path(out_dir, "Simple_MLR2.xlsx"),
   overwrite = TRUE
 )
 ```
@@ -1713,7 +1798,8 @@ vars <- c(
 )
 
 #-------------------------------------------------
-# 2. Pivot to long format (NO log transformation)
+# 2. Pivot to long format and summarize mean concentration
+#    Bar height will now equal total mean Zn (nM)
 #-------------------------------------------------
 plot_dat <- dat %>%
   dplyr::select(Typology, all_of(vars)) %>%
@@ -1726,12 +1812,7 @@ plot_dat <- dat %>%
   summarize(
     mean_conc = mean(conc_nM, na.rm = TRUE),
     .groups = "drop"
-  ) %>%
-  group_by(Typology) %>%
-  mutate(
-    rel_conc = mean_conc / sum(mean_conc, na.rm = TRUE)
-  ) %>%
-  ungroup()
+  )
 
 #-------------------------------------------------
 # 3. Clean legend labels
@@ -1743,15 +1824,15 @@ plot_dat <- plot_dat %>%
       gsub("_", " ", .),
     
     Species = dplyr::recode(Species,
-      "Free Zn"   = "Zn²⁺",
-      "ZnOH"      = "ZnOH",
-      "Zn OH 2"   = "Zn(OH)₂",
-      "ZnCO3"     = "ZnCO₃",
-      "ZnHCO3"    = "ZnHCO₃",
-      "ZnSO4"     = "ZnSO₄",
-      "ZnCl"      = "ZnCl",
-      "ZnS_nM"    = "ZnS",
-      "TOrg Zn"   = "Organic-Zn"
+      "Free Zn" = "Zn²⁺",
+      "ZnOH" = "ZnOH",
+      "Zn OH 2" = "Zn(OH)₂",
+      "ZnCO3" = "ZnCO₃",
+      "ZnHCO3" = "ZnHCO₃",
+      "ZnSO4" = "ZnSO₄",
+      "ZnCl" = "ZnCl",
+      "ZnS" = "ZnS",
+      "TOrg Zn" = "Organic-Zn"
     )
   )
 
@@ -1775,14 +1856,14 @@ custom_colors <- colorRampPalette(c("brown", "yellow", "skyblue", "darkblue"))(
 
 #-------------------------------------------------
 # 5. Plot stacked barplot
+#    Total bar height = sum of species concentrations
 #-------------------------------------------------
-zn_species <- ggplot(plot_dat, aes(x = Typology, y = rel_conc, fill = Species)) +
+zn_species <- ggplot(plot_dat, aes(x = Typology, y = mean_conc, fill = Species)) +
   geom_col(color = "black") +
   scale_fill_manual(values = custom_colors) +
-  scale_y_continuous(labels = percent_format(accuracy = 1)) +
   labs(
     x = "Typology",
-    y = "Mean Relative Proportion (%)",
+    y = "Total Zn (nM)",
     fill = "Zn Species",
     title = "Zinc Speciation by Typology"
   ) +

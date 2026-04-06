@@ -872,9 +872,31 @@ letters_df <- combined_kruskal %>%
   dplyr::distinct() %>%
   dplyr::rename(Letters = groups)
 
+dat$Typology <- as.factor(dat$Typology)
+
+dat$Typology <- factor(dat$Typology, levels = c("NP Tribs",
+                                     "P Tribs",
+                                     "PD Tribs",
+                                     "Main Stem"))
+
+# 3. Colors for each Typology
+typology_colors <- c(
+  "P Tribs"         = "#56B4E9",
+  "PD Tribs"        = "#D55E00",
+  "NP Tribs"        = "#009E73",
+  "Main Stem"       = "#999999"
+)
 ```
 
 ### a. Trace element fractions
+
+Only bioavailable Cu
+
+```{r}
+
+```
+
+Panel of 4 plots
 
 ```{r}
 library(dplyr)
@@ -1445,26 +1467,24 @@ vars <- c(
 )
 
 #-------------------------------------------------
-# 2. Compute per-sample relative proportions
+# 2. Pivot + summarize mean concentrations
+#    (NO relative proportions)
 #-------------------------------------------------
 plot_dat <- dat %>%
   dplyr::select(Typology, all_of(vars)) %>%
-  mutate(total_cu_nM = rowSums(across(all_of(vars)), na.rm = TRUE)) %>%
-  filter(total_cu_nM > 0) %>%
   pivot_longer(
     cols = all_of(vars),
     names_to = "Species",
     values_to = "conc_nM"
   ) %>%
-  mutate(rel_conc = conc_nM / total_cu_nM) %>%
   group_by(Typology, Species) %>%
   summarize(
-    mean_rel_conc = mean(rel_conc, na.rm = TRUE),
+    mean_conc = mean(conc_nM, na.rm = TRUE),
     .groups = "drop"
   )
 
 #-------------------------------------------------
-# 3. Clean legend labels (remove units + underscores, then format)
+# 3. Clean legend labels
 #-------------------------------------------------
 plot_dat <- plot_dat %>%
   mutate(
@@ -1473,26 +1493,26 @@ plot_dat <- plot_dat %>%
       gsub("_", " ", .),
     
     Species = dplyr::recode(Species,
-      "Free Cu"   = "Cu²⁺",
-      "CuOH"      = "CuOH",
-      "Cu OH 2"   = "Cu(OH)₂",
-      "CuCO3"     = "CuCO₃",
-      "Cu CO3 2"  = "Cu(CO₃)₂",
-      "CuHCO3"    = "CuHCO₃",
-      "CuSO4"     = "CuSO₄",
-      "CuCl"      = "CuCl",
-      "TOrg Cu"   = "Organic-Cu"
+      "Free Cu"  = "Cu²⁺",
+      "CuOH"     = "CuOH",
+      "Cu OH 2"  = "Cu(OH)₂",
+      "CuCO3"    = "CuCO₃",
+      "Cu CO3 2" = "Cu(CO₃)₂",
+      "CuHCO3"   = "CuHCO₃",
+      "CuSO4"    = "CuSO₄",
+      "CuCl"     = "CuCl",
+      "TOrg Cu"  = "Organic-Cu"
     )
   )
 
 #-------------------------------------------------
-# 4. Order species by overall contribution
+# 4. Order species by total contribution
 #-------------------------------------------------
 plot_dat$Species <- factor(
   plot_dat$Species,
   levels = plot_dat %>%
     group_by(Species) %>%
-    summarize(total = sum(mean_rel_conc, na.rm = TRUE), .groups = "drop") %>%
+    summarize(total = sum(mean_conc, na.rm = TRUE), .groups = "drop") %>%
     arrange(desc(total)) %>%
     pull(Species)
 )
@@ -1505,14 +1525,14 @@ custom_colors <- colorRampPalette(c("brown", "yellow", "skyblue", "darkblue"))(
 
 #-------------------------------------------------
 # 5. Plot stacked barplot
+#    Total height = total Cu (nM)
 #-------------------------------------------------
-cu_species <- ggplot(plot_dat, aes(x = Typology, y = mean_rel_conc, fill = Species)) +
+cu_species <- ggplot(plot_dat, aes(x = Typology, y = mean_conc, fill = Species)) +
   geom_col(color = "black") +
   scale_fill_manual(values = custom_colors) +
-  scale_y_continuous(labels = percent_format(accuracy = 1)) +
   labs(
     x = "Typology",
-    y = "Mean Relative Proportion (%)",
+    y = "Total Cu (nM)",
     fill = "Cu Species",
     title = "Copper Speciation by Typology"
   ) +

@@ -234,7 +234,7 @@ cluster_summary_table_pct
 Save table
 
 ```{r}
-out_dir <- "Typology2 Plots"
+out_dir <- "Typology Plots"
 
 library(openxlsx)
 

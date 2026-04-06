@@ -4254,9 +4254,26 @@ letters</p>
 letters_df &lt;- combined_kruskal %&gt;%
   dplyr::select(Variable, Typology, groups) %&gt;%
   dplyr::distinct() %&gt;%
-  dplyr::rename(Letters = groups)</code></pre>
+  dplyr::rename(Letters = groups)
+
+dat$Typology &lt;- as.factor(dat$Typology)
+
+dat$Typology &lt;- factor(dat$Typology, levels = c(&quot;NP Tribs&quot;,
+                                     &quot;P Tribs&quot;,
+                                     &quot;PD Tribs&quot;,
+                                     &quot;Main Stem&quot;))
+
+# 3. Colors for each Typology
+typology_colors &lt;- c(
+  &quot;P Tribs&quot;         = &quot;#56B4E9&quot;,
+  &quot;PD Tribs&quot;        = &quot;#D55E00&quot;,
+  &quot;NP Tribs&quot;        = &quot;#009E73&quot;,
+  &quot;Main Stem&quot;       = &quot;#999999&quot;
+)</code></pre>
 <div id="a.-trace-element-fractions" class="section level3">
 <h3>a. Trace element fractions</h3>
+<p>Only bioavailable Cu</p>
+<p>Panel of 4 plots</p>
 <pre class="r"><code>library(dplyr)
 library(tidyr)
 library(ggplot2)
@@ -4813,26 +4830,24 @@ vars &lt;- c(
 )
 
 #-------------------------------------------------
-# 2. Compute per-sample relative proportions
+# 2. Pivot + summarize mean concentrations
+#    (NO relative proportions)
 #-------------------------------------------------
 plot_dat &lt;- dat %&gt;%
   dplyr::select(Typology, all_of(vars)) %&gt;%
-  mutate(total_cu_nM = rowSums(across(all_of(vars)), na.rm = TRUE)) %&gt;%
-  filter(total_cu_nM &gt; 0) %&gt;%
   pivot_longer(
     cols = all_of(vars),
     names_to = &quot;Species&quot;,
     values_to = &quot;conc_nM&quot;
   ) %&gt;%
-  mutate(rel_conc = conc_nM / total_cu_nM) %&gt;%
   group_by(Typology, Species) %&gt;%
   summarize(
-    mean_rel_conc = mean(rel_conc, na.rm = TRUE),
+    mean_conc = mean(conc_nM, na.rm = TRUE),
     .groups = &quot;drop&quot;
   )
 
 #-------------------------------------------------
-# 3. Clean legend labels (remove units + underscores, then format)
+# 3. Clean legend labels
 #-------------------------------------------------
 plot_dat &lt;- plot_dat %&gt;%
   mutate(
@@ -4841,26 +4856,26 @@ plot_dat &lt;- plot_dat %&gt;%
       gsub(&quot;_&quot;, &quot; &quot;, .),
     
     Species = dplyr::recode(Species,
-      &quot;Free Cu&quot;   = &quot;Cu²⁺&quot;,
-      &quot;CuOH&quot;      = &quot;CuOH&quot;,
-      &quot;Cu OH 2&quot;   = &quot;Cu(OH)₂&quot;,
-      &quot;CuCO3&quot;     = &quot;CuCO₃&quot;,
-      &quot;Cu CO3 2&quot;  = &quot;Cu(CO₃)₂&quot;,
-      &quot;CuHCO3&quot;    = &quot;CuHCO₃&quot;,
-      &quot;CuSO4&quot;     = &quot;CuSO₄&quot;,
-      &quot;CuCl&quot;      = &quot;CuCl&quot;,
-      &quot;TOrg Cu&quot;   = &quot;Organic-Cu&quot;
+      &quot;Free Cu&quot;  = &quot;Cu²⁺&quot;,
+      &quot;CuOH&quot;     = &quot;CuOH&quot;,
+      &quot;Cu OH 2&quot;  = &quot;Cu(OH)₂&quot;,
+      &quot;CuCO3&quot;    = &quot;CuCO₃&quot;,
+      &quot;Cu CO3 2&quot; = &quot;Cu(CO₃)₂&quot;,
+      &quot;CuHCO3&quot;   = &quot;CuHCO₃&quot;,
+      &quot;CuSO4&quot;    = &quot;CuSO₄&quot;,
+      &quot;CuCl&quot;     = &quot;CuCl&quot;,
+      &quot;TOrg Cu&quot;  = &quot;Organic-Cu&quot;
     )
   )
 
 #-------------------------------------------------
-# 4. Order species by overall contribution
+# 4. Order species by total contribution
 #-------------------------------------------------
 plot_dat$Species &lt;- factor(
   plot_dat$Species,
   levels = plot_dat %&gt;%
     group_by(Species) %&gt;%
-    summarize(total = sum(mean_rel_conc, na.rm = TRUE), .groups = &quot;drop&quot;) %&gt;%
+    summarize(total = sum(mean_conc, na.rm = TRUE), .groups = &quot;drop&quot;) %&gt;%
     arrange(desc(total)) %&gt;%
     pull(Species)
 )
@@ -4873,14 +4888,14 @@ custom_colors &lt;- colorRampPalette(c(&quot;brown&quot;, &quot;yellow&quot;, &q
 
 #-------------------------------------------------
 # 5. Plot stacked barplot
+#    Total height = total Cu (nM)
 #-------------------------------------------------
-cu_species &lt;- ggplot(plot_dat, aes(x = Typology, y = mean_rel_conc, fill = Species)) +
+cu_species &lt;- ggplot(plot_dat, aes(x = Typology, y = mean_conc, fill = Species)) +
   geom_col(color = &quot;black&quot;) +
   scale_fill_manual(values = custom_colors) +
-  scale_y_continuous(labels = percent_format(accuracy = 1)) +
   labs(
     x = &quot;Typology&quot;,
-    y = &quot;Mean Relative Proportion (%)&quot;,
+    y = &quot;Total Cu (nM)&quot;,
     fill = &quot;Cu Species&quot;,
     title = &quot;Copper Speciation by Typology&quot;
   ) +
@@ -5313,6 +5328,8 @@ writeData(wb, &quot;Overlap_Cu_by_Typology&quot;, overlap_results_by_typology)
 
 # 5. Save
 saveWorkbook(wb, file_path, overwrite = TRUE)</code></pre>
+<pre><code>## Warning in file.create(to[okay]): cannot create file &#39;Plots of Cu
+## Toxicity/overlap_Cu_by_typology.xlsx&#39;, reason &#39;Permission denied&#39;</code></pre>
 </div>
 </div>
 </div>

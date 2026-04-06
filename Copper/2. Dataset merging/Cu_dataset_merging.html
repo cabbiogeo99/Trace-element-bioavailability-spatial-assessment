@@ -361,8 +361,8 @@ display: none;
 <h1>Overview</h1>
 <p>The following datasets will be used to create a Bioavailability
 Master Spreadsheet which will have tabs according to the BLM assumptions
-considered (HA 10% Closed System, HA 10% Open System, and HA 80% Closed
-System)</p>
+considered (HA 10% Closed System, HA 10% Open System, and HA 10-60%
+Closed System)</p>
 <ol style="list-style-type: decimal">
 <li><strong>Clean WaDE Synoptic Survey dataset</strong>
 (WaDE_Synoptic_Summary_Clean.xlsx)</li>
@@ -1853,8 +1853,8 @@ if (!file.exists(file_path)) {
 }</code></pre>
 </div>
 </div>
-<div id="ha-20-80-closed-system" class="section level1">
-<h1>HA 20-80% Closed System</h1>
+<div id="ha-20-60-closed-system" class="section level1">
+<h1>HA 20-60% Closed System</h1>
 <div id="blm-speciation-mode-2" class="section level2">
 <h2>1. BLM Speciation Mode</h2>
 <p>If you haven’t already, convert the BLM output excel files to the
@@ -2174,130 +2174,6 @@ Cu_Speciation_ha20_cs &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge N
 ## • `` -&gt; `...59`
 ## • `` -&gt; `...60`
 ## • `` -&gt; `...61`</code></pre>
-<pre class="r"><code>Cu_Speciation_ha70_cs &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Speciation Mode/Cu_speciation_ha70_cs.det.xlsx&quot;)</code></pre>
-<pre><code>## New names:
-## • `` -&gt; `...2`
-## • `` -&gt; `...3`
-## • `` -&gt; `...4`
-## • `` -&gt; `...5`
-## • `` -&gt; `...6`
-## • `` -&gt; `...7`
-## • `` -&gt; `...8`
-## • `` -&gt; `...9`
-## • `` -&gt; `...10`
-## • `` -&gt; `...11`
-## • `` -&gt; `...12`
-## • `` -&gt; `...13`
-## • `` -&gt; `...14`
-## • `` -&gt; `...15`
-## • `` -&gt; `...16`
-## • `` -&gt; `...17`
-## • `` -&gt; `...18`
-## • `` -&gt; `...19`
-## • `` -&gt; `...20`
-## • `` -&gt; `...21`
-## • `` -&gt; `...22`
-## • `` -&gt; `...23`
-## • `` -&gt; `...24`
-## • `` -&gt; `...25`
-## • `` -&gt; `...26`
-## • `` -&gt; `...27`
-## • `` -&gt; `...28`
-## • `` -&gt; `...29`
-## • `` -&gt; `...30`
-## • `` -&gt; `...31`
-## • `` -&gt; `...32`
-## • `` -&gt; `...33`
-## • `` -&gt; `...34`
-## • `` -&gt; `...35`
-## • `` -&gt; `...36`
-## • `` -&gt; `...37`
-## • `` -&gt; `...38`
-## • `` -&gt; `...39`
-## • `` -&gt; `...40`
-## • `` -&gt; `...41`
-## • `` -&gt; `...42`
-## • `` -&gt; `...43`
-## • `` -&gt; `...44`
-## • `` -&gt; `...45`
-## • `` -&gt; `...46`
-## • `` -&gt; `...47`
-## • `` -&gt; `...48`
-## • `` -&gt; `...49`
-## • `` -&gt; `...50`
-## • `` -&gt; `...51`
-## • `` -&gt; `...52`
-## • `` -&gt; `...53`
-## • `` -&gt; `...54`
-## • `` -&gt; `...55`
-## • `` -&gt; `...56`
-## • `` -&gt; `...57`
-## • `` -&gt; `...58`
-## • `` -&gt; `...59`
-## • `` -&gt; `...60`
-## • `` -&gt; `...61`</code></pre>
-<pre class="r"><code>Cu_Speciation_ha80_cs &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Speciation Mode/Cu_speciation_ha80_cs.det.xlsx&quot;)</code></pre>
-<pre><code>## New names:
-## • `` -&gt; `...2`
-## • `` -&gt; `...3`
-## • `` -&gt; `...4`
-## • `` -&gt; `...5`
-## • `` -&gt; `...6`
-## • `` -&gt; `...7`
-## • `` -&gt; `...8`
-## • `` -&gt; `...9`
-## • `` -&gt; `...10`
-## • `` -&gt; `...11`
-## • `` -&gt; `...12`
-## • `` -&gt; `...13`
-## • `` -&gt; `...14`
-## • `` -&gt; `...15`
-## • `` -&gt; `...16`
-## • `` -&gt; `...17`
-## • `` -&gt; `...18`
-## • `` -&gt; `...19`
-## • `` -&gt; `...20`
-## • `` -&gt; `...21`
-## • `` -&gt; `...22`
-## • `` -&gt; `...23`
-## • `` -&gt; `...24`
-## • `` -&gt; `...25`
-## • `` -&gt; `...26`
-## • `` -&gt; `...27`
-## • `` -&gt; `...28`
-## • `` -&gt; `...29`
-## • `` -&gt; `...30`
-## • `` -&gt; `...31`
-## • `` -&gt; `...32`
-## • `` -&gt; `...33`
-## • `` -&gt; `...34`
-## • `` -&gt; `...35`
-## • `` -&gt; `...36`
-## • `` -&gt; `...37`
-## • `` -&gt; `...38`
-## • `` -&gt; `...39`
-## • `` -&gt; `...40`
-## • `` -&gt; `...41`
-## • `` -&gt; `...42`
-## • `` -&gt; `...43`
-## • `` -&gt; `...44`
-## • `` -&gt; `...45`
-## • `` -&gt; `...46`
-## • `` -&gt; `...47`
-## • `` -&gt; `...48`
-## • `` -&gt; `...49`
-## • `` -&gt; `...50`
-## • `` -&gt; `...51`
-## • `` -&gt; `...52`
-## • `` -&gt; `...53`
-## • `` -&gt; `...54`
-## • `` -&gt; `...55`
-## • `` -&gt; `...56`
-## • `` -&gt; `...57`
-## • `` -&gt; `...58`
-## • `` -&gt; `...59`
-## • `` -&gt; `...60`
-## • `` -&gt; `...61`</code></pre>
 <p>Clean datasets</p>
 <pre class="r"><code>library(dplyr)
 library(stringr)
@@ -2348,8 +2224,6 @@ Cu_Speciation_ha30_cs_clean &lt;- clean_blm_speciation(Cu_Speciation_ha30_cs)
 Cu_Speciation_ha40_cs_clean &lt;- clean_blm_speciation(Cu_Speciation_ha40_cs)
 Cu_Speciation_ha50_cs_clean &lt;- clean_blm_speciation(Cu_Speciation_ha50_cs)
 Cu_Speciation_ha60_cs_clean &lt;- clean_blm_speciation(Cu_Speciation_ha60_cs)
-Cu_Speciation_ha70_cs_clean &lt;- clean_blm_speciation(Cu_Speciation_ha70_cs)
-Cu_Speciation_ha80_cs_clean &lt;- clean_blm_speciation(Cu_Speciation_ha80_cs)
 
 
 # ------------------------------------------------------------
@@ -2365,23 +2239,6 @@ head(Cu_Speciation_ha20_cs_clean)</code></pre>
 ## 4 WaDE_65   &quot;\&quot;MTN2   … 4.98e-9 7.50e-13 1.27e-2 2.79e-4 6.93e-5 6.92e-6 4.59e-5
 ## 5 WaDE_66   &quot;\&quot;MCA3.3 … 2.21e-8 1.51e-13 2.86e-3 1.58e-4 7.71e-5 8.77e-5 2.11e-5
 ## 6 WaDE_67   &quot;\&quot;MCA3.2 … 3.31e-8 5.35e-13 1.96e-3 4.34e-5 2.33e-5 6.55e-5 1.21e-5
-## # ℹ 52 more variables: SO4 &lt;dbl&gt;, Cl &lt;dbl&gt;, CO3 &lt;dbl&gt;, S &lt;dbl&gt;, BL &lt;dbl&gt;,
-## #   `BL-Cu` &lt;dbl&gt;, `BL-CuOH` &lt;dbl&gt;, `BL-Ca` &lt;dbl&gt;, `BL-Mg` &lt;dbl&gt;, `BL-H` &lt;dbl&gt;,
-## #   `BL-Na` &lt;dbl&gt;, HCO3 &lt;dbl&gt;, H2CO3 &lt;dbl&gt;, HS &lt;dbl&gt;, H2S &lt;dbl&gt;, MgHCO3 &lt;dbl&gt;,
-## #   MgCO3 &lt;dbl&gt;, MgSO4 &lt;dbl&gt;, CaHCO3 &lt;dbl&gt;, CaCO3 &lt;dbl&gt;, CaSO4 &lt;dbl&gt;,
-## #   CuOH &lt;dbl&gt;, `Cu(OH)2` &lt;dbl&gt;, CuSO4 &lt;dbl&gt;, CuCO3 &lt;dbl&gt;, `Cu(CO3)2` &lt;dbl&gt;,
-## #   CuCl &lt;dbl&gt;, CuHCO3 &lt;dbl&gt;, TOrg.H &lt;dbl&gt;, TOrg.Cu &lt;dbl&gt;, TOrg.Ca &lt;dbl&gt;,
-## #   TOrg.Mg &lt;dbl&gt;, TOrg.Na &lt;dbl&gt;, TOrg.K &lt;dbl&gt;, Charge &lt;dbl&gt;, …</code></pre>
-<pre class="r"><code>head(Cu_Speciation_ha80_cs_clean)</code></pre>
-<pre><code>## # A tibble: 6 × 61
-##   Sample_ID Site              H       Cu     DOC      Ca      Mg      Na       K
-##   &lt;chr&gt;     &lt;chr&gt;         &lt;dbl&gt;    &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;
-## 1 WaDE_62   &quot;\&quot;MTN1.1 … 6.70e-8 1.88e-12 1.82e-3 1.44e-3 4.42e-4 2.12e-4 3.70e-5
-## 2 WaDE_63   &quot;\&quot;EFK13.8… 5.63e-9 1.70e-12 3.84e-3 1.29e-3 3.23e-4 2.95e-4 5.40e-5
-## 3 WaDE_64   &quot;\&quot;MTN4   … 5.43e-9 7.29e-14 8.60e-4 2.56e-4 1.73e-4 9.00e-5 2.48e-5
-## 4 WaDE_65   &quot;\&quot;MTN2   … 4.98e-9 3.12e-13 1.27e-2 2.79e-4 7.04e-5 6.96e-6 4.61e-5
-## 5 WaDE_66   &quot;\&quot;MCA3.3 … 2.21e-8 4.66e-14 2.86e-3 1.58e-4 7.74e-5 8.78e-5 2.12e-5
-## 6 WaDE_67   &quot;\&quot;MCA3.2 … 3.31e-8 1.51e-13 1.96e-3 4.34e-5 2.35e-5 6.57e-5 1.21e-5
 ## # ℹ 52 more variables: SO4 &lt;dbl&gt;, Cl &lt;dbl&gt;, CO3 &lt;dbl&gt;, S &lt;dbl&gt;, BL &lt;dbl&gt;,
 ## #   `BL-Cu` &lt;dbl&gt;, `BL-CuOH` &lt;dbl&gt;, `BL-Ca` &lt;dbl&gt;, `BL-Mg` &lt;dbl&gt;, `BL-H` &lt;dbl&gt;,
 ## #   `BL-Na` &lt;dbl&gt;, HCO3 &lt;dbl&gt;, H2CO3 &lt;dbl&gt;, HS &lt;dbl&gt;, H2S &lt;dbl&gt;, MgHCO3 &lt;dbl&gt;,
@@ -2428,20 +2285,6 @@ Cu_Speciation_ha20_cs_clean %&gt;%
 ##   n_matched
 ##       &lt;int&gt;
 ## 1       386</code></pre>
-<pre class="r"><code>Cu_Speciation_ha70_cs_clean %&gt;%
-  inner_join(bio_ms %&gt;% dplyr::select(Sample_ID), by = &quot;Sample_ID&quot;) %&gt;%
-  summarise(n_matched = n())</code></pre>
-<pre><code>## # A tibble: 1 × 1
-##   n_matched
-##       &lt;int&gt;
-## 1       386</code></pre>
-<pre class="r"><code>Cu_Speciation_ha80_cs_clean %&gt;%
-  inner_join(bio_ms %&gt;% dplyr::select(Sample_ID), by = &quot;Sample_ID&quot;) %&gt;%
-  summarise(n_matched = n())</code></pre>
-<pre><code>## # A tibble: 1 × 1
-##   n_matched
-##       &lt;int&gt;
-## 1       386</code></pre>
 <p>Create a dataframe with HA_content, Sample_ID, TBL-Cu (mol/kg)</p>
 <pre class="r"><code># ------------------------------------------------------------
 # Function to extract TBL Zn and add HA content
@@ -2464,9 +2307,7 @@ Cu_TBL_by_HA &lt;- bind_rows(
   extract_tbl_cu(Cu_Speciation_ha30_cs_clean, 30),
   extract_tbl_cu(Cu_Speciation_ha40_cs_clean, 40),
   extract_tbl_cu(Cu_Speciation_ha50_cs_clean, 50),
-  extract_tbl_cu(Cu_Speciation_ha60_cs_clean, 60),
-  extract_tbl_cu(Cu_Speciation_ha70_cs_clean, 70),
-  extract_tbl_cu(Cu_Speciation_ha80_cs_clean, 80)
+  extract_tbl_cu(Cu_Speciation_ha60_cs_clean, 60)
 )
 
 head(Cu_TBL_by_HA)</code></pre>
@@ -2480,10 +2321,10 @@ head(Cu_TBL_by_HA)</code></pre>
 ## 5 WaDE_66           10      1.46e-15
 ## 6 WaDE_67           10      8.03e-15</code></pre>
 <pre class="r"><code>str(Cu_TBL_by_HA)</code></pre>
-<pre><code>## tibble [3,088 × 3] (S3: tbl_df/tbl/data.frame)
-##  $ Sample_ID    : chr [1:3088] &quot;WaDE_62&quot; &quot;WaDE_63&quot; &quot;WaDE_64&quot; &quot;WaDE_65&quot; ...
-##  $ HA_content   : num [1:3088] 10 10 10 10 10 10 10 10 10 10 ...
-##  $ TBL_Cu_mol_kg: num [1:3088] 1.15e-14 9.19e-15 1.40e-15 6.51e-15 1.46e-15 ...</code></pre>
+<pre><code>## tibble [2,316 × 3] (S3: tbl_df/tbl/data.frame)
+##  $ Sample_ID    : chr [1:2316] &quot;WaDE_62&quot; &quot;WaDE_63&quot; &quot;WaDE_64&quot; &quot;WaDE_65&quot; ...
+##  $ HA_content   : num [1:2316] 10 10 10 10 10 10 10 10 10 10 ...
+##  $ TBL_Cu_mol_kg: num [1:2316] 1.15e-14 9.19e-15 1.40e-15 6.51e-15 1.46e-15 ...</code></pre>
 </div>
 <div id="export-to-bioavailability-master-spreadsheet-2" class="section level2">
 <h2>2. Export to Bioavailability Master Spreadsheet</h2>
@@ -2497,8 +2338,8 @@ file_path &lt;- &quot;Bioavailability_Master_Spreadsheet.xlsx&quot;
 if (!file.exists(file_path)) {
   
   wb &lt;- createWorkbook()
-  addWorksheet(wb, &quot;HA 10-80%&quot;)
-  writeData(wb, &quot;HA 10-80%&quot;, Cu_TBL_by_HA)
+  addWorksheet(wb, &quot;HA 10-60%&quot;)
+  writeData(wb, &quot;HA 10-60%&quot;, Cu_TBL_by_HA)
   saveWorkbook(wb, file_path, overwrite = TRUE)
 
 } else {
@@ -2509,12 +2350,12 @@ if (!file.exists(file_path)) {
   wb &lt;- loadWorkbook(file_path)
 
   # Add sheet if missing
-  if (!&quot;HA 10-80%&quot; %in% names(wb)) {
-    addWorksheet(wb, &quot;HA 10-80%&quot;)
+  if (!&quot;HA 10-60%&quot; %in% names(wb)) {
+    addWorksheet(wb, &quot;HA 10-60%&quot;)
   }
 
   # Write/overwrite data in that sheet
-  writeData(wb, &quot;HA 10-80%&quot;, Cu_TBL_by_HA)
+  writeData(wb, &quot;HA 10-60%&quot;, Cu_TBL_by_HA)
 
   # Save
   saveWorkbook(wb, file_path, overwrite = TRUE)
