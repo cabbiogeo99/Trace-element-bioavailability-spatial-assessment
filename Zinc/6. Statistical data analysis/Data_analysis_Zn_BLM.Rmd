@@ -2046,9 +2046,9 @@ ggsave(
 
 ```
 
-### g. Toxicity
+# Toxicity
 
-Acute Zn toxicity
+## 1. Density plots
 
 ```{r}
 library(dplyr)
@@ -2138,6 +2138,8 @@ ggsave(
 )
 ```
 
+## 2. Overlap of measured vs toxic concentrations
+
 Calculate probability of overlapping measured zinc with toxic levels of zinc by stream typology
 
 ```{r}
@@ -2184,6 +2186,83 @@ write.xlsx(
   file = file.path(out_dir, "Probability_of_Zn_toxicity.xlsx"),
   overwrite = TRUE
 )
+```
+
+## 3. MLE of Zn toxicity
+
+```{r}
+library(dplyr)
+library(purrr)
+
+# Raw toxicity variables ----
+vars <- c(
+  "Zn_chronic_tox_nM",
+  "Zn_acute_tox_nM"
+)
+
+mle_summary <- map_dfr(vars, function(var) {
+  
+  dat %>%
+    dplyr::select(Typology, all_of(var)) %>%
+    rename(value = all_of(var)) %>%
+    filter(!is.na(Typology), !is.na(value)) %>%
+    group_by(Typology) %>%
+    summarise(
+      variable = var,
+      n = n(),
+      mle_mean = mean(value),                    # μ̂
+      mle_variance = mean((value - mean(value))^2),  # σ̂² with denominator n
+      mle_sd = sqrt(mle_variance),
+      .groups = "drop"
+    ) %>%
+    dplyr::select(Typology, variable, n, mle_mean, mle_variance, mle_sd)
+})
+
+mle_summary
+
+
+# Log10-transformed toxicity variables ----
+vars_log <- c(
+  "log_Zn_chronic_tox_nM",
+  "log_Zn_acute_tox_nM"
+)
+
+mle_summary_log <- map_dfr(vars_log, function(var) {
+  
+  dat %>%
+    dplyr::select(Typology, all_of(var)) %>%
+    rename(value = all_of(var)) %>%
+    filter(!is.na(Typology), !is.na(value)) %>%
+    group_by(Typology) %>%
+    summarise(
+      variable = var,
+      n = n(),
+      mle_mean = mean(value),                    # μ̂
+      mle_variance = mean((value - mean(value))^2),  # σ̂² with denominator n
+      mle_sd = sqrt(mle_variance),
+      .groups = "drop"
+    ) %>%
+    dplyr::select(Typology, variable, n, mle_mean, mle_variance, mle_sd)
+})
+
+mle_summary_log
+```
+
+Save
+
+```{r}
+# 1. Define file path
+file_path <- file.path(out_dir, "MLE_Cu_toxicity.xlsx")
+
+#2. Create workbook and write tables
+wb <- createWorkbook()
+addWorksheet(wb, "Raw variables")
+writeData(wb, "Raw variables", mle_summary)
+addWorksheet(wb, "Log10 variables")
+writeData(wb, "Log10 variables", mle_summary_log)
+
+# 5. Save
+saveWorkbook(wb, file_path, overwrite = TRUE)
 ```
 
 # Interaction effect of Typology and Developed LULC

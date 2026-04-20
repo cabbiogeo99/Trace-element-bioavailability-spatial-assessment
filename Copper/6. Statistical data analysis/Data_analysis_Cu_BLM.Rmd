@@ -1735,9 +1735,11 @@ ggsave(
 
 ```
 
-### f. Toxicity
+# Toxicity by Typology
 
-Toxicity to daphnia
+## 1. Density plots
+
+### i. C. dubia
 
 ```{r}
 library(dplyr)
@@ -1827,7 +1829,7 @@ ggsave(
 )
 ```
 
-Toxicity to minnow
+### ii. P. promelas
 
 ```{r}
 library(dplyr)
@@ -1910,6 +1912,8 @@ ggsave(
 )
 ```
 
+## 2. Overlap of measured vs toxic concentrations
+
 Calculate probability of overlapping measured copper with toxic levels of copper by stream typology
 
 ```{r}
@@ -1984,6 +1988,87 @@ file_path <- file.path(out_dir, "overlap_Cu_by_typology.xlsx")
 wb <- createWorkbook()
 addWorksheet(wb, "Overlap_Cu_by_Typology")
 writeData(wb, "Overlap_Cu_by_Typology", overlap_results_by_typology)
+
+# 5. Save
+saveWorkbook(wb, file_path, overwrite = TRUE)
+```
+
+## 3. MLE of Cu toxicity
+
+```{r}
+library(dplyr)
+library(purrr)
+
+# Raw toxicity variables ----
+vars <- c(
+  "Cu_Chronic_Tox_Daphnia_nM",
+  "Cu_Acute_Tox_Daphnia_nM",
+  "Cu_Chronic_Tox_Minnow_nM",
+  "Cu_Acute_Tox_Minnow_nM"
+)
+
+mle_summary <- map_dfr(vars, function(var) {
+  
+  dat %>%
+    dplyr::select(Typology, all_of(var)) %>%
+    rename(value = all_of(var)) %>%
+    filter(!is.na(Typology), !is.na(value)) %>%
+    group_by(Typology) %>%
+    summarise(
+      variable = var,
+      n = n(),
+      mle_mean = mean(value),                    # μ̂
+      mle_variance = mean((value - mean(value))^2),  # σ̂² with denominator n
+      mle_sd = sqrt(mle_variance),
+      .groups = "drop"
+    ) %>%
+    dplyr::select(Typology, variable, n, mle_mean, mle_variance, mle_sd)
+})
+
+mle_summary
+
+
+# Log10-transformed toxicity variables ----
+vars_log <- c(
+  "log_Cu_Chronic_Tox_Daphnia_nM",
+  "log_Cu_Acute_Tox_Daphnia_nM",
+  "log_Cu_Chronic_Tox_Minnow_nM",
+  "log_Cu_Acute_Tox_Minnow_nM"
+)
+
+mle_summary_log <- map_dfr(vars_log, function(var) {
+  
+  dat %>%
+    dplyr::select(Typology, all_of(var)) %>%
+    rename(value = all_of(var)) %>%
+    filter(!is.na(Typology), !is.na(value)) %>%
+    group_by(Typology) %>%
+    summarise(
+      variable = var,
+      n = n(),
+      mle_mean = mean(value),                    # μ̂
+      mle_variance = mean((value - mean(value))^2),  # σ̂² with denominator n
+      mle_sd = sqrt(mle_variance),
+      .groups = "drop"
+    ) %>%
+    dplyr::select(Typology, variable, n, mle_mean, mle_variance, mle_sd)
+})
+
+mle_summary_log
+```
+
+Save
+
+```{r}
+# 1. Define file path
+file_path <- file.path(out_dir, "MLE_Cu_toxicity.xlsx")
+
+#2. Create workbook and write tables
+wb <- createWorkbook()
+addWorksheet(wb, "Raw variables")
+writeData(wb, "Raw variables", mle_summary)
+addWorksheet(wb, "Log10 variables")
+writeData(wb, "Log10 variables", mle_summary_log)
 
 # 5. Save
 saveWorkbook(wb, file_path, overwrite = TRUE)

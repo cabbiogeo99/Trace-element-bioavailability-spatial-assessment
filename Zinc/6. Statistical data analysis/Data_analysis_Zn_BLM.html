@@ -366,7 +366,7 @@ assuming baseline BLM assumptions (HA 10% Closed System).</p>
 dat &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/5. Cluster analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx&quot;)
 
 head(dat)</code></pre>
-<pre><code>## # A tibble: 6 × 294
+<pre><code>## # A tibble: 6 × 293
 ##   Sample_ID Site    Date                Regime    Flow_state Network Elevation_m
 ##   &lt;chr&gt;     &lt;chr&gt;   &lt;dttm&gt;              &lt;chr&gt;     &lt;chr&gt;      &lt;chr&gt;         &lt;dbl&gt;
 ## 1 WaDE_62   MTN1.1  2023-06-23 00:00:00 NonPeren… Flowing    MTN            248.
@@ -375,7 +375,7 @@ head(dat)</code></pre>
 ## 4 WaDE_65   MTN2    2023-06-23 00:00:00 NonPeren… Pooled     MTN            257.
 ## 5 WaDE_66   MCA3.3  2023-06-23 00:00:00 NonPeren… Flowing    MCA            280.
 ## 6 WaDE_67   MCA3.2  2023-06-23 00:00:00 NonPeren… Flowing    MCA            275.
-## # ℹ 287 more variables: Relative_elevation_m &lt;dbl&gt;,
+## # ℹ 286 more variables: Relative_elevation_m &lt;dbl&gt;,
 ## #   Upstream_from_main_stem_km &lt;dbl&gt;, Developed_lulc &lt;dbl&gt;, Type &lt;chr&gt;,
 ## #   Development &lt;chr&gt;, Relative_elevation &lt;chr&gt;, pH &lt;dbl&gt;, Temp_C &lt;dbl&gt;,
 ## #   DOC_uM &lt;dbl&gt;, Ca_uM &lt;dbl&gt;, Mg_uM &lt;dbl&gt;, Na_uM &lt;dbl&gt;, K_uM &lt;dbl&gt;,
@@ -3087,9 +3087,12 @@ ggsave(
   dpi      = 300
 )</code></pre>
 </div>
-<div id="g.-toxicity" class="section level3">
-<h3>g. Toxicity</h3>
-<p>Acute Zn toxicity</p>
+</div>
+</div>
+<div id="toxicity" class="section level1">
+<h1>Toxicity</h1>
+<div id="density-plots" class="section level2">
+<h2>1. Density plots</h2>
 <pre class="r"><code>library(dplyr)
 library(tidyr)
 library(ggplot2)
@@ -3175,6 +3178,9 @@ ggsave(
   units = &quot;in&quot;,
   dpi = 300
 )</code></pre>
+</div>
+<div id="overlap-of-measured-vs-toxic-concentrations" class="section level2">
+<h2>2. Overlap of measured vs toxic concentrations</h2>
 <p>Calculate probability of overlapping measured zinc with toxic levels
 of zinc by stream typology</p>
 <pre class="r"><code># Quantify overlapping area of measured zinc with chronic and acute toxic concentrations by typology
@@ -3228,14 +3234,9 @@ write.xlsx(
   overwrite = TRUE
 )</code></pre>
 </div>
-</div>
-</div>
-<div id="interaction-effect-of-typology-and-developed-lulc" class="section level1">
-<h1>Interaction effect of Typology and Developed LULC</h1>
-<p>Interaction effect for each BLM predictor ~ Typology *
-Developed_lulc</p>
+<div id="mle-of-zn-toxicity" class="section level2">
+<h2>3. MLE of Zn toxicity</h2>
 <pre class="r"><code>library(dplyr)
-library(tidyr)
 library(purrr)</code></pre>
 <pre><code>## 
 ## Attaching package: &#39;purrr&#39;</code></pre>
@@ -3245,7 +3246,105 @@ library(purrr)</code></pre>
 <pre><code>## The following object is masked from &#39;package:car&#39;:
 ## 
 ##     some</code></pre>
-<pre class="r"><code>library(broom)
+<pre class="r"><code># Raw toxicity variables ----
+vars &lt;- c(
+  &quot;Zn_chronic_tox_nM&quot;,
+  &quot;Zn_acute_tox_nM&quot;
+)
+
+mle_summary &lt;- map_dfr(vars, function(var) {
+  
+  dat %&gt;%
+    dplyr::select(Typology, all_of(var)) %&gt;%
+    rename(value = all_of(var)) %&gt;%
+    filter(!is.na(Typology), !is.na(value)) %&gt;%
+    group_by(Typology) %&gt;%
+    summarise(
+      variable = var,
+      n = n(),
+      mle_mean = mean(value),                    # μ̂
+      mle_variance = mean((value - mean(value))^2),  # σ̂² with denominator n
+      mle_sd = sqrt(mle_variance),
+      .groups = &quot;drop&quot;
+    ) %&gt;%
+    dplyr::select(Typology, variable, n, mle_mean, mle_variance, mle_sd)
+})
+
+mle_summary</code></pre>
+<pre><code>## # A tibble: 10 × 6
+##    Typology            variable              n   mle_mean mle_variance    mle_sd
+##    &lt;fct&gt;               &lt;chr&gt;             &lt;int&gt;      &lt;dbl&gt;        &lt;dbl&gt;     &lt;dbl&gt;
+##  1 Pooled Water        Zn_chronic_tox_nM    30      1438.      2.82e 5    5.31e2
+##  2 Non-Perennial Tribs Zn_chronic_tox_nM    14       494.      5.16e 5    7.19e2
+##  3 Perennial Tribs     Zn_chronic_tox_nM    93       870.      1.61e 5    4.01e2
+##  4 Developed Tribs     Zn_chronic_tox_nM   122       926.      7.67e 4    2.77e2
+##  5 Main Stem           Zn_chronic_tox_nM   127      1235.      2.07e 5    4.55e2
+##  6 Pooled Water        Zn_acute_tox_nM      30 202714518.      1.04e16    1.02e8
+##  7 Non-Perennial Tribs Zn_acute_tox_nM      14  39585561.      1.92e15    4.38e7
+##  8 Perennial Tribs     Zn_acute_tox_nM      93 109553923.      3.00e15    5.48e7
+##  9 Developed Tribs     Zn_acute_tox_nM     122 171735347.      2.61e15    5.10e7
+## 10 Main Stem           Zn_acute_tox_nM     127 139075084.      1.55e15    3.94e7</code></pre>
+<pre class="r"><code># Log10-transformed toxicity variables ----
+vars_log &lt;- c(
+  &quot;log_Zn_chronic_tox_nM&quot;,
+  &quot;log_Zn_acute_tox_nM&quot;
+)
+
+mle_summary_log &lt;- map_dfr(vars_log, function(var) {
+  
+  dat %&gt;%
+    dplyr::select(Typology, all_of(var)) %&gt;%
+    rename(value = all_of(var)) %&gt;%
+    filter(!is.na(Typology), !is.na(value)) %&gt;%
+    group_by(Typology) %&gt;%
+    summarise(
+      variable = var,
+      n = n(),
+      mle_mean = mean(value),                    # μ̂
+      mle_variance = mean((value - mean(value))^2),  # σ̂² with denominator n
+      mle_sd = sqrt(mle_variance),
+      .groups = &quot;drop&quot;
+    ) %&gt;%
+    dplyr::select(Typology, variable, n, mle_mean, mle_variance, mle_sd)
+})
+
+mle_summary_log</code></pre>
+<pre><code>## # A tibble: 10 × 6
+##    Typology            variable                  n mle_mean mle_variance mle_sd
+##    &lt;fct&gt;               &lt;chr&gt;                 &lt;int&gt;    &lt;dbl&gt;        &lt;dbl&gt;  &lt;dbl&gt;
+##  1 Pooled Water        log_Zn_chronic_tox_nM    30     3.12       0.0336  0.183
+##  2 Non-Perennial Tribs log_Zn_chronic_tox_nM    14     2.53       0.0829  0.288
+##  3 Perennial Tribs     log_Zn_chronic_tox_nM    93     2.89       0.0443  0.211
+##  4 Developed Tribs     log_Zn_chronic_tox_nM   122     2.95       0.0182  0.135
+##  5 Main Stem           log_Zn_chronic_tox_nM   127     3.06       0.0239  0.155
+##  6 Pooled Water        log_Zn_acute_tox_nM      30     8.21       0.113   0.337
+##  7 Non-Perennial Tribs log_Zn_acute_tox_nM      14     7.45       0.109   0.331
+##  8 Perennial Tribs     log_Zn_acute_tox_nM      93     7.99       0.0420  0.205
+##  9 Developed Tribs     log_Zn_acute_tox_nM     122     8.21       0.0184  0.136
+## 10 Main Stem           log_Zn_acute_tox_nM     127     8.12       0.0188  0.137</code></pre>
+<p>Save</p>
+<pre class="r"><code># 1. Define file path
+file_path &lt;- file.path(out_dir, &quot;MLE_Cu_toxicity.xlsx&quot;)
+
+#2. Create workbook and write tables
+wb &lt;- createWorkbook()
+addWorksheet(wb, &quot;Raw variables&quot;)
+writeData(wb, &quot;Raw variables&quot;, mle_summary)
+addWorksheet(wb, &quot;Log10 variables&quot;)
+writeData(wb, &quot;Log10 variables&quot;, mle_summary_log)
+
+# 5. Save
+saveWorkbook(wb, file_path, overwrite = TRUE)</code></pre>
+</div>
+</div>
+<div id="interaction-effect-of-typology-and-developed-lulc" class="section level1">
+<h1>Interaction effect of Typology and Developed LULC</h1>
+<p>Interaction effect for each BLM predictor ~ Typology *
+Developed_lulc</p>
+<pre class="r"><code>library(dplyr)
+library(tidyr)
+library(purrr)
+library(broom)
 
 vars &lt;- c(
   &quot;pH&quot;, &quot;log_DOC_nM&quot;, &quot;log_DIC_nM&quot;, &quot;log_Cl_nM&quot;,
