@@ -366,7 +366,8 @@ version 2.</p>
 <pre class="r"><code>setwd(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/5. Cluster analysis&quot;)</code></pre>
 <div id="identifying-stream-typologies" class="section level1">
 <h1>Identifying Stream Typologies</h1>
-<p>Cluster analysis of all sites in WaDE Synoptic Survey</p>
+<p>Cluster analysis of all sites in WaDE Synoptic Survey except for
+pooled samples</p>
 <p>Import dataset</p>
 <pre class="r"><code>library(readxl)
 
@@ -374,7 +375,7 @@ dat &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory
     sheet = &quot;HA 10% Closed System&quot;)
 
 head(dat)</code></pre>
-<pre><code>## # A tibble: 6 × 290
+<pre><code>## # A tibble: 6 × 291
 ##   Sample_ID Site    Date                Regime    Flow_state Network Elevation_m
 ##   &lt;chr&gt;     &lt;chr&gt;   &lt;dttm&gt;              &lt;chr&gt;     &lt;chr&gt;      &lt;chr&gt;         &lt;dbl&gt;
 ## 1 WaDE_62   MTN1.1  2023-06-23 00:00:00 NonPeren… Flowing    MTN            248.
@@ -383,14 +384,14 @@ head(dat)</code></pre>
 ## 4 WaDE_65   MTN2    2023-06-23 00:00:00 NonPeren… Pooled     MTN            257.
 ## 5 WaDE_66   MCA3.3  2023-06-23 00:00:00 NonPeren… Flowing    MCA            280.
 ## 6 WaDE_67   MCA3.2  2023-06-23 00:00:00 NonPeren… Flowing    MCA            275.
-## # ℹ 283 more variables: Relative_elevation_m &lt;dbl&gt;,
+## # ℹ 284 more variables: Relative_elevation_m &lt;dbl&gt;,
 ## #   Upstream_from_main_stem_km &lt;dbl&gt;, Developed_lulc &lt;dbl&gt;, Type &lt;chr&gt;,
 ## #   Development &lt;chr&gt;, Relative_elevation &lt;chr&gt;, pH &lt;dbl&gt;, Temp_C &lt;dbl&gt;,
 ## #   DOC_uM &lt;dbl&gt;, Ca_uM &lt;dbl&gt;, Mg_uM &lt;dbl&gt;, Na_uM &lt;dbl&gt;, K_uM &lt;dbl&gt;,
 ## #   SO4_uM &lt;dbl&gt;, Cl_uM &lt;dbl&gt;, DIC_uM &lt;dbl&gt;, Zn_uM &lt;dbl&gt;, Cu_uM &lt;dbl&gt;,
 ## #   Free_Zn_M &lt;dbl&gt;, ZnOH_M &lt;dbl&gt;, Zn_OH_2_M &lt;dbl&gt;, ZnCO3_M &lt;dbl&gt;,
 ## #   ZnHCO3_M &lt;dbl&gt;, ZnSO4_M &lt;dbl&gt;, ZnCl_M &lt;dbl&gt;, ZnS_M &lt;dbl&gt;, …</code></pre>
-<p>First, we’ll omit pooled samples</p>
+<p>Omit pooled samples from the analysis</p>
 <pre class="r"><code>library(dplyr)</code></pre>
 <pre><code>## Warning: package &#39;dplyr&#39; was built under R version 4.5.2</code></pre>
 <pre><code>## 
@@ -401,10 +402,10 @@ head(dat)</code></pre>
 <pre><code>## The following objects are masked from &#39;package:base&#39;:
 ## 
 ##     intersect, setdiff, setequal, union</code></pre>
-<pre class="r"><code>dat &lt;- dat %&gt;%
+<pre class="r"><code>cluster_dat &lt;- dat %&gt;%
   filter(Flow_state != &quot;Pooled&quot;)
 
-str(dat$Flow_state)</code></pre>
+str(cluster_dat$Flow_state)</code></pre>
 <pre><code>##  chr [1:356] &quot;Flowing&quot; &quot;Flowing&quot; &quot;Flowing&quot; &quot;Flowing&quot; &quot;Flowing&quot; &quot;Flowing&quot; ...</code></pre>
 <div id="select-variables" class="section level2">
 <h2>1. Select variables</h2>
@@ -420,7 +421,7 @@ vars_to_select &lt;- c(&quot;log_Temp_C&quot;, &quot;pH&quot;, &quot;log_DOC_uM&
 
 # Scale these variables
 scaled_blm_predict &lt;- as.data.frame(
-  scale(dat[vars_to_select])
+  scale(cluster_dat[vars_to_select])
 )
 
 # Peek
@@ -489,12 +490,13 @@ set.seed(123)
 kmeans_result &lt;- kmeans(scaled_blm_predict, centers = 4, nstart = 50)
 
 # Add cluster labels to your data
-dat &lt;- dat %&gt;%
+cluster_dat &lt;- cluster_dat %&gt;%
   mutate(cluster = as.factor(kmeans_result$cluster))
 
 # Check
 str(dat$cluster)</code></pre>
-<pre><code>##  Factor w/ 4 levels &quot;1&quot;,&quot;2&quot;,&quot;3&quot;,&quot;4&quot;: 1 4 4 2 2 4 4 4 3 4 ...</code></pre>
+<pre><code>## Warning: Unknown or uninitialised column: `cluster`.</code></pre>
+<pre><code>##  NULL</code></pre>
 </div>
 </div>
 <div id="plot-of-clusters-on-pca" class="section level2">
@@ -518,7 +520,7 @@ cluster_colors &lt;- c(
 )
 
 # Force correct ordering
-cluster_for_plot &lt;- dat$cluster %&gt;%
+cluster_for_plot &lt;- cluster_dat$cluster %&gt;%
   factor(levels = c(&quot;1&quot;, &quot;2&quot;, &quot;3&quot;, &quot;4&quot;))
 
 #-------------------------------------------------
@@ -557,7 +559,7 @@ pca_cluster</code></pre>
 <pre><code>## Ignoring unknown labels:
 ## • linetype : &quot;Cluster&quot;</code></pre>
 <pre class="r"><code># Define output directory
-out_dir &lt;- &quot;Identifying Typology Plots&quot;
+out_dir &lt;- &quot;Typology Plots&quot;
 # Create directory if it does not exist
 if (!dir.exists(out_dir)) {
   dir.create(out_dir, recursive = TRUE)
@@ -611,7 +613,7 @@ library(tidyr)
 # inherent characteristics 
 site_char &lt;- c(&quot;Type&quot;, &quot;Regime&quot;, &quot;Development&quot;)
 
-cluster_summary_table_pct &lt;- dat %&gt;%
+cluster_summary_table_pct &lt;- cluster_dat %&gt;%
   dplyr::select(all_of(site_char), cluster) %&gt;%  
   pivot_longer(
     cols = -cluster,        
@@ -639,7 +641,7 @@ cluster_summary_table_pct</code></pre>
 ## 10 Development 4       Low       54    58.1
 ## # ℹ 14 more rows</code></pre>
 <p>Save table</p>
-<pre class="r"><code>out_dir &lt;- &quot;Identifying Typology2 Plots&quot;
+<pre class="r"><code>out_dir &lt;- &quot;Typology Plots&quot;
 
 library(openxlsx)
 
@@ -732,28 +734,56 @@ ggsave(
 </div>
 <div id="iii.-rename-clusters-to-typologies" class="section level3">
 <h3>iii. Rename clusters to typologies</h3>
+<p>And add pooled water as a typology</p>
 <pre class="r"><code>library(dplyr)
 
-dat &lt;- dat %&gt;%
+cluster_dat &lt;- cluster_dat %&gt;%
   mutate(cluster = as.character(cluster)) %&gt;%
   mutate(cluster = dplyr::recode(
     cluster,
-    `4` = &quot;P Tribs&quot;,
-    `1` = &quot;PD Tribs&quot;,
+    `4` = &quot;Perennial Tribs&quot;,
+    `1` = &quot;Developed Tribs&quot;,
     `3` = &quot;Main Stem&quot;,
-    `2` = &quot;NP Tribs&quot;
+    `2` = &quot;Non-Perennial Tribs&quot;
   )) %&gt;%
-  dplyr::rename(Typology = cluster) %&gt;%
-  dplyr::mutate(Typology = as.factor(Typology)) %&gt;%
-  dplyr::mutate(Typology = factor(Typology, 
-                          levels = c(&quot;NP Tribs&quot;,
-                                     &quot;P Tribs&quot;,
-                                     &quot;PD Tribs&quot;,
-                                     &quot;Main Stem&quot;)))
+  rename(Typology = cluster)
 
-# check
-levels(dat$Typology)</code></pre>
-<pre><code>## [1] &quot;NP Tribs&quot;  &quot;P Tribs&quot;   &quot;PD Tribs&quot;  &quot;Main Stem&quot;</code></pre>
+# Keep only the columns you need and remove duplicates
+typology_lookup &lt;- cluster_dat %&gt;%
+  select(Sample_ID, Typology) %&gt;%
+  distinct()
+
+# Join Typology back to dat, and assign unmatched Sample_IDs as Pooled Water
+dat &lt;- dat %&gt;%
+  left_join(typology_lookup, by = &quot;Sample_ID&quot;) %&gt;%
+  mutate(
+    Typology = if_else(is.na(Typology), &quot;Pooled Water&quot;, Typology),
+    Typology = factor(
+      Typology,
+      levels = c(&quot;Non-Perennial Tribs&quot;,
+                 &quot;Perennial Tribs&quot;,
+                 &quot;Developed Tribs&quot;,
+                 &quot;Main Stem&quot;,
+                 &quot;Pooled Water&quot;)
+    )
+  )
+
+# Quick check
+unique(dat$Typology)</code></pre>
+<pre><code>## [1] Developed Tribs     Perennial Tribs     Pooled Water       
+## [4] Non-Perennial Tribs Main Stem          
+## 5 Levels: Non-Perennial Tribs Perennial Tribs Developed Tribs ... Pooled Water</code></pre>
+<pre class="r"><code># Count samples in each Typology
+dat %&gt;%
+  count(Typology)</code></pre>
+<pre><code>## # A tibble: 5 × 2
+##   Typology                n
+##   &lt;fct&gt;               &lt;int&gt;
+## 1 Non-Perennial Tribs    14
+## 2 Perennial Tribs        93
+## 3 Developed Tribs       122
+## 4 Main Stem             127
+## 5 Pooled Water           30</code></pre>
 <p>Save Typology column to
 Bioavailability_Master_Spreadsheet_Clean3.xlsx and save in current
 working directory</p>
@@ -775,7 +805,7 @@ ha10_dat &lt;- read_excel(file_path, sheet = sheet_name)
 #-------------------------------------------
 
 typology_lookup &lt;- dat %&gt;%
-  select(Sample_ID, Typology) %&gt;%
+  dplyr::select(Sample_ID, Typology) %&gt;%
   distinct()
 
 #-------------------------------------------
@@ -792,10 +822,11 @@ ha10_dat_updated &lt;- ha10_dat %&gt;%
 #-------------------------------------------
 
 unique(ha10_dat_updated$Typology) # Ensure it exists</code></pre>
-<pre><code>## [1] PD Tribs  P Tribs   NP Tribs  Main Stem
-## Levels: NP Tribs P Tribs PD Tribs Main Stem</code></pre>
+<pre><code>## [1] Developed Tribs     Perennial Tribs     Pooled Water       
+## [4] Non-Perennial Tribs Main Stem          
+## 5 Levels: Non-Perennial Tribs Perennial Tribs Developed Tribs ... Pooled Water</code></pre>
 <pre class="r"><code>unique(ha10_dat_updated$Flow_state) # Should only be Flowing</code></pre>
-<pre><code>## [1] &quot;Flowing&quot;</code></pre>
+<pre><code>## [1] &quot;Flowing&quot; &quot;Pooled&quot;</code></pre>
 <pre class="r"><code>#-------------------------------------------
 # 5. Save updated workbook in working directory
 #    by REPLACING the target sheet
@@ -806,8 +837,296 @@ write_xlsx(
   list(&quot;HA 10% Closed System&quot; = ha10_dat_updated),
   path = file.path(getwd(), &quot;Bioavailability_Master_Spreadsheet_Clean3.xlsx&quot;)
 )</code></pre>
-<p><br />
-</p>
+</div>
+</div>
+<div id="sites-within-each-typology" class="section level2">
+<h2>6. Sites within Each Typology</h2>
+<pre class="r"><code>library(dplyr)
+
+pw &lt;- dat %&gt;%
+  filter(Typology == &quot;Pooled Water&quot;) %&gt;%   
+  dplyr::select(Site, Typology) %&gt;%          
+  distinct()  
+
+np_tribs &lt;- dat %&gt;%
+  filter(Typology == &quot;Non-Perennial Tribs&quot;) %&gt;%   
+  dplyr::select(Site, Typology) %&gt;%          
+  distinct()  
+
+p_tribs &lt;- dat %&gt;%
+  filter(Typology == &quot;Perennial Tribs&quot;) %&gt;%   
+  dplyr::select(Site, Typology) %&gt;%          
+  distinct()  
+
+pd_tribs &lt;- dat %&gt;%
+  filter(Typology == &quot;Developed Tribs&quot;) %&gt;%   
+  dplyr::select(Site, Typology) %&gt;%          
+  distinct()  
+
+ms &lt;- dat %&gt;%
+  filter(Typology == &quot;Main Stem&quot;) %&gt;%   
+  dplyr::select(Site, Typology) %&gt;%          
+  distinct()  
+
+pw</code></pre>
+<pre><code>## # A tibble: 12 × 2
+##    Site   Typology    
+##    &lt;chr&gt;  &lt;fct&gt;       
+##  1 MTN2   Pooled Water
+##  2 BSL4.1 Pooled Water
+##  3 BSL4.2 Pooled Water
+##  4 NBO5   Pooled Water
+##  5 BSL7   Pooled Water
+##  6 MTN1.1 Pooled Water
+##  7 MCA3.1 Pooled Water
+##  8 BSL4.3 Pooled Water
+##  9 MCA3.2 Pooled Water
+## 10 WBK2   Pooled Water
+## 11 WBK3   Pooled Water
+## 12 BSL6   Pooled Water</code></pre>
+<pre class="r"><code>np_tribs</code></pre>
+<pre><code>## # A tibble: 5 × 2
+##   Site   Typology           
+##   &lt;chr&gt;  &lt;fct&gt;              
+## 1 MCA3.3 Non-Perennial Tribs
+## 2 MCA3.2 Non-Perennial Tribs
+## 3 MTN4   Non-Perennial Tribs
+## 4 NBO3   Non-Perennial Tribs
+## 5 WBK2   Non-Perennial Tribs</code></pre>
+<pre class="r"><code>p_tribs</code></pre>
+<pre><code>## # A tibble: 33 × 2
+##    Site        Typology       
+##    &lt;chr&gt;       &lt;fct&gt;          
+##  1 EFK13.8     Perennial Tribs
+##  2 MTN4        Perennial Tribs
+##  3 MCA4        Perennial Tribs
+##  4 MCA1        Perennial Tribs
+##  5 MCA2        Perennial Tribs
+##  6 MCA3.1      Perennial Tribs
+##  7 WBK2        Perennial Tribs
+##  8 WBK3        Perennial Tribs
+##  9 BSL5.1      Perennial Tribs
+## 10 Mill Branch Perennial Tribs
+## # ℹ 23 more rows</code></pre>
+<pre class="r"><code>pd_tribs</code></pre>
+<pre><code>## # A tibble: 17 × 2
+##    Site     Typology       
+##    &lt;chr&gt;    &lt;fct&gt;          
+##  1 MTN1.1   Developed Tribs
+##  2 WBK1     Developed Tribs
+##  3 BSL1.1   Developed Tribs
+##  4 BSL1.3   Developed Tribs
+##  5 BSL2.1   Developed Tribs
+##  6 BSL2.2   Developed Tribs
+##  7 BSL2.3   Developed Tribs
+##  8 BSL3.1   Developed Tribs
+##  9 BSL3.2   Developed Tribs
+## 10 BSL3.3   Developed Tribs
+## 11 NBO2     Developed Tribs
+## 12 BCK0.9   Developed Tribs
+## 13 Downtown Developed Tribs
+## 14 MTN4     Developed Tribs
+## 15 MCA1     Developed Tribs
+## 16 MCA4     Developed Tribs
+## 17 MCA3.1   Developed Tribs</code></pre>
+<pre class="r"><code>ms</code></pre>
+<pre><code>## # A tibble: 20 × 2
+##    Site           Typology 
+##    &lt;chr&gt;          &lt;fct&gt;    
+##  1 EFK16.2        Main Stem
+##  2 Downtown       Main Stem
+##  3 BSL1.2         Main Stem
+##  4 EFK23.5        Main Stem
+##  5 EFK18.2        Main Stem
+##  6 EFK11.3        Main Stem
+##  7 EFK10.0        Main Stem
+##  8 EFK7.9         Main Stem
+##  9 EFK5.4         Main Stem
+## 10 BCK0.9         Main Stem
+## 11 EFK2.0         Main Stem
+## 12 NBO2           Main Stem
+## 13 BSL1.1         Main Stem
+## 14 EFK13.8        Main Stem
+## 15 EFK20          Main Stem
+## 16 BSL3.2         Main Stem
+## 17 BSL3.3         Main Stem
+## 18 BSL1.3         Main Stem
+## 19 BSL2.2         Main Stem
+## 20 Pinhook Branch Main Stem</code></pre>
+<pre class="r"><code># Save
+out_dir &lt;- &quot;Typology Plots&quot;
+if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+
+library(openxlsx)
+
+# Create workbook
+wb &lt;- createWorkbook()
+
+# Add worksheets and write data
+addWorksheet(wb, &quot;Pooled Water&quot;)
+writeData(wb, &quot;Pooled Water&quot;, pw)
+
+addWorksheet(wb, &quot;Non-Perennial Tribs&quot;)
+writeData(wb, &quot;Non-Perennial Tribs&quot;, np_tribs)
+
+addWorksheet(wb, &quot;Perennial Tribs&quot;)
+writeData(wb, &quot;Perennial Tribs&quot;, p_tribs)
+
+addWorksheet(wb, &quot;Developed Tribs&quot;)
+writeData(wb, &quot;Developed Tribs&quot;, pd_tribs)
+
+addWorksheet(wb, &quot;Main Stem&quot;)
+writeData(wb, &quot;Main Stem&quot;, ms)
+
+# Save workbook
+saveWorkbook(
+  wb,
+  file = file.path(out_dir, &quot;Sites_by_typology.xlsx&quot;),
+  overwrite = TRUE
+)</code></pre>
+<div id="a.-identify-sites-with-1-typology-assignment" class="section level3">
+<h3>a. Identify Sites with &gt;1 Typology Assignment</h3>
+<pre class="r"><code># Determine which sites fall into more than 1 typology
+sites_multiple_typology &lt;- dat %&gt;%
+  distinct(Site, Typology) %&gt;%        # unique Site–Typology pairs
+  group_by(Site) %&gt;%                  
+  summarise(
+    n_typologies = n(),               
+    typologies = paste(sort(Typology), collapse = &quot;, &quot;)
+  ) %&gt;%
+  filter(n_typologies &gt; 1)            # keep sites with &gt;1 typology
+
+sites_multiple_typology</code></pre>
+<pre><code>## # A tibble: 33 × 3
+##    Site   n_typologies typologies                                 
+##    &lt;chr&gt;         &lt;int&gt; &lt;chr&gt;                                      
+##  1 BCK0.9            3 Perennial Tribs, Developed Tribs, Main Stem
+##  2 BSL1.1            2 Developed Tribs, Main Stem                 
+##  3 BSL1.3            3 Perennial Tribs, Developed Tribs, Main Stem
+##  4 BSL2.2            3 Perennial Tribs, Developed Tribs, Main Stem
+##  5 BSL2.3            2 Perennial Tribs, Developed Tribs           
+##  6 BSL3.1            2 Perennial Tribs, Developed Tribs           
+##  7 BSL3.2            2 Developed Tribs, Main Stem                 
+##  8 BSL3.3            2 Developed Tribs, Main Stem                 
+##  9 BSL4.1            2 Perennial Tribs, Pooled Water              
+## 10 BSL4.2            2 Perennial Tribs, Pooled Water              
+## # ℹ 23 more rows</code></pre>
+<pre class="r"><code># Save
+library(openxlsx)
+
+# Create workbook
+wb &lt;- createWorkbook()
+
+# Add worksheets and write data
+addWorksheet(wb, &quot;Sites&quot;)
+writeData(wb, &quot;Sites&quot;, sites_multiple_typology)
+
+# Save workbook
+saveWorkbook(
+  wb,
+  file = file.path(out_dir, &quot;Sites_with_many_typologies.xlsx&quot;),
+  overwrite = TRUE)</code></pre>
+</div>
+<div id="b.-number-of-samples-per-typology-within-sites-with-1-typology" class="section level3">
+<h3>b. Number of Samples per Typology within Sites with &gt;1
+Typology</h3>
+<pre class="r"><code>site_typology_sample_counts &lt;- dat %&gt;%
+  filter(Site %in% sites_multiple_typology$Site) %&gt;% 
+  count(Site, Typology, name = &quot;n_samples&quot;) %&gt;%
+  arrange(Site, desc(n_samples))
+
+site_typology_sample_counts</code></pre>
+<pre><code>## # A tibble: 74 × 3
+##    Site   Typology        n_samples
+##    &lt;chr&gt;  &lt;fct&gt;               &lt;int&gt;
+##  1 BCK0.9 Main Stem               6
+##  2 BCK0.9 Developed Tribs         4
+##  3 BCK0.9 Perennial Tribs         1
+##  4 BSL1.1 Developed Tribs         8
+##  5 BSL1.1 Main Stem               3
+##  6 BSL1.3 Developed Tribs         9
+##  7 BSL1.3 Perennial Tribs         1
+##  8 BSL1.3 Main Stem               1
+##  9 BSL2.2 Developed Tribs         8
+## 10 BSL2.2 Perennial Tribs         1
+## # ℹ 64 more rows</code></pre>
+<pre class="r"><code># Save
+library(openxlsx)
+
+# Create workbook
+wb &lt;- createWorkbook()
+
+# Add worksheets and write data
+addWorksheet(wb, &quot;Sites&quot;)
+writeData(wb, &quot;Sites&quot;, site_typology_sample_counts)
+
+# Save workbook
+saveWorkbook(
+  wb,
+  file = file.path(out_dir, &quot;Site_typology_sample_counts.xlsx&quot;),
+  overwrite = TRUE)</code></pre>
+</div>
+<div id="c.-dominant-typology-for-each-site" class="section level3">
+<h3>c. Dominant Typology for each Site</h3>
+<pre class="r"><code>library(dplyr)
+library(tidyr)
+
+# Count observations per Site × Typology
+site_typology_counts &lt;- dat %&gt;%
+  group_by(Network, Site, Typology) %&gt;%
+  summarise(n_obs = n(), .groups = &quot;drop&quot;)
+
+# Determine dominant Typology per Site
+site_dominant &lt;- site_typology_counts %&gt;%
+  group_by(Network, Site) %&gt;%
+  slice_max(order_by = n_obs, n = 1, with_ties = FALSE) %&gt;%
+  rename(Dominant_Typology = Typology,
+         Dominant_n = n_obs) %&gt;%
+  ungroup()
+
+# Join back for full site-level table
+site_summary_table &lt;- site_typology_counts %&gt;%
+  left_join(site_dominant %&gt;%
+              dplyr::select(Network, Site, Dominant_Typology),
+            by = c(&quot;Network&quot;, &quot;Site&quot;)) %&gt;%
+  arrange(Network, Site, desc(n_obs))
+
+# Merged table
+nested_table &lt;- site_summary_table %&gt;%
+  group_by(Network, Site) %&gt;%
+  summarise(
+    Typologies_Observed = paste0(Typology, &quot; (n=&quot;, n_obs, &quot;)&quot;, collapse = &quot;; &quot;),
+    Dominant_Typology   = first(Dominant_Typology),
+    .groups = &quot;drop&quot;
+  ) %&gt;%
+  mutate(
+    Dominant_Typology = factor(Dominant_Typology)
+  ) %&gt;%
+  arrange(Dominant_Typology, Network, Site)
+
+nested_table</code></pre>
+<pre><code>## # A tibble: 46 × 4
+##    Network Site   Typologies_Observed                          Dominant_Typology
+##    &lt;chr&gt;   &lt;chr&gt;  &lt;chr&gt;                                        &lt;fct&gt;            
+##  1 MCA     MCA3.2 Non-Perennial Tribs (n=4); Pooled Water (n=… Non-Perennial Tr…
+##  2 MCA     MCA3.3 Non-Perennial Tribs (n=4)                    Non-Perennial Tr…
+##  3 NBO     NBO3   Non-Perennial Tribs (n=4); Perennial Tribs … Non-Perennial Tr…
+##  4 BSL     BSL5.1 Perennial Tribs (n=1)                        Perennial Tribs  
+##  5 BSL     BSL8   Perennial Tribs (n=1)                        Perennial Tribs  
+##  6 MCA     MCA2   Perennial Tribs (n=3)                        Perennial Tribs  
+##  7 MCA     MCA3.1 Perennial Tribs (n=5); Developed Tribs (n=3… Perennial Tribs  
+##  8 MCA     MCA4   Perennial Tribs (n=8); Developed Tribs (n=3) Perennial Tribs  
+##  9 MTN     MTN4   Perennial Tribs (n=5); Developed Tribs (n=5… Perennial Tribs  
+## 10 NBO     NBO5   Perennial Tribs (n=4); Pooled Water (n=2)    Perennial Tribs  
+## # ℹ 36 more rows</code></pre>
+<pre class="r"><code># Save
+library(openxlsx)
+
+write.xlsx(
+  nested_table,
+  file = file.path(out_dir, &quot;Sites_by_network_typology.xlsx&quot;),
+  overwrite = TRUE
+)</code></pre>
 </div>
 </div>
 </div>

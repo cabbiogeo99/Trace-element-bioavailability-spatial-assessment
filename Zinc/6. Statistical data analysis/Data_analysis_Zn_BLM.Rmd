@@ -600,9 +600,10 @@ Set order of typologies
 # Rearrange order
 dat$Typology <- as.factor(dat$Typology)
 dat$Typology <- factor(dat$Typology, 
-                          levels = c("NP Tribs",
-                                     "P Tribs",
-                                     "PD Tribs",
+                          levels = c("Pooled Water",
+                                     "Non-Perennial Tribs",
+                                     "Perennial Tribs",
+                                     "Developed Tribs",
                                      "Main Stem"))
 
 # Check
@@ -1011,16 +1012,18 @@ letters_df <- combined_kruskal %>%
 
 dat$Typology <- as.factor(dat$Typology)
 
-dat$Typology <- factor(dat$Typology, levels = c("NP Tribs",
-                                     "P Tribs",
-                                     "PD Tribs",
+dat$Typology <- factor(dat$Typology, levels = c("Pooled Water",
+                                     "Non-Perennial Tribs",
+                                     "Perennial Tribs",
+                                     "Developed Tribs",
                                      "Main Stem"))
 
 # 3. Colors for each Typology
 typology_colors <- c(
-  "P Tribs"         = "#56B4E9",
-  "PD Tribs"        = "#D55E00",
-  "NP Tribs"        = "#009E73",
+  "Pooled Water"    = "yellow3",
+  "Perennial Tribs" = "#56B4E9",
+  "Developed Tribs" = "#D55E00",
+  "Non-Perennial Tribs" = "#009E73",
   "Main Stem"       = "#999999"
 )
 ```
@@ -2272,7 +2275,7 @@ dat_long <- dat %>%
 
 dat_long$Typology <- factor(
   dat_long$Typology,
-  levels = c("Main Stem", "PD Tribs", "P Tribs", "NP Tribs")
+  levels = c("Main Stem", "Developed Tribs", "Perennial Tribs", "Non-Perennial Tribs", "Pooled Water")
 )
 
 p <- ggplot(dat_long, aes(x = Developed_lulc, y = Value)) +
@@ -2292,9 +2295,10 @@ p <- ggplot(dat_long, aes(x = Developed_lulc, y = Value)) +
   scale_linetype_manual(
     values = c(
       "Main Stem" = "solid",
-      "PD Tribs"  = "dashed",
-      "P Tribs"   = "twodash",
-      "NP Tribs"  = "dotted"
+      "Developed Tribs"  = "dashed",
+      "Perennial Tribs"   = "twodash",
+      "Non-Perennial Tribs"  = "dotted",
+      "Pooled Water" = "longdash"
     )
   ) +
   
@@ -2376,7 +2380,7 @@ ggsave(
 )
 ```
 
-## 3. PD Tribs
+## 3. Developed Tribs
 
 ```{r}
 library(dplyr)
@@ -2390,7 +2394,7 @@ vars <- c(
 )
 
 dat_long <- dat %>%
-  filter(Typology == "PD Tribs") %>%   
+  filter(Typology == "Developed Tribs") %>%   
   dplyr::select(Developed_lulc, all_of(vars)) %>%
   pivot_longer(
     cols = all_of(vars),
@@ -2411,7 +2415,7 @@ p2 <- ggplot(dat_long, aes(x = Developed_lulc, y = Value, color = Variable)) +
   theme(legend.position = "none") +
   
   labs(
-    title = "Water Chemistry vs Developed Land Cover (PD Tribs)",
+    title = "Water Chemistry vs Developed Land Cover (Developed Tribs)",
     x = "Developed Land Cover (%)"
   )
 
@@ -2439,7 +2443,7 @@ vars <- c(
 )
 
 dat_long <- dat %>%
-  filter(Typology == "P Tribs") %>%   
+  filter(Typology == "Perennial Tribs") %>%   
   dplyr::select(Developed_lulc, all_of(vars)) %>%
   pivot_longer(
     cols = all_of(vars),
@@ -2460,7 +2464,7 @@ p3 <- ggplot(dat_long, aes(x = Developed_lulc, y = Value, color = Variable)) +
   theme(legend.position = "none") +
   
   labs(
-    title = "Water Chemistry vs Developed Land Cover (P Tribs)",
+    title = "Water Chemistry vs Developed Land Cover (Perennial Tribs)",
     x = "Developed Land Cover (%)"
   )
 
@@ -2474,7 +2478,7 @@ ggsave(
 )
 ```
 
-## 5. NP Tribs
+## 5. Non-Perennial Tribs
 
 ```{r}
 library(dplyr)
@@ -2488,7 +2492,7 @@ vars <- c(
 )
 
 dat_long <- dat %>%
-  filter(Typology == "NP Tribs") %>%   
+  filter(Typology == "Non-Perennial Tribs") %>%   
   dplyr::select(Developed_lulc, all_of(vars)) %>%
   pivot_longer(
     cols = all_of(vars),
@@ -2509,7 +2513,7 @@ p4 <- ggplot(dat_long, aes(x = Developed_lulc, y = Value, color = Variable)) +
   theme(legend.position = "none") +
   
   labs(
-    title = "Water Chemistry vs Developed Land Cover (NP Tribs)",
+    title = "Water Chemistry vs Developed Land Cover (Non-Perennial Tribs)",
     x = "Developed Land Cover (%)"
   )
 
@@ -2611,7 +2615,7 @@ dat_long <- dat %>%
 
 dat_long$Typology <- factor(
   dat_long$Typology,
-  levels = c("Main Stem", "PD Tribs", "P Tribs", "NP Tribs")
+  levels = c("Main Stem", "Developed Tribs", "Perennial Tribs", "Non-Perennial Tribs", "Pooled Water")
 )
 
 a <- ggplot(dat_long, aes(x = Date, y = Value)) +
@@ -2633,9 +2637,10 @@ a <- ggplot(dat_long, aes(x = Date, y = Value)) +
   scale_linetype_manual(
     values = c(
       "Main Stem" = "solid",
-      "PD Tribs" = "dashed",
-      "P Tribs" = "twodash",
-      "NP Tribs" = "dotted"
+      "Developed Tribs" = "dashed",
+      "Perennial Tribs" = "twodash",
+      "Non-Perennial Tribs" = "dotted",
+      "Pooled Water" = "longdash"
     )
   ) +
   
@@ -2713,7 +2718,7 @@ ggsave(
 )
 ```
 
-## 3. PD Tribs
+## 3. Developed Tribs
 
 ```{r}
 library(dplyr)
@@ -2727,7 +2732,7 @@ vars <- c(
 )
 
 dat_long <- dat %>%
-  filter(Typology == "PD Tribs") %>%   
+  filter(Typology == "Developed Tribs") %>%   
   dplyr::select(Date, all_of(vars)) %>%        
   pivot_longer(
     cols = all_of(vars),
@@ -2752,7 +2757,7 @@ a2 <- ggplot(dat_long, aes(x = Date, y = Value, color = Variable)) +
   theme(legend.position = "none") +
   
   labs(
-    title = "Water Chemistry Over Time (PD Tribs)",
+    title = "Water Chemistry Over Time (Developed Tribs)",
     x = "Date"
   )
 
@@ -2766,7 +2771,7 @@ ggsave(
 )
 ```
 
-## 4. P Tribs
+## 4. Perennial Tribs
 
 ```{r}
 library(dplyr)
@@ -2780,7 +2785,7 @@ vars <- c(
 )
 
 dat_long <- dat %>%
-  filter(Typology == "P Tribs") %>%   
+  filter(Typology == "Perennial Tribs") %>%   
   dplyr::select(Date, all_of(vars)) %>%        
   pivot_longer(
     cols = all_of(vars),
@@ -2805,7 +2810,7 @@ a3 <- ggplot(dat_long, aes(x = Date, y = Value, color = Variable)) +
   theme(legend.position = "none") +
   
   labs(
-    title = "Water Chemistry Over Time (P Tribs)",
+    title = "Water Chemistry Over Time (Perennial Tribs)",
     x = "Date"
   )
 
@@ -2819,7 +2824,7 @@ ggsave(
 )
 ```
 
-## 5. NP Tribs
+## 5. Non-Perennial Tribs
 
 ```{r}
 library(dplyr)
@@ -2833,7 +2838,7 @@ vars <- c(
 )
 
 dat_long <- dat %>%
-  filter(Typology == "NP Tribs") %>%   
+  filter(Typology == "Non-Perennial Tribs") %>%   
   dplyr::select(Date, all_of(vars)) %>%        
   pivot_longer(
     cols = all_of(vars),
@@ -2858,7 +2863,7 @@ a4 <- ggplot(dat_long, aes(x = Date, y = Value, color = Variable)) +
   theme(legend.position = "none") +
   
   labs(
-    title = "Water Chemistry Over Time (NP Tribs)",
+    title = "Water Chemistry Over Time (Non-Perennial Tribs)",
     x = "Date"
   )
 

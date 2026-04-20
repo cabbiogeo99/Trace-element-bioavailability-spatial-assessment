@@ -32,17 +32,6 @@ dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Researc
 head(dat)
 ```
 
-First, omit pooled samples
-
-```{r}
-library(dplyr)
-
-dat <- dat %>%
-  filter(Flow_state != "Pooled")
-
-str(dat$Flow_state)
-```
-
 Upload the Zinc Bioavailability_Master_Spreadsheet_Clean3.xlsx and ensure Typology and Typology2 exists
 
 ```{r}

@@ -23,7 +23,7 @@ setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailab
 
 # Identifying Stream Typologies
 
-Cluster analysis of all sites in WaDE Synoptic Survey
+Cluster analysis of all sites in WaDE Synoptic Survey except for pooled samples
 
 Import dataset
 
@@ -36,15 +36,15 @@ dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Researc
 head(dat)
 ```
 
-First, we'll omit pooled samples
+Omit pooled samples from the analysis
 
 ```{r}
 library(dplyr)
 
-dat <- dat %>%
+cluster_dat <- dat %>%
   filter(Flow_state != "Pooled")
 
-str(dat$Flow_state)
+str(cluster_dat$Flow_state)
 ```
 
 ## 1. Select variables
@@ -62,7 +62,7 @@ vars_to_select <- c("log_Temp_C", "pH", "log_DOC_uM",
 
 # Scale these variables
 scaled_blm_predict <- as.data.frame(
-  scale(dat[vars_to_select])
+  scale(cluster_dat[vars_to_select])
 )
 
 # Peek
@@ -112,7 +112,7 @@ set.seed(123)
 kmeans_result <- kmeans(scaled_blm_predict, centers = 4, nstart = 50)
 
 # Add cluster labels to your data
-dat <- dat %>%
+cluster_dat <- cluster_dat %>%
   mutate(cluster = as.factor(kmeans_result$cluster))
 
 # Check
@@ -139,7 +139,7 @@ cluster_colors <- c(
 )
 
 # Force correct ordering
-cluster_for_plot <- dat$cluster %>%
+cluster_for_plot <- cluster_dat$cluster %>%
   factor(levels = c("1", "2", "3", "4"))
 
 #-------------------------------------------------
@@ -217,7 +217,7 @@ library(tidyr)
 # inherent characteristics 
 site_char <- c("Type", "Regime", "Development")
 
-cluster_summary_table_pct <- dat %>%
+cluster_summary_table_pct <- cluster_dat %>%
   dplyr::select(all_of(site_char), cluster) %>%  
   pivot_longer(
     cols = -cluster,        
@@ -333,28 +333,48 @@ ggsave(
 
 ### iii. Rename clusters to typologies
 
+And add pooled water as a typology
+
 ```{r}
 library(dplyr)
 
-dat <- dat %>%
+cluster_dat <- cluster_dat %>%
   mutate(cluster = as.character(cluster)) %>%
   mutate(cluster = dplyr::recode(
     cluster,
-    `4` = "P Tribs",
-    `1` = "PD Tribs",
+    `4` = "Perennial Tribs",
+    `1` = "Developed Tribs",
     `3` = "Main Stem",
-    `2` = "NP Tribs"
+    `2` = "Non-Perennial Tribs"
   )) %>%
-  dplyr::rename(Typology = cluster) %>%
-  dplyr::mutate(Typology = as.factor(Typology)) %>%
-  dplyr::mutate(Typology = factor(Typology, 
-                          levels = c("NP Tribs",
-                                     "P Tribs",
-                                     "PD Tribs",
-                                     "Main Stem")))
+  rename(Typology = cluster)
 
-# check
-levels(dat$Typology)
+# Keep only the columns you need and remove duplicates
+typology_lookup <- cluster_dat %>%
+  select(Sample_ID, Typology) %>%
+  distinct()
+
+# Join Typology back to dat, and assign unmatched Sample_IDs as Pooled Water
+dat <- dat %>%
+  left_join(typology_lookup, by = "Sample_ID") %>%
+  mutate(
+    Typology = if_else(is.na(Typology), "Pooled Water", Typology),
+    Typology = factor(
+      Typology,
+      levels = c("Non-Perennial Tribs",
+                 "Perennial Tribs",
+                 "Developed Tribs",
+                 "Main Stem",
+                 "Pooled Water")
+    )
+  )
+
+# Quick check
+unique(dat$Typology)
+
+# Count samples in each Typology
+dat %>%
+  count(Typology)
 ```
 
 Save Typology column to Bioavailability_Master_Spreadsheet_Clean3.xlsx and save in current working directory
@@ -414,18 +434,23 @@ write_xlsx(
 ```{r}
 library(dplyr)
 
+pw <- dat %>%
+  filter(Typology == "Pooled Water") %>%   
+  dplyr::select(Site, Typology) %>%          
+  distinct()  
+
 np_tribs <- dat %>%
-  filter(Typology == "NP Tribs") %>%   
+  filter(Typology == "Non-Perennial Tribs") %>%   
   dplyr::select(Site, Typology) %>%          
   distinct()  
 
 p_tribs <- dat %>%
-  filter(Typology == "P Tribs") %>%   
+  filter(Typology == "Perennial Tribs") %>%   
   dplyr::select(Site, Typology) %>%          
   distinct()  
 
 pd_tribs <- dat %>%
-  filter(Typology == "PD Tribs") %>%   
+  filter(Typology == "Developed Tribs") %>%   
   dplyr::select(Site, Typology) %>%          
   distinct()  
 
@@ -434,6 +459,7 @@ ms <- dat %>%
   dplyr::select(Site, Typology) %>%          
   distinct()  
 
+pw
 np_tribs
 p_tribs
 pd_tribs
@@ -449,14 +475,17 @@ library(openxlsx)
 wb <- createWorkbook()
 
 # Add worksheets and write data
-addWorksheet(wb, "NP Tribs")
-writeData(wb, "NP Tribs", np_tribs)
+addWorksheet(wb, "Pooled Water")
+writeData(wb, "Pooled Water", pw)
 
-addWorksheet(wb, "P Tribs")
-writeData(wb, "P Tribs", p_tribs)
+addWorksheet(wb, "Non-Perennial Tribs")
+writeData(wb, "Non-Perennial Tribs", np_tribs)
 
-addWorksheet(wb, "PD Tribs")
-writeData(wb, "PD Tribs", pd_tribs)
+addWorksheet(wb, "Perennial Tribs")
+writeData(wb, "Perennial Tribs", p_tribs)
+
+addWorksheet(wb, "Developed Tribs")
+writeData(wb, "Developed Tribs", pd_tribs)
 
 addWorksheet(wb, "Main Stem")
 writeData(wb, "Main Stem", ms)

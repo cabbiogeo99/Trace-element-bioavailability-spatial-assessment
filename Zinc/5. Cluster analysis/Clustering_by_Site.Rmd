@@ -41,11 +41,11 @@ Omit pooled samples
 ```{r}
 library(dplyr)
 
-dat <- dat %>%
+flowing_dat <- dat %>%
   filter(Flow_state != "Pooled")
 
 # Check
-unique(dat$Flow_state)
+unique(flowing_dat$Flow_state)
 ```
 
 ## 1. Select variables by site
@@ -64,11 +64,11 @@ vars_to_select <- c("log_Temp_C", "pH", "log_DOC_uM",
 
 # Scale sample-level chemistry variables
 scaled_blm_predict <- as.data.frame(
-  scale(dat[vars_to_select])
+  scale(flowing_dat[vars_to_select])
 )
 
 # Add Site back in
-scaled_blm_predict$Site <- dat$Site
+scaled_blm_predict$Site <- flowing_dat$Site
 
 # Average scaled values by Site
 site_means_scaled <- scaled_blm_predict %>%
@@ -147,7 +147,7 @@ site_clusters
 
 ```{r}
 # Join Site-level clusters back to sample-level dat
-dat_clustered <- dat %>%
+dat_clustered <- flowing_dat %>%
   left_join(site_clusters, by = "Site")
 
 # Check result
@@ -160,17 +160,17 @@ Assign Cluster to samples in dat
 ```{r}
 library(dplyr)
 
-dat <- dat %>%
+flowing_dat <- flowing_dat %>%
   left_join(site_clusters, by = "Site")
 
 # Check that every sample received a cluster
-sum(is.na(dat$Typology2))
+sum(is.na(flowing_dat$Typology2))
 
 # Look at distribution
-table(dat$Typology2)
+table(flowing_dat$Typology2)
 
 # Confirm clusters are consistent by site
-dat %>%
+flowing_dat %>%
   group_by(Site) %>%
   summarise(n_clusters = n_distinct(Typology2))
 ```
@@ -423,7 +423,7 @@ Identify which Sites fall into each Typology2
 ```{r}
 library(dplyr)
 
-sites_by_typology2 <- dat %>%
+sites_by_typology2 <- flowing_dat %>%
   distinct(Site, Typology2) %>%
   group_by(Typology2) %>%
   summarise(
@@ -457,7 +457,7 @@ saveWorkbook(
 Rename Typology2
 
 ```{r}
-dat <- dat %>%
+flowing_dat <- flowing_dat %>%
   mutate(
     Typology2 = dplyr::recode(
       Typology2,
@@ -466,7 +466,36 @@ dat <- dat %>%
     )
   )
 
+unique(flowing_dat$Typology2)
+```
+
+Add Typology2 to main dataset and label Pooled Water as a Typology
+
+```{r}
+# Keep only the columns you need and remove duplicates
+typology_lookup <- flowing_dat %>%
+  dplyr::select(Sample_ID, Typology2) %>%
+  distinct()
+
+# Join Typology back to dat, and assign unmatched Sample_IDs as Pooled Water
+dat <- dat %>%
+  left_join(typology_lookup, by = "Sample_ID") %>%
+  mutate(
+    Typology2 = if_else(is.na(Typology2), "Pooled Water", Typology2),
+    Typology2 = factor(
+      Typology2,
+      levels = c("Non-Perennial",
+                 "Perennial Developed",
+                 "Pooled Water")
+    )
+  )
+
+# Quick check
 unique(dat$Typology2)
+
+# Count samples in each Typology
+dat %>%
+  count(Typology2)
 ```
 
 Save

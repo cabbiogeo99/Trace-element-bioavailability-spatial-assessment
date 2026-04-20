@@ -388,7 +388,16 @@ head(dat)</code></pre>
 ## #   SO4_uM &lt;dbl&gt;, Cl_uM &lt;dbl&gt;, DIC_uM &lt;dbl&gt;, Zn_uM &lt;dbl&gt;, Cu_uM &lt;dbl&gt;,
 ## #   Free_Cu_M &lt;dbl&gt;, CuOH_M &lt;dbl&gt;, Cu_OH_2_M &lt;dbl&gt;, CuSO4_M &lt;dbl&gt;,
 ## #   CuCO3_M &lt;dbl&gt;, Cu_CO3_2_M &lt;dbl&gt;, CuCl_M &lt;dbl&gt;, CuHCO3_M &lt;dbl&gt;, …</code></pre>
-<p>First, omit pooled samples</p>
+<p>Upload the Zinc Bioavailability_Master_Spreadsheet_Clean3.xlsx and
+ensure Typology and Typology2 exists</p>
+<pre class="r"><code>zn_dat &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/5. Cluster analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx&quot;, 
+    sheet = &quot;HA 10% Closed System&quot;)
+
+str(zn_dat$Typology)</code></pre>
+<pre><code>##  chr [1:386] &quot;Developed Tribs&quot; &quot;Perennial Tribs&quot; &quot;Perennial Tribs&quot; ...</code></pre>
+<pre class="r"><code>str(zn_dat$Typology2)</code></pre>
+<pre><code>##  chr [1:386] &quot;Perennial Developed&quot; &quot;Perennial Developed&quot; &quot;Non-Perennial&quot; ...</code></pre>
+<p>Merge the Typology and Typology2 columns to dat by Sample_ID</p>
 <pre class="r"><code>library(dplyr)</code></pre>
 <pre><code>## Warning: package &#39;dplyr&#39; was built under R version 4.5.2</code></pre>
 <pre><code>## 
@@ -400,23 +409,6 @@ head(dat)</code></pre>
 ## 
 ##     intersect, setdiff, setequal, union</code></pre>
 <pre class="r"><code>dat &lt;- dat %&gt;%
-  filter(Flow_state != &quot;Pooled&quot;)
-
-str(dat$Flow_state)</code></pre>
-<pre><code>##  chr [1:356] &quot;Flowing&quot; &quot;Flowing&quot; &quot;Flowing&quot; &quot;Flowing&quot; &quot;Flowing&quot; &quot;Flowing&quot; ...</code></pre>
-<p>Upload the Zinc Bioavailability_Master_Spreadsheet_Clean3.xlsx and
-ensure Typology and Typology2 exists</p>
-<pre class="r"><code>zn_dat &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/5. Cluster analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx&quot;, 
-    sheet = &quot;HA 10% Closed System&quot;)
-
-str(zn_dat$Typology)</code></pre>
-<pre><code>##  chr [1:356] &quot;PD Tribs&quot; &quot;P Tribs&quot; &quot;P Tribs&quot; &quot;NP Tribs&quot; &quot;NP Tribs&quot; &quot;P Tribs&quot; ...</code></pre>
-<pre class="r"><code>str(zn_dat$Typology2)</code></pre>
-<pre><code>##  chr [1:356] &quot;Perennial Developed&quot; &quot;Perennial Developed&quot; &quot;Non-Perennial&quot; ...</code></pre>
-<p>Merge the Typology and Typology2 columns to dat by Sample_ID</p>
-<pre class="r"><code>library(dplyr)
-
-dat &lt;- dat %&gt;%
   left_join(
     zn_dat %&gt;%
       dplyr::select(Sample_ID, Typology),
@@ -430,9 +422,9 @@ dat &lt;- dat %&gt;%
 
 # Check
 str(dat$Typology)</code></pre>
-<pre><code>##  chr [1:356] &quot;PD Tribs&quot; &quot;P Tribs&quot; &quot;P Tribs&quot; &quot;NP Tribs&quot; &quot;NP Tribs&quot; &quot;P Tribs&quot; ...</code></pre>
+<pre><code>##  chr [1:386] &quot;Developed Tribs&quot; &quot;Perennial Tribs&quot; &quot;Perennial Tribs&quot; ...</code></pre>
 <pre class="r"><code>str(dat$Typology2)</code></pre>
-<pre><code>##  chr [1:356] &quot;Perennial Developed&quot; &quot;Perennial Developed&quot; &quot;Non-Perennial&quot; ...</code></pre>
+<pre><code>##  chr [1:386] &quot;Perennial Developed&quot; &quot;Perennial Developed&quot; &quot;Non-Perennial&quot; ...</code></pre>
 <p>Save to Bioavailability_Master_Spreadsheet_Clean3.xlsx to this
 working directory</p>
 <pre class="r"><code>library(openxlsx)
