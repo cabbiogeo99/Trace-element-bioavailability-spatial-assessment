@@ -197,12 +197,6 @@ sum(is.na(dat$Type))
 
 Categorizing developed land use and land cover (LULC) will be based on a modified version of the MRLC National Land Cover Database Class Legend and Description. Our categories will be as follows
 
--   \<49% developed LULC = low intensity
-
--   50-79% developed LULC = medium intensity
-
--   \>80% developed LULC = high intensity
-
 ```{r}
 dat <- dat %>%
   mutate(
@@ -216,12 +210,27 @@ dat <- dat %>%
 
 # Check
 table(dat$Development)
+
+# Consistent with synoptic survey manuscript
+dat <- dat %>%
+  mutate(
+    Development2 = case_when(
+      Developed_lulc < 50 ~ "Low",
+      Developed_lulc >= 50 & Developed_lulc < 70 ~ "Medium",
+      Developed_lulc >= 70 ~ "High"
+    ) %>% 
+      factor(levels = c("Low", "Medium", "High"))
+  )
+
+# Check
+table(dat$Development2)
 ```
 
 Check for NAs
 
 ```{r}
 sum(is.na(dat$Development))
+sum(is.na(dat$Development2))
 ```
 
 ### iii. Relative Elevation

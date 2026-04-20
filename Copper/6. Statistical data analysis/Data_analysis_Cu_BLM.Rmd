@@ -1467,8 +1467,18 @@ vars <- c(
 )
 
 #-------------------------------------------------
-# 2. Pivot + summarize mean concentrations
-#    (NO relative proportions)
+# 2. Set typology order
+#-------------------------------------------------
+dat <- dat %>%
+  mutate(
+    Typology = factor(
+      Typology,
+      levels = c("NP Tribs", "P Tribs", "PD Tribs", "Main Stem")
+    )
+  )
+
+#-------------------------------------------------
+# 3. Pivot + summarize mean concentrations
 #-------------------------------------------------
 plot_dat <- dat %>%
   dplyr::select(Typology, all_of(vars)) %>%
@@ -1481,18 +1491,14 @@ plot_dat <- dat %>%
   summarize(
     mean_conc = mean(conc_nM, na.rm = TRUE),
     .groups = "drop"
-  )
-
-#-------------------------------------------------
-# 3. Clean legend labels
-#-------------------------------------------------
-plot_dat <- plot_dat %>%
+  ) %>%
   mutate(
     Species = Species %>%
       gsub("_nM", "", .) %>%
       gsub("_", " ", .),
     
-    Species = dplyr::recode(Species,
+    Species = dplyr::recode(
+      Species,
       "Free Cu"  = "Cu²⁺",
       "CuOH"     = "CuOH",
       "Cu OH 2"  = "Cu(OH)₂",
@@ -1517,15 +1523,23 @@ plot_dat$Species <- factor(
     pull(Species)
 )
 
-species_levels <- levels(plot_dat$Species)
-
-custom_colors <- colorRampPalette(c("brown", "yellow", "skyblue", "darkblue"))(
-  length(species_levels)
+#-------------------------------------------------
+# 5. Fixed colors for Cu species
+#-------------------------------------------------
+custom_colors <- c(
+  "Cu²⁺"       = "orange3",
+  "CuOH"       = "orange1",
+  "Cu(OH)₂"    = "yellow",
+  "CuCO₃"      = "royalblue",
+  "Cu(CO₃)₂"   = "skyblue",
+  "CuHCO₃"     = "darkblue",
+  "CuSO₄"      = "gold",
+  "CuCl"       = "lightgreen",
+  "Organic-Cu" = "brown"
 )
 
 #-------------------------------------------------
-# 5. Plot stacked barplot
-#    Total height = total Cu (nM)
+# 6. Plot stacked barplot
 #-------------------------------------------------
 cu_species <- ggplot(plot_dat, aes(x = Typology, y = mean_conc, fill = Species)) +
   geom_col(color = "black") +
@@ -1544,7 +1558,7 @@ cu_species <- ggplot(plot_dat, aes(x = Typology, y = mean_conc, fill = Species))
 cu_species
 
 #-------------------------------------------------
-# 6. Save
+# 7. Save
 #-------------------------------------------------
 ggsave(
   filename = file.path(out_dir, "All_Cu_Complexes.png"),
@@ -1969,4 +1983,87 @@ writeData(wb, "Overlap_Cu_by_Typology", overlap_results_by_typology)
 
 # 5. Save
 saveWorkbook(wb, file_path, overwrite = TRUE)
+```
+
+## 5. Plots over time
+
+BLM predictors across all samples
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(lubridate)
+
+#-------------------------------------------------
+# 1. Prep data
+#-------------------------------------------------
+plot_dat <- dat %>%
+  mutate(Date = as.POSIXct(Date)) %>%   # ensure datetime
+  dplyr::select(
+    Date,
+    Temp_C, pH, DOC_M, DIC_M, Cu_M, Zn_M,
+    Ca_M, Mg_M, Na_M, K_M, SO4_M, Cl_M
+  ) %>%
+  pivot_longer(
+    cols = -Date,
+    names_to = "Variable",
+    values_to = "Value"
+  )
+
+# Optional: control facet order
+plot_dat$Variable <- factor(
+  plot_dat$Variable,
+  levels = c(
+    "Temp_C", "pH",
+    "DOC_M", "DIC_M", "Cu_M", "Zn_M",
+    "Ca_M", "Mg_M", "Na_M", "K_M",
+    "SO4_M", "Cl_M"
+  )
+)
+
+#-------------------------------------------------
+# 2. Plot
+#-------------------------------------------------
+seasonal_plot <- ggplot(plot_dat, aes(x = Date, y = Value)) +
+  
+  # Raw time series
+  geom_line(alpha = 0.4) +
+  
+  # Seasonal trend (LOESS smoother)
+  geom_smooth(
+    method = "loess",
+    span = 0.2,      
+    se = FALSE,
+    linewidth = 1
+  )  +
+  
+  facet_wrap(~ Variable, scales = "free_y", ncol = 3) +
+  
+  scale_x_datetime(
+    breaks = seq(
+      from = min(plot_dat$Date, na.rm = TRUE),
+      to   = max(plot_dat$Date, na.rm = TRUE),
+      by   = "3 months"
+    ),
+    date_labels = "%b-%Y"
+  ) +
+  
+  scale_y_continuous(
+    labels = function(x) signif(x, 3)
+  ) +
+  
+  labs(
+    x = "Date",
+    y = "Value",
+    title = "Seasonal Patterns in Water Chemistry Variables"
+  ) +
+  
+  theme_bw() +
+  theme(
+    strip.text = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+seasonal_plot
 ```
