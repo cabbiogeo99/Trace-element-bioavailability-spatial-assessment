@@ -128,6 +128,22 @@ library(factoextra)
 library(ggplot2)
 library(dplyr)
 
+# Rename variables
+scaled_blm_predict <- scaled_blm_predict %>%
+  rename(
+    Temp = log_Temp_C,
+    DOC = log_DOC_uM,
+    DIC = log_DIC_uM,
+    `Cl-` = log_Cl_uM,
+    Ca = log_Ca_uM,
+    Mg = log_Mg_uM,
+    `SO4 2-` = log_SO4_uM,
+    Na = log_Na_uM,
+    K = log_K_uM,
+    Zn = log_Zn_uM,
+    Cu = log_Cu_uM
+  )
+
 #-------------------------------------------------
 # 0) Force cluster order + set cluster colors
 #-------------------------------------------------
@@ -159,12 +175,20 @@ pca_cluster <- fviz_pca_biplot(
   habillage    = cluster_for_plot,
   addEllipses  = TRUE,
   legend.title = "Cluster",
-  palette      = cluster_colors
+  palette      = cluster_colors,
+  repel        = TRUE 
 ) +
   labs(
     title = "PCA Biplot of All Sites by Cluster",
     x = "PC1 (46.5%)",
     y = "PC2 (19.2%)"
+  ) +
+  theme(
+    plot.title  = element_text(size = 16),
+    axis.title.x = element_text(size = 14),
+    axis.title.y = element_text(size = 14),
+    axis.text.x  = element_text(size = 12),
+    axis.text.y  = element_text(size = 12)
   )
 
 # View
@@ -342,30 +366,30 @@ cluster_dat <- cluster_dat %>%
   mutate(cluster = as.character(cluster)) %>%
   mutate(cluster = dplyr::recode(
     cluster,
-    `4` = "Perennial Tribs",
-    `1` = "Developed Tribs",
+    `1` = "Developed Perennial",
+    `2` = "Non-Perennial",
     `3` = "Main Stem",
-    `2` = "Non-Perennial Tribs"
+    `4` = "Perennial"
   )) %>%
   rename(Typology = cluster)
 
 # Keep only the columns you need and remove duplicates
 typology_lookup <- cluster_dat %>%
-  select(Sample_ID, Typology) %>%
+  dplyr::select(Sample_ID, Typology) %>%
   distinct()
 
 # Join Typology back to dat, and assign unmatched Sample_IDs as Pooled Water
 dat <- dat %>%
   left_join(typology_lookup, by = "Sample_ID") %>%
   mutate(
-    Typology = if_else(is.na(Typology), "Pooled Water", Typology),
+    Typology = if_else(is.na(Typology), "Pooled", Typology),
     Typology = factor(
       Typology,
-      levels = c("Non-Perennial Tribs",
-                 "Perennial Tribs",
-                 "Developed Tribs",
+      levels = c("Non-Perennial",
+                 "Perennial",
+                 "Developed Perennial",
                  "Main Stem",
-                 "Pooled Water")
+                 "Pooled")
     )
   )
 
@@ -435,22 +459,22 @@ write_xlsx(
 library(dplyr)
 
 pw <- dat %>%
-  filter(Typology == "Pooled Water") %>%   
+  filter(Typology == "Pooled") %>%   
   dplyr::select(Site, Typology) %>%          
   distinct()  
 
 np_tribs <- dat %>%
-  filter(Typology == "Non-Perennial Tribs") %>%   
+  filter(Typology == "Non-Perennial") %>%   
   dplyr::select(Site, Typology) %>%          
   distinct()  
 
 p_tribs <- dat %>%
-  filter(Typology == "Perennial Tribs") %>%   
+  filter(Typology == "Perennial") %>%   
   dplyr::select(Site, Typology) %>%          
   distinct()  
 
 pd_tribs <- dat %>%
-  filter(Typology == "Developed Tribs") %>%   
+  filter(Typology == "Developed Perennial") %>%   
   dplyr::select(Site, Typology) %>%          
   distinct()  
 
@@ -475,17 +499,17 @@ library(openxlsx)
 wb <- createWorkbook()
 
 # Add worksheets and write data
-addWorksheet(wb, "Pooled Water")
-writeData(wb, "Pooled Water", pw)
+addWorksheet(wb, "Pooled")
+writeData(wb, "Pooled", pw)
 
-addWorksheet(wb, "Non-Perennial Tribs")
-writeData(wb, "Non-Perennial Tribs", np_tribs)
+addWorksheet(wb, "Non-Perennial")
+writeData(wb, "Non-Perennial", np_tribs)
 
-addWorksheet(wb, "Perennial Tribs")
-writeData(wb, "Perennial Tribs", p_tribs)
+addWorksheet(wb, "Perennial")
+writeData(wb, "Perennial", p_tribs)
 
-addWorksheet(wb, "Developed Tribs")
-writeData(wb, "Developed Tribs", pd_tribs)
+addWorksheet(wb, "Developed Perennial")
+writeData(wb, "Developed Perennial", pd_tribs)
 
 addWorksheet(wb, "Main Stem")
 writeData(wb, "Main Stem", ms)
@@ -503,13 +527,13 @@ saveWorkbook(
 ```{r}
 # Determine which sites fall into more than 1 typology
 sites_multiple_typology <- dat %>%
-  distinct(Site, Typology) %>%        # unique Site–Typology pairs
+  distinct(Site, Typology) %>%        
   group_by(Site) %>%                  
   summarise(
     n_typologies = n(),               
     typologies = paste(sort(Typology), collapse = ", ")
   ) %>%
-  filter(n_typologies > 1)            # keep sites with >1 typology
+  filter(n_typologies > 1)            
 
 sites_multiple_typology
 

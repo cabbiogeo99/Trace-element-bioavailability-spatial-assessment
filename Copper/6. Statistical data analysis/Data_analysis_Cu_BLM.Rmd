@@ -460,10 +460,10 @@ Set order of Typologies
 # Rearrange order
 dat$Typology <- as.factor(dat$Typology)
 dat$Typology <- factor(dat$Typology, 
-                          levels = c("Pooled Water",
-                                     "Non-Perennial Tribs",
-                                     "Perennial Tribs",
-                                     "Developed Tribs",
+                          levels = c("Pooled",
+                                     "Non-Perennial",
+                                     "Perennial",
+                                     "Developed Perennial",
                                      "Main Stem"))
 
 # Check
@@ -875,18 +875,18 @@ letters_df <- combined_kruskal %>%
 
 dat$Typology <- as.factor(dat$Typology)
 
-dat$Typology <- factor(dat$Typology, levels = c("Pooled Water",
-                                                "Non-Perennial Tribs",
-                                                "Perennial Tribs",
-                                                "Developed Tribs",
+dat$Typology <- factor(dat$Typology, levels = c("Pooled",
+                                                "Non-Perennial",
+                                                "Perennial",
+                                                "Developed Perennial",
                                                 "Main Stem"))
 
 # 3. Colors for each Typology
 typology_colors <- c(
-  "Pooled Water"    = "yellow3",
-  "Perennial Tribs" = "#56B4E9",
-  "Developed Tribs" = "#D55E00",
-  "Non-Perennial Tribs"  = "#009E73",
+  "Pooled"    = "yellow3",
+  "Perennial" = "#56B4E9",
+  "Developed Perennial" = "#D55E00",
+  "Non-Perennial"  = "#009E73",
   "Main Stem"       = "#999999"
 )
 ```
@@ -1207,10 +1207,10 @@ ggsave(
 ```{r}
 # Typology colors (MATCH previous plots)
 typology_colors <- c(
-  "Pooled Water" = "yellow3",
-  "Non-Perennial Tribs"  = "#009E73",
-  "Perennial Tribs"   = "#56B4E9",
-  "Developed Tribs"  = "#D55E00",
+  "Pooled" = "yellow3",
+  "Non-Perennial"  = "#009E73",
+  "Perennial"   = "#56B4E9",
+  "Developed Perennial"  = "#D55E00",
   "Main Stem" = "#999999"
 )
 
@@ -1477,7 +1477,8 @@ dat <- dat %>%
   mutate(
     Typology = factor(
       Typology,
-      levels = c("Pooled Water", "Non-Perennial Tribs", "Perennial Tribs", "Developed Tribs", "Main Stem")
+      levels = c("Pooled", "Non-Perennial", 
+                 "Perennial", "Developed Perennial", "Main Stem")
     )
   )
 
