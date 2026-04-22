@@ -102,26 +102,39 @@ sil_df <- lapply(2:10, function(k) {
 sil_df
 ```
 
-### ii. Clustering
-
-Run k-means using 4 clusters
+### ii. Clustering (k=4)
 
 ```{r}
 # Run k-means
 set.seed(123)
-kmeans_result <- kmeans(scaled_blm_predict, centers = 4, nstart = 50)
+kmeans_result4 <- kmeans(scaled_blm_predict, centers = 4, nstart = 50)
 
 # Add cluster labels to your data
 cluster_dat <- cluster_dat %>%
-  mutate(cluster = as.factor(kmeans_result$cluster))
+  mutate(cluster4 = as.factor(kmeans_result4$cluster))
 
 # Check
-str(dat$cluster)
+str(cluster_dat$cluster4)
+```
+
+### iii. Clustering (k=3)
+
+```{r}
+# Run k-means
+set.seed(123)
+kmeans_result3 <- kmeans(scaled_blm_predict, centers = 3, nstart = 50)
+
+# Add cluster labels to your data
+cluster_dat <- cluster_dat %>%
+  mutate(cluster3 = as.factor(kmeans_result3$cluster))
+
+# Check
+str(cluster_dat$cluster3)
 ```
 
 ## 4. Plot of clusters on PCA
 
-Overlay clusters on PCA
+### i. 4 clusters
 
 ```{r}
 library(factoextra)
@@ -155,7 +168,7 @@ cluster_colors <- c(
 )
 
 # Force correct ordering
-cluster_for_plot <- cluster_dat$cluster %>%
+cluster_for_plot <- cluster_dat$cluster4 %>%
   factor(levels = c("1", "2", "3", "4"))
 
 #-------------------------------------------------
@@ -183,12 +196,15 @@ pca_cluster <- fviz_pca_biplot(
     x = "PC1 (46.5%)",
     y = "PC2 (19.2%)"
   ) +
+  theme_classic(base_size = 14) +
   theme(
     plot.title  = element_text(size = 16),
     axis.title.x = element_text(size = 14),
     axis.title.y = element_text(size = 14),
     axis.text.x  = element_text(size = 12),
-    axis.text.y  = element_text(size = 12)
+    axis.text.y  = element_text(size = 12),
+    legend.title = element_text(size = 14),
+    legend.text  = element_text(size = 12)
   )
 
 # View
@@ -230,9 +246,87 @@ write.xlsx(
 )
 ```
 
+### ii. 3 clusters
+
+```{r}
+library(factoextra)
+library(ggplot2)
+library(dplyr)
+
+#-------------------------------------------------
+# 0) Force cluster order + set cluster colors
+#-------------------------------------------------
+cluster_colors <- c(
+  "1" = "#D55E00",
+  "3" = "#999999",
+  "2" = "#009E73"
+)
+
+# Force correct ordering
+cluster_for_plot <- cluster_dat$cluster3 %>%
+  factor(levels = c("1", "2", "3"))
+
+#-------------------------------------------------
+# 1) PCA
+#-------------------------------------------------
+pca_result <- prcomp(scaled_blm_predict, center = TRUE, scale. = TRUE)
+
+pca_summary <- summary(pca_result)
+
+#-------------------------------------------------
+# 2) PCA biplot (same depiction as your original)
+#-------------------------------------------------
+pca_cluster <- fviz_pca_biplot(
+  pca_result,
+  geom.ind     = "point",
+  col.var      = "black",
+  habillage    = cluster_for_plot,
+  addEllipses  = TRUE,
+  legend.title = "Cluster",
+  palette      = cluster_colors,
+  repel        = TRUE 
+) +
+  labs(
+    title = "PCA Biplot of All Sites by Cluster",
+    x = "PC1 (46.5%)",
+    y = "PC2 (19.2%)"
+  ) +
+  theme_classic(base_size = 14) +
+  theme(
+    plot.title  = element_text(size = 16),
+    axis.title.x = element_text(size = 14),
+    axis.title.y = element_text(size = 14),
+    axis.text.x  = element_text(size = 12),
+    axis.text.y  = element_text(size = 12),
+    legend.title = element_text(size = 14),
+    legend.text  = element_text(size = 12)
+  )
+
+# View
+pca_cluster
+
+# Define output directory
+out_dir <- "Typology Plots"
+# Create directory if it does not exist
+if (!dir.exists(out_dir)) {
+  dir.create(out_dir, recursive = TRUE)
+}
+
+# Save
+ggsave(
+  filename = file.path(out_dir, "PCA_Biplot_All_Sites_by_Cluster3.png"),
+  plot     = pca_cluster,
+  width    = 8,
+  height   = 6,
+  dpi      = 300
+)
+```
+
 ## 5. Characterizing clusters
 
 ### i. Frequency table
+
+4 clusters
 
 ```{r}
 library(dplyr)
@@ -242,14 +336,14 @@ library(tidyr)
 site_char <- c("Type", "Regime", "Development")
 
 cluster_summary_table_pct <- cluster_dat %>%
-  dplyr::select(all_of(site_char), cluster) %>%  
+  dplyr::select(all_of(site_char), cluster4) %>%  
   pivot_longer(
-    cols = -cluster,        
+    cols = -cluster4,        
     names_to = "Variable",  
     values_to = "Value"     
   ) %>%
-  count(Variable, cluster, Value, name = "Freq") %>% 
-  group_by(Variable, cluster) %>%          
+  count(Variable, cluster4, Value, name = "Freq") %>% 
+  group_by(Variable, cluster4) %>%          
   mutate(RelFreq = prop.table(Freq) * 100)       
 
 cluster_summary_table_pct
@@ -270,7 +364,33 @@ write.xlsx(
 
 ```
 
+3 clusters
+
+```{r}
+cluster_summary_table_pct3 <- cluster_dat %>%
+  dplyr::select(all_of(site_char), cluster3) %>%  
+  pivot_longer(
+    cols = -cluster3,        
+    names_to = "Variable",  
+    values_to = "Value"     
+  ) %>%
+  count(Variable, cluster3, Value, name = "Freq") %>% 
+  group_by(Variable, cluster3) %>%          
+  mutate(RelFreq = prop.table(Freq) * 100)       
+
+cluster_summary_table_pct3
+
+write.xlsx(
+  cluster_summary_table_pct3,
+  file = file.path(out_dir, "Relative_freq_percentages_by_3cluster.xlsx"),
+  overwrite = TRUE
+)
+
+```
+
 ### ii. Plot of relative frequencies
+
+4 clusters
 
 ```{r}
 library(dplyr)
@@ -354,6 +474,89 @@ ggsave(
 -   Cluster 3: Mostly main stem sites
 
 -   Cluster 4: Perennial tributary sites
+
+3 clusters
+
+```{r}
+library(dplyr)
+# Combine variable and value
+cluster_summary_table_pct3 <- cluster_summary_table_pct3 %>%
+  mutate(Value_labeled = paste0(Variable, ": ", Value))
+
+# Change the order of Variable Values
+cluster_summary_table_pct3$Value_labeled <- factor(
+  cluster_summary_table_pct3$Value_labeled,
+  levels = c(
+    "Type: Tributaries",
+    "Type: Main Stem",
+    
+    "Development: Low",
+    "Development: Medium",
+    "Development: High",
+    
+    "Regime: NonPerennial",
+    "Regime: Perennial"
+  )
+)
+
+
+# Create a named color vector for all Value_labeled combinations
+color_map <- c(
+  "Type: Tributaries" = "#dadaeb",
+  "Type: Main Stem" = "#756bb1",
+  
+  "Development: Low" = "#fdd49e",
+  "Development: Medium" = "orange2",
+  "Development: High" = "red3",
+  
+  "Regime: NonPerennial" = "lightblue",
+  "Regime: Perennial" = "#1f78a4"
+)
+
+# Modify the legend to only display the categorical value
+legend_labels <- gsub("^.*: ", "", levels(cluster_summary_table_pct3$Value_labeled))
+
+# Plot
+library(ggplot2)
+library(dplyr)
+
+rel_freq3 <- ggplot(cluster_summary_table_pct3, 
+       aes(y = Variable, x = RelFreq, fill = Value_labeled)) +
+  geom_bar(stat = "identity", position = "fill", color = "white", linewidth = 0.2) +
+  facet_wrap(~ cluster3, ncol = 1, strip.position = "left") +
+  scale_x_continuous(labels = scales::percent_format(scale = 1)) +
+  labs(x = "Relative Frequency (%)", y = NULL, fill = "Category") +
+  theme_minimal(base_size = 12) +
+  theme(
+  strip.placement = "outside",
+  strip.text.y.left = element_text(angle = 0, face = "bold"),
+  panel.spacing = unit(0.6, "lines"),
+  legend.position = "right",        # move to right
+  legend.box = "vertical",          # keep vertical layout
+  legend.direction = "vertical"     # vertical legend
+) +
+guides(fill = guide_legend(ncol = 1)) + # 1 column
+  scale_fill_manual(
+    values = color_map,
+    labels = legend_labels)
+
+rel_freq3
+
+# Save
+ggsave(
+  filename = file.path(out_dir, "Relative_freq_plots_by_3clusters.png"),
+  plot     = rel_freq3,
+  width    = 6,
+  height   = 4,
+  dpi      = 300
+)
+```
+
+-   Cluster 1: Main stem
+
+-   Cluster 2: developed perennial tributaries
+
+-   Cluster 3: all other tributaries
 
 ### iii. Rename clusters to typologies
 
