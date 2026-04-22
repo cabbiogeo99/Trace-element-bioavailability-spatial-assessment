@@ -1,8 +1,8 @@
 # Spatial Assessment of Trace Element Bioavailability in Headwater Streams
-### Last updated: 4/1/2026
-### Developed by Cecilia Albert-Black
-### Project: Watershed Dynamics Evolution (WaDE) Science Focus Area at Oak Ridge National Lab (ORNL) and in collaboration with a Powell Center Working Group, funded by the United States Geological Survey (USGS)
-### Dataset: WaDE Synoptic Survey Dataset collected bi-monthly during Jun. 2023 – Feb. 2025 from several sites within the East Fork Poplar Creek Watershed in Oak Ridge, TN
+## Last updated: 4/1/2026
+## Developed by Cecilia Albert-Black
+## Project: Watershed Dynamics Evolution (WaDE) Science Focus Area at Oak Ridge National Lab (ORNL) and in collaboration with a Powell Center Working Group, funded by the United States Geological Survey (USGS)
+## Dataset: WaDE Synoptic Survey Dataset collected bi-monthly during Jun. 2023 – Feb. 2025 from several sites within the East Fork Poplar Creek Watershed in Oak Ridge, TN
 
 ### Workflow
 ## WaDE Dataset Cleaning folder
