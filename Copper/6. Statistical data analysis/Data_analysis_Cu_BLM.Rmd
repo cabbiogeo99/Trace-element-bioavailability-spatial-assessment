@@ -1574,6 +1574,12 @@ ggsave(
 )
 ```
 
+Log10-scale
+
+```{r}
+
+```
+
 Table
 
 ```{r}
@@ -2075,85 +2081,75 @@ writeData(wb, "Log10 variables", mle_summary_log)
 saveWorkbook(wb, file_path, overwrite = TRUE)
 ```
 
-## 5. Plots over time
+# Plots by Site within Typology
 
-BLM predictors across all samples
+## 1. Main Stem
+
+Total Cu
 
 ```{r}
 library(dplyr)
-library(tidyr)
 library(ggplot2)
-library(lubridate)
+library(forcats)
 
-#-------------------------------------------------
-# 1. Prep data
-#-------------------------------------------------
-plot_dat <- dat %>%
-  mutate(Date = as.POSIXct(Date)) %>%   # ensure datetime
-  dplyr::select(
-    Date,
-    Temp_C, pH, DOC_M, DIC_M, Cu_M, Zn_M,
-    Ca_M, Mg_M, Na_M, K_M, SO4_M, Cl_M
-  ) %>%
-  pivot_longer(
-    cols = -Date,
-    names_to = "Variable",
-    values_to = "Value"
+mainstem_tblcu_plot_dat <- dat %>%
+  filter(Typology == "Main Stem") %>%
+  filter(!is.na(Cu_nM),
+         !is.na(Upstream_from_main_stem_km),
+         Cu_nM > 0) %>%   # needed for log10
+  mutate(
+    Site = fct_reorder(Site, Upstream_from_main_stem_km, .fun = max, .desc = TRUE),
+    log10_Cu_nM = log10(Cu_nM)
   )
 
-# Optional: control facet order
-plot_dat$Variable <- factor(
-  plot_dat$Variable,
-  levels = c(
-    "Temp_C", "pH",
-    "DOC_M", "DIC_M", "Cu_M", "Zn_M",
-    "Ca_M", "Mg_M", "Na_M", "K_M",
-    "SO4_M", "Cl_M"
-  )
-)
-
-#-------------------------------------------------
-# 2. Plot
-#-------------------------------------------------
-seasonal_plot <- ggplot(plot_dat, aes(x = Date, y = Value)) +
-  
-  # Raw time series
-  geom_line(alpha = 0.4) +
-  
-  # Seasonal trend (LOESS smoother)
-  geom_smooth(
-    method = "loess",
-    span = 0.2,      
-    se = FALSE,
-    linewidth = 1
-  )  +
-  
-  facet_wrap(~ Variable, scales = "free_y", ncol = 3) +
-  
-  scale_x_datetime(
-    breaks = seq(
-      from = min(plot_dat$Date, na.rm = TRUE),
-      to   = max(plot_dat$Date, na.rm = TRUE),
-      by   = "3 months"
-    ),
-    date_labels = "%b-%Y"
-  ) +
-  
-  scale_y_continuous(
-    labels = function(x) signif(x, 3)
-  ) +
-  
+ms_plot <- ggplot(mainstem_tblcu_plot_dat, aes(x = Site, y = log10_Cu_nM)) +
+  geom_boxplot() +
   labs(
-    x = "Date",
-    y = "Value",
-    title = "Seasonal Patterns in Water Chemistry Variables"
+    title = "Total dissolved Cu within the Main Stem",
+    x = "Site (ordered by decreasing relative elevation)",
+    y = expression(log[10]~"(TBL Cu, nM)")
   ) +
-  
   theme_bw() +
   theme(
-    strip.text = element_text(face = "bold"),
     axis.text.x = element_text(angle = 45, hjust = 1)
   )
 
-seasonal_plot
+ms_plot
+```
+
+Only EFK sites
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(stringr)
+library(forcats)
+
+efk_plot_dat <- dat %>%
+  filter(Typology == "Main Stem") %>%
+  filter(str_starts(Site, "EFK")) %>%   # keep only EFK sites
+  filter(!is.na(Cu_nM),
+         Cu_nM > 0) %>%
+  mutate(
+    # Extract numeric part after "EFK"
+    EFK_num = as.numeric(str_remove(Site, "EFK")),
+    
+    # Order factor by decreasing numeric value
+    Site = fct_reorder(Site, EFK_num, .desc = TRUE),
+    
+    log10_Cu_nM = log10(Cu_nM)
+  )
+
+ggplot(efk_plot_dat, aes(x = Site, y = log10_Cu_nM)) +
+  geom_boxplot() +
+  labs(
+    title = "Total Cu across EFK Main Stem Sites",
+    x = "EFK Site (decreasing downstream order)",
+    y = expression(log[10]~"(Cu (nM))")
+  ) +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
 ```
