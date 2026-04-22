@@ -21,22 +21,26 @@ The first step in this workflow was to clean the WaDE Synoptic Survey Dataset by
 - **Outputs:** Saved BLM output files  
 
 #### 2. Dataset Merging
-Merging WaDE dataset with BLM outputs to create a raw Bioavailability Master Spreadsheet.
+Merging WaDE Synoptic Survey dataset with BLM outputs to create the raw `Bioavailability_Master_Spreadsheet.xlsx`
 
 #### 3. Dataset Cleaning
-Unit conversions and new variable creation → clean master dataset.
+Unit conversions and new variable creation stored in `Bioavailability_Master_Spreadsheet_Clean.xlsx`
 
 #### 4. Exploratory Data Analysis
-EDA + log transformations → second clean dataset version.
+EDA of variables stored in Excel files
+log transformed variables stored in `Bioavailability_Master_Spreadsheet_Clean2.xlsx`
 
 #### 5. Cluster Analysis
 - Sample-level clustering → `Typology`  
 - Site-level clustering → `Typology2`  
-Both stored in:
-`Bioavailability_Master_Spreadsheet_Clean3.xlsx`
+Both stored in `Bioavailability_Master_Spreadsheet_Clean3.xlsx`
 
 #### 6. Statistical Analysis
-All statistical tests + outputs (Excel + plots).
+Uses  `Bioavailability_Master_Spreadsheet_Clean3.xlsx`
+All statistical tests + outputs stored in Excel files + plot images
 
 #### 7. Sensitivity Analyses
-Two analyses with outputs stored in subfolders (Excel + plots).
+Each analysis with outputs stored in subfolders with Excel + plots images
+- **Carbonate system assumptions**  
+- **Humic acid system assumptions**
+
