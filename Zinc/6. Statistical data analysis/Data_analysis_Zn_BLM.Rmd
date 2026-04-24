@@ -1030,15 +1030,10 @@ typology_colors <- c(
 
 ### a. BLM predictors
 
-Create a boxplots for each BLM predictor
-
 ```{r}
-library(ggplot2)
 library(dplyr)
-
-# Define output directory (choose ONE)
-out_dir <- "Plots by typology"
-if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+library(tidyr)
+library(ggplot2)
 
 # 1. Titles for each variable's plot (panel title)
 title_lookup <- c(
@@ -1053,98 +1048,8 @@ title_lookup <- c(
   "log_Cl_uM"  = "Chloride"
 )
 
-# 2. Custom y-axis labels for each variable
-y_label_lookup <- c(
-  "pH"         = "pH",
-  "log_DOC_uM" = "log DOC (µM)",
-  "log_DIC_uM" = "log DIC (µM)",
-  "log_Ca_uM"  = "log Ca (µM)",
-  "log_Mg_uM"  = "log Mg (µM)",
-  "log_Na_uM"  = "log Na (µM)",
-  "log_K_uM"   = "log K (µM)",
-  "log_SO4_uM" = "log SO₄ (µM)",
-  "log_Cl_uM"  = "log Cl (µM)"
-)
 
-
-# 3. Loop through variables in title_lookup
-for (var in names(title_lookup)) {
-
-  y_pos_df <- dat %>%
-    group_by(Typology) %>%
-    summarise(
-      y_pos = max(.data[[var]], na.rm = TRUE) * 1.25,
-      .groups = "drop"
-    )
-
-  letters_plot_df <- letters_df %>%
-    filter(Variable == var) %>%
-    dplyr::select(Typology, Letters) %>%
-    mutate(Typology = factor(Typology)) %>%
-    left_join(y_pos_df, by = "Typology")
-
-  p <- ggplot(dat, aes(
-    x    = Typology,
-    y    = .data[[var]],
-    fill = Typology,
-    color = Typology
-  )) +
-    geom_boxplot(
-      width = 0.6,
-      alpha = 0.35,        
-      outlier.shape = NA 
-    ) +
-    geom_jitter(
-      width = 0.15,
-      size  = 2,
-      alpha = 0.7
-    ) +
-    geom_text(
-      data = letters_plot_df,
-      aes(x = Typology, y = y_pos, label = Letters),
-      inherit.aes = FALSE,
-      size = 5
-    ) +
-    scale_fill_manual(values = typology_colors, drop = FALSE) +
-    scale_color_manual(values = typology_colors, drop = FALSE) +
-    labs(
-      title = title_lookup[[var]],
-      y     = y_label_lookup[[var]],
-      x     = ""
-    ) +
-    scale_y_continuous(expand = expansion(mult = c(0, 0.1))) +
-    theme_minimal(base_size = 12) +
-    theme(
-      legend.position = "none",
-      axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
-      axis.text.y = element_text(size = 11),
-      axis.title.y = element_text(size = 12),
-      plot.title = element_text(size = 14)
-    )
- p
- 
-  # ---- Save ---
-  file_stub <- paste0("Boxplot_", var, "_by_Typology")
-
-  ggsave(
-    filename = file.path(out_dir, paste0(file_stub, ".png")),
-    plot     = p,
-    width    = 5,
-    height   = 5,
-    dpi      = 300
-  )
-}
-
-```
-
-Boxplots of BLM predictors on a single pane
-
-```{r}
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-
-# 1. Make sure output folder exists
+# 2. Make sure output folder exists
 out_dir <- "Plots by typology"
 if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
 
@@ -1166,7 +1071,7 @@ y_pos_df <- dat_long %>%
   group_by(Variable, Typology) %>%
   summarise(y_max = max(Value, na.rm = TRUE), .groups = "drop")
 
-# 3b. Letters (DO NOT re-factor Typology)
+# 3b. Letters
 letters_long <- letters_df %>%
   filter(Variable %in% names(title_lookup)) %>%
   mutate(
@@ -1174,7 +1079,7 @@ letters_long <- letters_df %>%
   ) %>%
   left_join(y_pos_df, by = c("Variable", "Typology")) %>%
   mutate(
-    y_pos = y_max * 1.05
+    y_pos = y_max * 1.1
   )
 
 # 4. Facet labels
@@ -1197,7 +1102,7 @@ all_vars_panel <- ggplot(
   ) +
   geom_jitter(
     width = 0.15,
-    size  = 1.5,
+    size  = 1,
     alpha = 0.7
   ) +
   geom_text(
@@ -1215,16 +1120,16 @@ all_vars_panel <- ggplot(
     labeller = facet_labels
   ) +
   labs(
-    title = "BLM Predictors by Stream Typology",
-    x     = "Stream Typology",
-    y     = expression(log[10]~"Concentration (μM)")
-  ) +
+  title = "BLM Predictors by Stream Typology",
+  x     = "Stream Typology",
+  y = expression(paste("Concentration (µM) [", log[10], "]"))
+  ) + 
   theme_minimal(base_size = 12) +
   theme(
-    legend.position = "none",
-    axis.text.x  = element_text(size = 9, angle = 30, hjust = 1),
-    strip.text   = element_text(size = 11),
-    plot.title   = element_text(size = 14)
+  legend.position = "none",
+  axis.text.x  = element_text(size = 9, angle = 30, hjust = 1, color = "black"),
+  strip.text   = element_text(size = 11),
+  plot.title   = element_text(size = 14)
   )
 
 all_vars_panel
@@ -1254,166 +1159,18 @@ library(ggplot2)
 # 1. Colors by response variable
 #-------------------------------------------------
 response_colors <- c(
-  "Total Zn (nM)"   = "slategray",
-  "Free Zn (nM)"    = "darkslategray3",
-  "Bioavailable Zn" = "turquoise3"
-)
-
-# Left-to-right facet order
-response_order <- c(
-  "Total Zn (nM)",
-  "Free Zn (nM)",
-  "Bioavailable Zn"
-)
-
-#-------------------------------------------------
-# 2. Define letter nudges
-#-------------------------------------------------
-letter_nudge <- c(
-  "Total Zn (nM)"   = 1,
-  "Free Zn (nM)"    = 1,
-  "Bioavailable Zn" = 2
-)
-
-#-------------------------------------------------
-# 3. Map variable names -> response labels
-#-------------------------------------------------
-response_lookup <- c(
-  "log_Zn_nM"         = "Total Zn (nM)",
-  "log_Free_Zn_nM"    = "Free Zn (nM)",  
-  "log_TBL_Zn_nmol_g" = "Bioavailable Zn"
-)
-
-vars_trace <- names(response_lookup)
-
-#-------------------------------------------------
-# 4. Long data
-#-------------------------------------------------
-dat_long_trace <- dat %>%
-  dplyr::select(Typology, all_of(vars_trace)) %>%
-  pivot_longer(
-    cols      = -Typology,
-    names_to  = "Variable",
-    values_to = "Log10(Value)"
-  ) %>%
-  filter(!is.na(`Log10(Value)`)) %>%
-  mutate(
-    Response = response_lookup[Variable],
-    Response = factor(Response, levels = response_order)
-  )
-
-#-------------------------------------------------
-# 5a. Max y per Variable x Typology
-#-------------------------------------------------
-y_pos_df <- dat_long_trace %>%
-  group_by(Variable, Typology) %>%
-  summarise(y_max = max(`Log10(Value)`, na.rm = TRUE), .groups = "drop")
-
-#-------------------------------------------------
-# 5b. Attach letters above groups
-#-------------------------------------------------
-letters_long_trace <- letters_df %>%
-  filter(Variable %in% vars_trace) %>%
-  mutate(
-    Response = response_lookup[Variable],
-    Response = factor(Response, levels = response_order)
-  ) %>%
-  left_join(
-    y_pos_df,
-    by = c("Variable", "Typology")
-  ) %>%
-  mutate(
-    y_pos = y_max + letter_nudge[as.character(Response)]
-  )
-
-#-------------------------------------------------
-# 5c. Facet strip labels with a., b., c.
-#-------------------------------------------------
-facet_labs <- c(
-  "Total Zn (nM)"   = "a. Total Zn",
-  "Free Zn (nM)"    = "b. Free Zn",
-  "Bioavailable Zn" = "c. Bioavailable Zn"
-)
-
-#-------------------------------------------------
-# 6. Plot
-#-------------------------------------------------
-bioavail_panel <- ggplot(
-  dat_long_trace,
-  aes(
-    x     = Typology,
-    y     = `Log10(Value)`,
-    color = Response,
-    fill  = Response
-  )
-) +
-  geom_boxplot(width = 0.6, alpha = 0.5) +
-  geom_jitter(width = 0.15, size = 1, alpha = 0.7) +
-  geom_text(
-    data = letters_long_trace,
-    aes(x = Typology, y = y_pos, label = Letters),
-    inherit.aes = FALSE,
-    size = 3.5
-  ) +
-  scale_color_manual(values = response_colors, breaks = response_order) +
-  scale_fill_manual(values = response_colors, breaks = response_order) +
-  facet_wrap(
-    ~ Response,
-    scales = "free_y",
-    ncol = 3,
-    labeller = labeller(Response = facet_labs)
-  ) +
-  theme_minimal(base_size = 12) +
-  theme(
-    legend.position = "none",
-    axis.text.x = element_text(size = 10, angle = 30, hjust = 1),
-    strip.text  = element_text(size = 12),
-    plot.title  = element_text(size = 14)
-  ) +
-  labs(
-    title = "Trace Elements by Stream Typology",
-    x     = "Stream Typology",
-    y     = expression(log[10]~"concentration (nmol)")
-  )
-
-bioavail_panel
-
-# Save
-out_dir <- "Plots by typology"
-if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
-
-ggsave(
-  filename = file.path(out_dir, "Trace_elements_panel_Zn.png"),
-  plot     = bioavail_panel,
-  width    = 10,
-  height   = 5,
-  dpi      = 300
-)
-```
-
-Includes relative proportion of free/total Zn
-
-```{r}
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-
-#-------------------------------------------------
-# 1. Colors by response variable
-#-------------------------------------------------
-response_colors <- c(
-  "Total Zn (nM)"                      = "slategray",
-  "Free Zn (nM)"                       = "darkslategray3",
-  "Relative Available Zn (Free/Total)" = "darkslategray",
-  "Bioavailable Zn"                    = "turquoise3"
+  "Total Zn (nM)"         = "slategray",
+  "Free Zn (nM)"          = "darkslategray3",
+  "Free Zn2+/Total (%)"   = "turquoise3",
+  "Bioavailable Zn"       = "darkslategray" 
 )
 
 # Facet order
 response_order <- c(
   "Total Zn (nM)",
   "Free Zn (nM)",
-  "Bioavailable Zn",
-  "Relative Available Zn (Free/Total)"
+  "Free Zn2+/Total (%)",
+  "Bioavailable Zn"
 )
 
 #-------------------------------------------------
@@ -1422,7 +1179,7 @@ response_order <- c(
 letter_nudge <- c(
   "Total Zn (nM)"                      = 1,
   "Free Zn (nM)"                       = 1,
-  "Relative Available Zn (Free/Total)" = 0.05,
+  "Free Zn2+/Total (%)" = 0.05,
   "Bioavailable Zn"                    = 2
 )
 
@@ -1432,7 +1189,7 @@ letter_nudge <- c(
 response_lookup <- c(
   "log_Zn_nM"         = "Total Zn (nM)",
   "log_Free_Zn_nM"    = "Free Zn (nM)", 
-  "rel_prop_Zn"       = "Relative Available Zn (Free/Total)",
+  "rel_prop_Zn"       = "Free Zn2+/Total (%)",
   "log_TBL_Zn_nmol_g" = "Bioavailable Zn"
 )
 
@@ -1482,10 +1239,10 @@ letters_long_trace <- letters_df %>%
 # 5c. Facet strip labels with a., b., c., d.
 #-------------------------------------------------
 facet_labs <- c(
-  "Total Zn (nM)"                      = "a. Total",
-  "Free Zn (nM)"                       = "b. Free",
-  "Bioavailable Zn"                    = "c. Bioavailable",
-  "Relative Available Zn (Free/Total)" = "d. Relative Available"
+  "Total Zn (nM)"                      = "a.~Total~Zn~(nM)",
+  "Free Zn (nM)"                       = "b.~Free~Zn^{2*'+'}~(nM)",
+  "Free Zn2+/Total (%)" = "d.~Free~Zn^{2*'+'}/Total~Zn~('%')",
+  "Bioavailable Zn"                    = "c.~Bioavailable~Zn~(nmol~g^{-1}~wet)"
 )
 
 #-------------------------------------------------
@@ -1511,22 +1268,24 @@ bioavail_panel2 <- ggplot(
   scale_color_manual(values = response_colors, breaks = response_order) +
   scale_fill_manual(values = response_colors, breaks = response_order) +
   facet_wrap(
-    ~ Response,
-    scales = "free_y",
-    ncol = 2,
-    labeller = labeller(Response = facet_labs)
-  ) +
+  ~ Response,
+  scales = "free_y",
+  ncol = 2,
+  labeller = labeller(
+    Response = as_labeller(facet_labs, label_parsed)
+  )
+) +
   theme_minimal(base_size = 12) +
   theme(
     legend.position = "none",
-    axis.text.x = element_text(size = 10, angle = 30, hjust = 1),
+    axis.text.x = element_text(size = 10, angle = 30, hjust = 1, color = "black"),
     strip.text  = element_text(size = 12),
     plot.title  = element_text(size = 14)
   ) +
   labs(
     title = "Trace Elements by Stream Typology",
     x     = "Stream Typology",
-    y     = expression(log[10]~"concentration (nmol)")
+    y     = expression(paste("Value [", log[10], "]"))
   )
 
 bioavail_panel2
@@ -1565,15 +1324,15 @@ vars_spec <- c(
 
 # Facet titles
 title_lookup <- c(
-  "log_ZnOH_nM"     = "ZnOH",
-  "log_Zn_OH_2_nM"  = "Zn(OH)2",
-  "log_ZnCO3_nM"    = "ZnCO3",
-  "log_ZnHCO3_nM"   = "ZnHCO3",
-  "log_ZnSO4_nM"    = "ZnSO4",
-  "log_ZnCl_nM"     = "ZnCl"
+  "log_ZnOH_nM"    = "ZnOH^'+'",
+  "log_Zn_OH_2_nM" = "Zn(OH)[2]",
+  "log_ZnCO3_nM"   = "ZnCO[3]",
+  "log_ZnHCO3_nM"  = "ZnHCO[3]^'+'",
+  "log_ZnSO4_nM"   = "ZnSO[4]",
+  "log_ZnCl_nM"    = "ZnCl^'+'"
 )
 
-facet_labels <- as_labeller(title_lookup)
+facet_labels <- as_labeller(title_lookup, label_parsed)
 
 # ------------------------------------------------------------------
 # 2) Long data (DO NOT re-factor Typology)
@@ -1593,7 +1352,6 @@ dat_long_spec <- dat %>%
 # ------------------------------------------------------------------
 # 3) Letters (Kruskal groups) + y positions
 #     letters_df must have: Variable, Typology, Letters
-#     (DO NOT re-factor Typology here either)
 # ------------------------------------------------------------------
 y_pos_df_spec <- dat_long_spec %>%
   group_by(Variable, Typology) %>%
@@ -1603,11 +1361,11 @@ letters_long_spec <- letters_df %>%
   filter(Variable %in% vars_spec) %>%
   left_join(y_pos_df_spec, by = c("Variable", "Typology")) %>%
   mutate(
-    y_pos = y_max + 0.05 * (abs(y_max) + 1)
+    y_pos = y_max + 0.05 * (abs(y_max) + 4)
   )
 
 # ------------------------------------------------------------------
-# 4) Faceted panel (FILLED boxplot + jitter), colored by Typology
+# 4) Faceted panel colored by Typology
 # ------------------------------------------------------------------
 spec_panel <- ggplot(dat_long_spec, aes(x = Typology, y = Value)) +
   geom_boxplot(
@@ -1619,7 +1377,7 @@ spec_panel <- ggplot(dat_long_spec, aes(x = Typology, y = Value)) +
   geom_jitter(
     aes(color = Typology),
     width = 0.15,
-    size  = 1.3,
+    size  = 1.1,
     alpha = 0.6
   ) +
   geom_text(
@@ -1631,20 +1389,20 @@ spec_panel <- ggplot(dat_long_spec, aes(x = Typology, y = Value)) +
   scale_fill_manual(values = typology_colors, drop = FALSE) +
   scale_color_manual(values = typology_colors, drop = FALSE) +
   facet_wrap(
-    ~ Variable,
-    scales   = "free_y",
-    ncol     = 3,
-    labeller = facet_labels
-  ) +
+  ~ Variable,
+  scales   = "free_y",
+  ncol     = 3,
+  labeller = facet_labels
+) +
   labs(
     title = "Inorganic Zn Complexes by Stream Typology",
     x     = "Stream Typology",
-    y     = "Log10(Concentration) (nM)"
+    y     = expression(paste("Concentration (nM) [", log[10], "]"))
   ) +
   theme_minimal(base_size = 12) +
   theme(
     legend.position = "none",
-    axis.text.x  = element_text(size = 9, angle = 30, hjust = 1),
+    axis.text.x  = element_text(size = 9, angle = 30, hjust = 1, color = "black"),
     strip.text   = element_text(size = 11),
     plot.title   = element_text(size = 14)
   )
@@ -1677,18 +1435,21 @@ vars_spec <- c(
   "log_TOrg_H_nM",
   "log_TOrg_Ca_nM",
   "log_TOrg_Mg_nM",
-  "log_TOrg_Na_nM"
+  "log_TOrg_Na_nM",
+  "log_TOrg_K_nM"
 )
 
+# Facet titles
 title_lookup <- c(
-  "log_TOrg_Zn_nM" = "TOrg Zn",
-  "log_TOrg_H_nM"  = "TOrg H",
-  "log_TOrg_Ca_nM" = "TOrg Ca",
-  "log_TOrg_Mg_nM" = "TOrg Mg",
-  "log_TOrg_Na_nM" = "TOrg Na"
+  "log_TOrg_Zn_nM" = "Org-Zn",
+  "log_TOrg_H_nM"  = "Org-H",
+  "log_TOrg_Ca_nM" = "Org-Ca",
+  "log_TOrg_Mg_nM" = "Org-Mg",
+  "log_TOrg_Na_nM" = "Org-Na",
+  "log_TOrg_K_nM" = "Org-K"
 )
 
-facet_labels <- as_labeller(title_lookup)
+facet_labels <- as_labeller(title_lookup, label_parsed)
 
 # ------------------------------------------------------------------
 # 2) Long data (DO NOT re-factor Typology)
@@ -1707,8 +1468,6 @@ dat_long_spec <- dat %>%
 
 # ------------------------------------------------------------------
 # 3) Letters (Kruskal groups) + y positions
-#     letters_df must have: Variable, Typology, Letters
-#     (DO NOT re-factor Typology here either)
 # ------------------------------------------------------------------
 y_pos_df_spec <- dat_long_spec %>%
   group_by(Variable, Typology) %>%
@@ -1718,11 +1477,11 @@ letters_long_spec <- letters_df %>%
   filter(Variable %in% vars_spec) %>%
   left_join(y_pos_df_spec, by = c("Variable", "Typology")) %>%
   mutate(
-    y_pos = y_max + 0.05 * (abs(y_max) + 1)
+    y_pos = y_max + 0.05 * (abs(y_max) + 4)
   )
 
 # ------------------------------------------------------------------
-# 4) Faceted panel (FILLED boxplot + jitter), colored by Typology
+# 4) Faceted panel colored by Typology
 # ------------------------------------------------------------------
 spec_panel2 <- ggplot(dat_long_spec, aes(x = Typology, y = Value)) +
   geom_boxplot(
@@ -1734,7 +1493,7 @@ spec_panel2 <- ggplot(dat_long_spec, aes(x = Typology, y = Value)) +
   geom_jitter(
     aes(color = Typology),
     width = 0.15,
-    size  = 1.3,
+    size  = 1.1,
     alpha = 0.6
   ) +
   geom_text(
@@ -1754,12 +1513,12 @@ spec_panel2 <- ggplot(dat_long_spec, aes(x = Typology, y = Value)) +
   labs(
     title = "Organic Complexes by Stream Typology",
     x     = "Stream Typology",
-    y     = "Log10(Concentration) (nM)"
+    y     = expression(paste("Concentration (nM) [", log[10], "]"))
   ) +
   theme_minimal(base_size = 12) +
   theme(
     legend.position = "none",
-    axis.text.x  = element_text(size = 9, angle = 30, hjust = 1),
+    axis.text.x  = element_text(size = 9, angle = 30, hjust = 1, color = "black"),
     strip.text   = element_text(size = 11),
     plot.title   = element_text(size = 14)
   )
@@ -1774,7 +1533,6 @@ ggsave(
   height   = 6,
   dpi      = 300
 )
-
 ```
 
 ### e. All Zn Complexes
@@ -1872,7 +1630,7 @@ zn_species <- ggplot(plot_dat, aes(x = Typology, y = mean_conc, fill = Species))
   ) +
   theme_classic() +
   theme(
-    axis.text.x = element_text(angle = 45, hjust = 1)
+    axis.text.x = element_text(angle = 30, hjust = 1)
   )
 
 zn_species
