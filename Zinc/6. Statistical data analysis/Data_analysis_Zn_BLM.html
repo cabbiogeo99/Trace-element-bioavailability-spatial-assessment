@@ -2865,6 +2865,15 @@ ggsave(
 <pre class="r"><code>library(dplyr)
 library(tidyr)
 library(ggplot2)
+library(ggpattern)</code></pre>
+<pre><code>## Warning: package &#39;ggpattern&#39; was built under R version 4.5.3</code></pre>
+<pre class="r"><code>dat$Typology &lt;- as.factor(dat$Typology)
+
+dat$Typology &lt;- factor(dat$Typology, levels = c(&quot;Pooled&quot;,
+                                     &quot;Non-Perennial&quot;,
+                                     &quot;Perennial&quot;,
+                                     &quot;Developed Perennial&quot;,
+                                     &quot;Main Stem&quot;))
 
 # 1. Pivot Zn data to long format
 dat_zn_tox &lt;- dat %&gt;%
@@ -2885,19 +2894,19 @@ dat_zn_tox &lt;- dat %&gt;%
   ) %&gt;%
   mutate(
     Zinc_Concentrations = dplyr::recode(
-      Zinc_Concentrations,
-      &quot;log_Zn_nM&quot;              = &quot;Measured Zinc&quot;,
-      &quot;log_Zn_chronic_tox_nM&quot;  = &quot;Chronically Toxic&quot;,
-      &quot;log_Zn_acute_tox_nM&quot;    = &quot;Acutely Toxic&quot;
-    ),
-    Zinc_Concentrations = factor(
-      Zinc_Concentrations,
-      levels = c(
-        &quot;Measured Zinc&quot;,
-        &quot;Chronically Toxic&quot;,
-        &quot;Acutely Toxic&quot;
-      )
-    )
+  Zinc_Concentrations,
+  &quot;log_Zn_nM&quot;             = &quot;Measured&quot;,
+  &quot;log_Zn_chronic_tox_nM&quot; = &quot;Chronically Toxic&quot;,
+  &quot;log_Zn_acute_tox_nM&quot;   = &quot;Acutely Toxic&quot;
+),
+Zinc_Concentrations = factor(
+  Zinc_Concentrations,
+  levels = c(
+    &quot;Measured&quot;,
+    &quot;Chronically Toxic&quot;,
+    &quot;Acutely Toxic&quot;
+  )
+)
   ) %&gt;%
   filter(!is.na(Value))
 
@@ -2906,25 +2915,38 @@ p_zn_tox_density &lt;- ggplot(
   dat_zn_tox,
   aes(x = Value, fill = Zinc_Concentrations)
 ) +
-  geom_density(alpha = 0.5, linewidth = 0.6) +
+  geom_density(
+    alpha = 0.5,
+    linewidth = 0.6,
+    color = &quot;black&quot;
+  ) +
   facet_wrap(~ Typology, ncol = 2) +
-  scale_fill_manual(values = c(
-    &quot;Measured Zinc&quot;     = &quot;slategray&quot;,
-    &quot;Chronically Toxic&quot; = &quot;maroon&quot;,
-    &quot;Acutely Toxic&quot;     = &quot;red&quot;
-  )) +
+
+  # ---- Match Cu legend behavior ----
+  scale_fill_manual(
+    values = c(
+      &quot;Measured&quot;           = &quot;slategray&quot;,
+      &quot;Chronically Toxic&quot;  = &quot;maroon&quot;,
+      &quot;Acutely Toxic&quot;      = &quot;red&quot;
+    ),
+    guide = guide_legend(
+      override.aes = list(pattern = &quot;none&quot;)  
+    )
+  ) +
+
   labs(
     title = &quot;Zinc Toxicity Thresholds&quot;,
-    x     = &quot;Log Zn (nM)&quot;,
+    x     = expression(log[10]~Zn~(nM)),
     y     = &quot;Density&quot;,
-    fill  = &quot;Zinc Concentration&quot;
+    fill  = &quot;Zinc&quot;
   ) +
+
   theme_minimal(base_size = 12) +
   theme(
     legend.position = &quot;bottom&quot;,
+    strip.text      = element_text(size = 14),  
     legend.title    = element_text(size = 11),
     legend.text     = element_text(size = 10),
-    strip.text      = element_text(size = 11),
     axis.text.x     = element_text(size = 10),
     axis.text.y     = element_text(size = 10),
     plot.title      = element_text(size = 14)
@@ -2994,12 +3016,13 @@ overlap_Zn_by_typology</code></pre>
 ## 4 Developed Perennial            0.00112                0
 ## 5 Main Stem                      0.0227                 0</code></pre>
 <pre class="r"><code># Save
+library(openxlsx)
 out_dir &lt;- &quot;Toxicity plots&quot;
 if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
 
 write.xlsx(
   overlap_Zn_by_typology,
-  file = file.path(out_dir, &quot;Probability_of_Zn_toxicity.xlsx&quot;),
+  file = file.path(out_dir, &quot;Zn_overlap_measured_vs_BLM_toxicity.xlsx&quot;),
   overwrite = TRUE
 )</code></pre>
 </div>
@@ -3026,16 +3049,19 @@ mle_summary &lt;- map_dfr(vars, function(var) {
   dat %&gt;%
     dplyr::select(Typology, all_of(var)) %&gt;%
     rename(value = all_of(var)) %&gt;%
+    
     filter(!is.na(Typology), !is.na(value)) %&gt;%
+    
     group_by(Typology) %&gt;%
     summarise(
       variable = var,
       n = n(),
-      mle_mean = mean(value),                    # μ̂
-      mle_variance = mean((value - mean(value))^2),  # σ̂² with denominator n
+      mle_mean = mean(value),                         # μ̂
+      mle_variance = mean((value - mean(value))^2),   # σ̂² (MLE, denominator = n)
       mle_sd = sqrt(mle_variance),
       .groups = &quot;drop&quot;
     ) %&gt;%
+    
     dplyr::select(Typology, variable, n, mle_mean, mle_variance, mle_sd)
 })
 
@@ -3053,27 +3079,30 @@ mle_summary</code></pre>
 ##  8 Perennial           Zn_acute_tox_nM      93 109553923.      3.00e15    5.48e7
 ##  9 Developed Perennial Zn_acute_tox_nM     122 171735347.      2.61e15    5.10e7
 ## 10 Main Stem           Zn_acute_tox_nM     127 139075084.      1.55e15    3.94e7</code></pre>
-<pre class="r"><code># Log10-transformed toxicity variables ----
-vars_log &lt;- c(
+<pre class="r"><code># Log10 toxicity variables ----
+vars &lt;- c(
   &quot;log_Zn_chronic_tox_nM&quot;,
   &quot;log_Zn_acute_tox_nM&quot;
 )
 
-mle_summary_log &lt;- map_dfr(vars_log, function(var) {
+mle_summary_log &lt;- map_dfr(vars, function(var) {
   
   dat %&gt;%
     dplyr::select(Typology, all_of(var)) %&gt;%
     rename(value = all_of(var)) %&gt;%
+    
     filter(!is.na(Typology), !is.na(value)) %&gt;%
+    
     group_by(Typology) %&gt;%
     summarise(
       variable = var,
       n = n(),
-      mle_mean = mean(value),                    # μ̂
-      mle_variance = mean((value - mean(value))^2),  # σ̂² with denominator n
+      mle_mean = mean(value),                         # μ̂
+      mle_variance = mean((value - mean(value))^2),   # σ̂² (MLE, denominator = n)
       mle_sd = sqrt(mle_variance),
       .groups = &quot;drop&quot;
     ) %&gt;%
+    
     dplyr::select(Typology, variable, n, mle_mean, mle_variance, mle_sd)
 })
 
@@ -3092,8 +3121,10 @@ mle_summary_log</code></pre>
 ##  9 Developed Perennial log_Zn_acute_tox_nM     122     8.21       0.0184  0.136
 ## 10 Main Stem           log_Zn_acute_tox_nM     127     8.12       0.0188  0.137</code></pre>
 <p>Save</p>
-<pre class="r"><code># 1. Define file path
-file_path &lt;- file.path(out_dir, &quot;MLE_Cu_toxicity.xlsx&quot;)
+<pre class="r"><code>library(openxlsx)
+
+# 1. Define file path
+file_path &lt;- file.path(out_dir, &quot;MLE_Zn_toxicity.xlsx&quot;)
 
 #2. Create workbook and write tables
 wb &lt;- createWorkbook()

@@ -15,7 +15,7 @@ To assess BLM's assumption of humic acid content (HA) of dissolved organic carbo
 Set working directory
 
 ```{r}
-setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/6. Sensitivity analyses")
+setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/7. Sensitivity analyses")
 ```
 
 Import the dataset with BLM results under varying HA (%) and the Bioavailability Master Spreadsheet 3 which contains Typologies
@@ -28,7 +28,7 @@ ha_dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Rese
 
 head(ha_dat)
 
-bms <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/5. Statistical data analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx")
+bms <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/5. Cluster analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx")
 
 head(bms)
 ```
@@ -154,29 +154,44 @@ ggsave(
 ```{r}
 library(ggplot2)
 
-ha_typ <- 
-  ggplot(
+typology_colors <- c(
+  "Pooled"    = "yellow3",
+  "Perennial" = "#56B4E9",
+  "Developed Perennial" = "#D55E00",
+  "Non-Perennial" = "#009E73",
+  "Main Stem"       = "#999999"
+)
+
+# Set order of typologies
+ha_dat <- ha_dat %>%
+  dplyr::mutate(
+    Typology = factor(
+      Typology,
+      levels = names(typology_colors)
+    )
+  )
+
+ha_typ <- ggplot(
   ha_dat,
-  aes(x = HA_content,
-      y = log10(TBL_Zn_nmol_g),
-      color = Typology)
+  aes(
+    x = HA_content,
+    y = log10(TBL_Zn_nmol_g),
+    color = Typology
+  )
 ) +
   
-  # Mean line
   stat_summary(
     fun = mean,
     geom = "line",
     size = 1.2
   ) +
   
-  # Mean points
   stat_summary(
     fun = mean,
     geom = "point",
     size = 2
   ) +
   
-  # Error bars (mean ± SE)
   stat_summary(
     fun.data = mean_se,
     geom = "errorbar",
@@ -184,12 +199,15 @@ ha_typ <-
     size = 0.8
   ) +
   
+  scale_color_manual(
+    values = typology_colors
+  ) +
+  
   labs(
     x = "Humic Acid Content (%)",
     y = expression(log[10]~"TBL-Zn (nmol "~g^{-1}*")"),
     color = "Stream Typology",
-    title = 
-      "Zn Bioavailability with Increasing Humic Acid Content"
+    title = "Zn Bioavailability with Increasing Humic Acid Content"
   ) +
   
   theme_classic(base_size = 14)
@@ -362,24 +380,42 @@ ha_summary <- ha_summary %>%
 ## i. LRR
 
 ```{r}
-p_logrr <- ggplot(ha_summary,
-       aes(x = HA_transition,
-           y = mean_log_rr,
-           color = Typology,
-           group = Typology)) +
+# Set typology order
+ha_summary <- ha_summary %>%
+  dplyr::mutate(
+    Typology = factor(
+      Typology,
+      levels = names(typology_colors)
+    )
+  )
+
+# Plot
+p_logrr <- ggplot(
+  ha_summary,
+  aes(
+    x = HA_transition,
+    y = mean_log_rr,
+    color = Typology,
+    group = Typology
+  )
+) +
   
   geom_line(size = 1.2) +
   
   geom_point(size = 2.5) +
   
   geom_errorbar(
-    aes(ymin = mean_log_rr - se_log_rr,
-        ymax = mean_log_rr + se_log_rr),
+    aes(
+      ymin = mean_log_rr - se_log_rr,
+      ymax = mean_log_rr + se_log_rr
+    ),
     width = 0.15,
     size = 0.8
   ) +
   
   geom_hline(yintercept = 0, linetype = "dashed", color = "black") +
+  
+  scale_color_manual(values = typology_colors) +
   
   labs(
     x = "Humic Acid Transition (%)",
@@ -391,6 +427,7 @@ p_logrr <- ggplot(ha_summary,
   theme_classic(base_size = 14) +
   theme(legend.position = "none")
 
+# View
 p_logrr
 
 # Save
@@ -399,26 +436,6 @@ ggsave(
   plot = p_logrr,
   width = 8,
   height = 5,
-  dpi = 600
-)
-```
-
-Publication figure
-
-```{r}
-library(patchwork)
-
-final_plot <- (ha_typ / p_logrr) +
-  plot_annotation(tag_levels = "A")
-
-final_plot
-
-# Save
-ggsave(
-  filename = file.path(out_dir, "Zn_humic_acid_sensitivity_analysis.png"),
-  plot = final_plot,
-  width = 8,
-  height = 10,
   dpi = 600
 )
 ```

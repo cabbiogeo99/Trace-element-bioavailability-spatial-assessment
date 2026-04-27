@@ -61,15 +61,19 @@ typology_lookup <- ha_10_cs %>%
   dplyr::select(Sample_ID, Typology) %>%
   distinct()
 
-ha_10_os <- ha_10_os %>% 
+ha_10_os_dat <- ha_10_os %>% 
   left_join(typology_lookup, by = "Sample_ID") %>%
   dplyr::select(Sample_ID, Typology, everything())
 
-ha_10_cs <- ha_10_cs %>%
+ha_10_cs_dat <- ha_10_cs %>%
   dplyr::select(Sample_ID, Typology, everything())
 
 # quick sanity check: check if there are Sample_IDs that don't match (should be 0)
-setdiff(ha_10_os$Sample_ID, ha_10_cs$Sample_ID)
+setdiff(ha_10_os_dat$Sample_ID, ha_10_cs_dat$Sample_ID)
+
+# Check that typologies exist
+str(ha_10_os_dat$Typology)
+str(ha_10_cs_dat$Typology)
 ```
 
 # 2. Select variables of interest
@@ -80,7 +84,7 @@ Create a paired dataset
 library(dplyr)
 
 # Only retain BLM speciation mode output variables in nM and nmol/g for simplicity and consistency (one column per variable and all in same units of measurement)
-ha_10_cs <- ha_10_cs %>%
+ha_10_cs <- ha_10_cs_dat %>%
   dplyr::select(
     Sample_ID,
     ends_with("_nM"),
@@ -103,7 +107,7 @@ ha_10_cs <- ha_10_cs %>%
     -ends_with("_tox_nM")
   )
 
-ha_10_os <- ha_10_os %>%
+ha_10_os <- ha_10_os_dat %>%
   dplyr::select(
     Sample_ID,
     ends_with("_nM"),
@@ -124,8 +128,6 @@ ha_10_os <- ha_10_os %>%
     -"Cu_nM",
     # Remove toxicity variables
    )
-
-library(dplyr)
 
 # Keep only Sample_IDs present in BOTH datasets
 
@@ -526,6 +528,6 @@ ggsave(
   width = 10,
   height = 8,
   units = "in",
-  dpi = "print"
-)
+  dpi = "print")
+
 ```

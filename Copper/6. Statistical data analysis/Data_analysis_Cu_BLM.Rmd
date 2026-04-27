@@ -1743,6 +1743,156 @@ ggsave(
 )
 ```
 
+### iii. Both
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(ggpattern)
+
+dat$Typology <- as.factor(dat$Typology)
+
+dat$Typology <- factor(dat$Typology, levels = c("Pooled",
+                                     "Non-Perennial",
+                                     "Perennial",
+                                     "Developed Perennial",
+                                     "Main Stem"))
+
+# 1. Pivot to long format
+dat_cu_tox <- dat %>%
+  dplyr::select(
+    Typology,
+    log_Cu_nM,
+    log_Cu_Chronic_Tox_Daphnia_nM,
+    log_Cu_Acute_Tox_Daphnia_nM,
+    log_Cu_Chronic_Tox_Minnow_nM,
+    log_Cu_Acute_Tox_Minnow_nM
+  ) %>%
+  pivot_longer(
+    cols = c(
+      log_Cu_nM,
+      log_Cu_Chronic_Tox_Daphnia_nM,
+      log_Cu_Acute_Tox_Daphnia_nM,
+      log_Cu_Chronic_Tox_Minnow_nM,
+      log_Cu_Acute_Tox_Minnow_nM
+    ),
+    names_to  = "Copper_Concentrations",
+    values_to = "Value"
+  ) %>%
+  mutate(
+    Copper = case_when(
+      Copper_Concentrations == "log_Cu_nM" ~ "Measured",
+      grepl("Chronic", Copper_Concentrations) ~ "Chronically Toxic",
+      grepl("Acute", Copper_Concentrations) ~ "Acutely Toxic"
+    ),
+    
+    Organism = case_when(
+      Copper_Concentrations == "log_Cu_nM" ~ "Measured",
+      grepl("Daphnia", Copper_Concentrations) ~ "C. dubia",
+      grepl("Minnow", Copper_Concentrations) ~ "P. promelas"
+    ),
+    
+    Copper = factor(
+      Copper,
+      levels = c("Measured", "Chronically Toxic", "Acutely Toxic")
+    ),
+    
+    Organism = factor(
+      Organism,
+      levels = c("Measured", "C. dubia", "P. promelas")
+    )
+  ) %>%
+  filter(!is.na(Value))
+
+# 2. Density plot faceted by Typology
+p_cu_tox_density <- ggplot(
+  dat_cu_tox,
+  aes(
+    x       = Value,
+    fill    = Copper,
+    pattern = Organism
+  )
+) +
+  geom_density_pattern(
+    alpha = 0.5,
+    linewidth = 0.6,
+    color = "black",
+    pattern_fill = "black",
+    pattern_color = "black",
+    pattern_density = 0.2,
+    pattern_spacing = 0.04,
+    pattern_alpha = 0.5
+  ) +
+  facet_wrap(~ Typology, ncol = 2) +
+
+  # ---- Copper legend ----
+  scale_fill_manual(
+    values = c(
+      "Measured"   = "slategray",
+      "Chronically Toxic" = "maroon",
+      "Acutely Toxic"     = "red"
+    ),
+    guide = guide_legend(
+      override.aes = list(pattern = "none")  
+    )
+  ) +
+
+  # ----Organism legend ----
+  scale_pattern_manual(
+  values = c(
+    "Measured"    = "none",
+    "C. dubia"    = "none",
+    "P. promelas" = "stripe"
+  ),
+  breaks = c("C. dubia", "P. promelas"),
+  labels = c(
+    expression(italic(C.~dubia)),
+    expression(italic(P.~promelas))
+  ),
+  guide = guide_legend(
+    override.aes = list(
+      fill = "white",
+      pattern = c("none", "stripe"),
+      pattern_fill = "black",
+      pattern_color = "black",
+      pattern_density = 0.4,
+      pattern_spacing = 0.03,
+      alpha = 1
+    )
+  )
+) +
+  labs(title = "Copper Toxicity Thresholds",
+  x     = expression(log[10]~Cu~(nM)),
+  y     = "Density") +
+
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "bottom",
+    strip.text = element_text(size = 14)
+  )
+
+p_cu_tox_density
+
+# Define output directory
+out_dir <- "Plots of Cu Toxicity"
+
+# Create folder if it doesn't exist
+if (!dir.exists(out_dir)) {
+  dir.create(out_dir, recursive = TRUE)
+}
+
+# Save plot
+ggsave(
+  filename = file.path(out_dir, "Cu_toxicity.png"),
+  plot = p_cu_tox_density,
+  width = 10,
+  height = 6,
+  units = "in",
+  dpi = "print"
+)
+```
+
 ## 2. Overlap of measured vs toxic concentrations
 
 Calculate probability of overlapping measured copper with toxic levels of copper by stream typology

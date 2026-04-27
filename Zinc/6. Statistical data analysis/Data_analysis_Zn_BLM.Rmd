@@ -1812,6 +1812,15 @@ ggsave(
 library(dplyr)
 library(tidyr)
 library(ggplot2)
+library(ggpattern)
+
+dat$Typology <- as.factor(dat$Typology)
+
+dat$Typology <- factor(dat$Typology, levels = c("Pooled",
+                                     "Non-Perennial",
+                                     "Perennial",
+                                     "Developed Perennial",
+                                     "Main Stem"))
 
 # 1. Pivot Zn data to long format
 dat_zn_tox <- dat %>%
@@ -1832,19 +1841,19 @@ dat_zn_tox <- dat %>%
   ) %>%
   mutate(
     Zinc_Concentrations = dplyr::recode(
-      Zinc_Concentrations,
-      "log_Zn_nM"              = "Measured Zinc",
-      "log_Zn_chronic_tox_nM"  = "Chronically Toxic",
-      "log_Zn_acute_tox_nM"    = "Acutely Toxic"
-    ),
-    Zinc_Concentrations = factor(
-      Zinc_Concentrations,
-      levels = c(
-        "Measured Zinc",
-        "Chronically Toxic",
-        "Acutely Toxic"
-      )
-    )
+  Zinc_Concentrations,
+  "log_Zn_nM"             = "Measured",
+  "log_Zn_chronic_tox_nM" = "Chronically Toxic",
+  "log_Zn_acute_tox_nM"   = "Acutely Toxic"
+),
+Zinc_Concentrations = factor(
+  Zinc_Concentrations,
+  levels = c(
+    "Measured",
+    "Chronically Toxic",
+    "Acutely Toxic"
+  )
+)
   ) %>%
   filter(!is.na(Value))
 
@@ -1853,25 +1862,38 @@ p_zn_tox_density <- ggplot(
   dat_zn_tox,
   aes(x = Value, fill = Zinc_Concentrations)
 ) +
-  geom_density(alpha = 0.5, linewidth = 0.6) +
+  geom_density(
+    alpha = 0.5,
+    linewidth = 0.6,
+    color = "black"
+  ) +
   facet_wrap(~ Typology, ncol = 2) +
-  scale_fill_manual(values = c(
-    "Measured Zinc"     = "slategray",
-    "Chronically Toxic" = "maroon",
-    "Acutely Toxic"     = "red"
-  )) +
+
+  # ---- Match Cu legend behavior ----
+  scale_fill_manual(
+    values = c(
+      "Measured"           = "slategray",
+      "Chronically Toxic"  = "maroon",
+      "Acutely Toxic"      = "red"
+    ),
+    guide = guide_legend(
+      override.aes = list(pattern = "none")  
+    )
+  ) +
+
   labs(
     title = "Zinc Toxicity Thresholds",
-    x     = "Log Zn (nM)",
+    x     = expression(log[10]~Zn~(nM)),
     y     = "Density",
-    fill  = "Zinc Concentration"
+    fill  = "Zinc"
   ) +
+
   theme_minimal(base_size = 12) +
   theme(
     legend.position = "bottom",
+    strip.text      = element_text(size = 14),  
     legend.title    = element_text(size = 11),
     legend.text     = element_text(size = 10),
-    strip.text      = element_text(size = 11),
     axis.text.x     = element_text(size = 10),
     axis.text.y     = element_text(size = 10),
     plot.title      = element_text(size = 14)
@@ -1936,12 +1958,13 @@ overlap_Zn_by_typology <- dat %>%
 overlap_Zn_by_typology
 
 # Save
+library(openxlsx)
 out_dir <- "Toxicity plots"
 if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
 
 write.xlsx(
   overlap_Zn_by_typology,
-  file = file.path(out_dir, "Probability_of_Zn_toxicity.xlsx"),
+  file = file.path(out_dir, "Zn_overlap_measured_vs_BLM_toxicity.xlsx"),
   overwrite = TRUE
 )
 ```
@@ -1963,43 +1986,48 @@ mle_summary <- map_dfr(vars, function(var) {
   dat %>%
     dplyr::select(Typology, all_of(var)) %>%
     rename(value = all_of(var)) %>%
+    
     filter(!is.na(Typology), !is.na(value)) %>%
+    
     group_by(Typology) %>%
     summarise(
       variable = var,
       n = n(),
-      mle_mean = mean(value),                    # μ̂
-      mle_variance = mean((value - mean(value))^2),  # σ̂² with denominator n
+      mle_mean = mean(value),                         # μ̂
+      mle_variance = mean((value - mean(value))^2),   # σ̂² (MLE, denominator = n)
       mle_sd = sqrt(mle_variance),
       .groups = "drop"
     ) %>%
+    
     dplyr::select(Typology, variable, n, mle_mean, mle_variance, mle_sd)
 })
 
 mle_summary
 
-
-# Log10-transformed toxicity variables ----
-vars_log <- c(
+# Log10 toxicity variables ----
+vars <- c(
   "log_Zn_chronic_tox_nM",
   "log_Zn_acute_tox_nM"
 )
 
-mle_summary_log <- map_dfr(vars_log, function(var) {
+mle_summary_log <- map_dfr(vars, function(var) {
   
   dat %>%
     dplyr::select(Typology, all_of(var)) %>%
     rename(value = all_of(var)) %>%
+    
     filter(!is.na(Typology), !is.na(value)) %>%
+    
     group_by(Typology) %>%
     summarise(
       variable = var,
       n = n(),
-      mle_mean = mean(value),                    # μ̂
-      mle_variance = mean((value - mean(value))^2),  # σ̂² with denominator n
+      mle_mean = mean(value),                         # μ̂
+      mle_variance = mean((value - mean(value))^2),   # σ̂² (MLE, denominator = n)
       mle_sd = sqrt(mle_variance),
       .groups = "drop"
     ) %>%
+    
     dplyr::select(Typology, variable, n, mle_mean, mle_variance, mle_sd)
 })
 
@@ -2009,8 +2037,10 @@ mle_summary_log
 Save
 
 ```{r}
+library(openxlsx)
+
 # 1. Define file path
-file_path <- file.path(out_dir, "MLE_Cu_toxicity.xlsx")
+file_path <- file.path(out_dir, "MLE_Zn_toxicity.xlsx")
 
 #2. Create workbook and write tables
 wb <- createWorkbook()

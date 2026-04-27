@@ -5706,6 +5706,154 @@ ggsave(
   dpi = &quot;print&quot;
 )</code></pre>
 </div>
+<div id="iii.-both" class="section level3">
+<h3>iii. Both</h3>
+<pre class="r"><code>library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(ggpattern)</code></pre>
+<pre><code>## Warning: package &#39;ggpattern&#39; was built under R version 4.5.3</code></pre>
+<pre class="r"><code>dat$Typology &lt;- as.factor(dat$Typology)
+
+dat$Typology &lt;- factor(dat$Typology, levels = c(&quot;Pooled&quot;,
+                                     &quot;Non-Perennial&quot;,
+                                     &quot;Perennial&quot;,
+                                     &quot;Developed Perennial&quot;,
+                                     &quot;Main Stem&quot;))
+
+# 1. Pivot to long format
+dat_cu_tox &lt;- dat %&gt;%
+  dplyr::select(
+    Typology,
+    log_Cu_nM,
+    log_Cu_Chronic_Tox_Daphnia_nM,
+    log_Cu_Acute_Tox_Daphnia_nM,
+    log_Cu_Chronic_Tox_Minnow_nM,
+    log_Cu_Acute_Tox_Minnow_nM
+  ) %&gt;%
+  pivot_longer(
+    cols = c(
+      log_Cu_nM,
+      log_Cu_Chronic_Tox_Daphnia_nM,
+      log_Cu_Acute_Tox_Daphnia_nM,
+      log_Cu_Chronic_Tox_Minnow_nM,
+      log_Cu_Acute_Tox_Minnow_nM
+    ),
+    names_to  = &quot;Copper_Concentrations&quot;,
+    values_to = &quot;Value&quot;
+  ) %&gt;%
+  mutate(
+    Copper = case_when(
+      Copper_Concentrations == &quot;log_Cu_nM&quot; ~ &quot;Measured&quot;,
+      grepl(&quot;Chronic&quot;, Copper_Concentrations) ~ &quot;Chronically Toxic&quot;,
+      grepl(&quot;Acute&quot;, Copper_Concentrations) ~ &quot;Acutely Toxic&quot;
+    ),
+    
+    Organism = case_when(
+      Copper_Concentrations == &quot;log_Cu_nM&quot; ~ &quot;Measured&quot;,
+      grepl(&quot;Daphnia&quot;, Copper_Concentrations) ~ &quot;C. dubia&quot;,
+      grepl(&quot;Minnow&quot;, Copper_Concentrations) ~ &quot;P. promelas&quot;
+    ),
+    
+    Copper = factor(
+      Copper,
+      levels = c(&quot;Measured&quot;, &quot;Chronically Toxic&quot;, &quot;Acutely Toxic&quot;)
+    ),
+    
+    Organism = factor(
+      Organism,
+      levels = c(&quot;Measured&quot;, &quot;C. dubia&quot;, &quot;P. promelas&quot;)
+    )
+  ) %&gt;%
+  filter(!is.na(Value))
+
+# 2. Density plot faceted by Typology
+p_cu_tox_density &lt;- ggplot(
+  dat_cu_tox,
+  aes(
+    x       = Value,
+    fill    = Copper,
+    pattern = Organism
+  )
+) +
+  geom_density_pattern(
+    alpha = 0.5,
+    linewidth = 0.6,
+    color = &quot;black&quot;,
+    pattern_fill = &quot;black&quot;,
+    pattern_color = &quot;black&quot;,
+    pattern_density = 0.2,
+    pattern_spacing = 0.04,
+    pattern_alpha = 0.5
+  ) +
+  facet_wrap(~ Typology, ncol = 2) +
+
+  # ---- Copper legend ----
+  scale_fill_manual(
+    values = c(
+      &quot;Measured&quot;   = &quot;slategray&quot;,
+      &quot;Chronically Toxic&quot; = &quot;maroon&quot;,
+      &quot;Acutely Toxic&quot;     = &quot;red&quot;
+    ),
+    guide = guide_legend(
+      override.aes = list(pattern = &quot;none&quot;)  
+    )
+  ) +
+
+  # ----Organism legend ----
+  scale_pattern_manual(
+  values = c(
+    &quot;Measured&quot;    = &quot;none&quot;,
+    &quot;C. dubia&quot;    = &quot;none&quot;,
+    &quot;P. promelas&quot; = &quot;stripe&quot;
+  ),
+  breaks = c(&quot;C. dubia&quot;, &quot;P. promelas&quot;),
+  labels = c(
+    expression(italic(C.~dubia)),
+    expression(italic(P.~promelas))
+  ),
+  guide = guide_legend(
+    override.aes = list(
+      fill = &quot;white&quot;,
+      pattern = c(&quot;none&quot;, &quot;stripe&quot;),
+      pattern_fill = &quot;black&quot;,
+      pattern_color = &quot;black&quot;,
+      pattern_density = 0.4,
+      pattern_spacing = 0.03,
+      alpha = 1
+    )
+  )
+) +
+  labs(title = &quot;Copper Toxicity Thresholds&quot;,
+  x     = expression(log[10]~Cu~(nM)),
+  y     = &quot;Density&quot;) +
+
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = &quot;bottom&quot;,
+    strip.text = element_text(size = 14)
+  )
+
+p_cu_tox_density
+
+# Define output directory
+out_dir &lt;- &quot;Plots of Cu Toxicity&quot;
+
+# Create folder if it doesn&#39;t exist
+if (!dir.exists(out_dir)) {
+  dir.create(out_dir, recursive = TRUE)
+}
+
+# Save plot
+ggsave(
+  filename = file.path(out_dir, &quot;Cu_toxicity.png&quot;),
+  plot = p_cu_tox_density,
+  width = 10,
+  height = 6,
+  units = &quot;in&quot;,
+  dpi = &quot;print&quot;
+)</code></pre>
+</div>
 </div>
 <div id="overlap-of-measured-vs-toxic-concentrations" class="section level2">
 <h2>2. Overlap of measured vs toxic concentrations</h2>
