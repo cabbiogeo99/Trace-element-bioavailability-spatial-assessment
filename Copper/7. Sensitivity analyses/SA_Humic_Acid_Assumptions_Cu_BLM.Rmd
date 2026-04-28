@@ -154,29 +154,44 @@ ggsave(
 ```{r}
 library(ggplot2)
 
-ha_typ <- 
-  ggplot(
+typology_colors <- c(
+  "Pooled"    = "yellow3",
+  "Perennial" = "#56B4E9",
+  "Developed Perennial" = "#D55E00",
+  "Non-Perennial" = "#009E73",
+  "Main Stem"       = "#999999"
+)
+
+# Set order of typologies
+ha_dat <- ha_dat %>%
+  dplyr::mutate(
+    Typology = factor(
+      Typology,
+      levels = names(typology_colors)
+    )
+  )
+
+ha_typ <- ggplot(
   ha_dat,
-  aes(x = HA_content,
-      y = log10(TBL_Cu_nmol_g),
-      color = Typology)
+  aes(
+    x = HA_content,
+    y = log10(TBL_Cu_nmol_g),
+    color = Typology
+  )
 ) +
   
-  # Mean line
   stat_summary(
     fun = mean,
     geom = "line",
     size = 1.2
   ) +
   
-  # Mean points
   stat_summary(
     fun = mean,
     geom = "point",
     size = 2
   ) +
   
-  # Error bars (mean ± SE)
   stat_summary(
     fun.data = mean_se,
     geom = "errorbar",
@@ -184,12 +199,15 @@ ha_typ <-
     size = 0.8
   ) +
   
+  scale_color_manual(
+    values = typology_colors
+  ) +
+  
   labs(
     x = "Humic Acid Content (%)",
     y = expression(log[10]~"TBL-Cu (nmol "~g^{-1}*")"),
     color = "Stream Typology",
-    title = 
-      "Cu Bioavailability with Increasing Humic Acid Content"
+    title = "Cu Bioavailability with Increasing Humic Acid Content"
   ) +
   
   theme_classic(base_size = 14)

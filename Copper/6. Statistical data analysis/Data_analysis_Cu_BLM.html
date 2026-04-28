@@ -5540,8 +5540,23 @@ ggsave(
 <div id="i.-c.-dubia" class="section level3">
 <h3>i. C. dubia</h3>
 <pre class="r"><code>library(dplyr)
+library(tidyr)
+library(ggplot2)
 
-# 1. Pivot to long format
+dat$Typology &lt;- as.factor(dat$Typology)
+
+dat$Typology &lt;- factor(
+  dat$Typology,
+  levels = c(
+    &quot;Pooled&quot;,
+    &quot;Non-Perennial&quot;,
+    &quot;Perennial&quot;,
+    &quot;Developed Perennial&quot;,
+    &quot;Main Stem&quot;
+  )
+)
+
+# 1. Pivot Cu data to long format
 dat_cu_daph &lt;- dat %&gt;%
   dplyr::select(
     Typology,
@@ -5550,7 +5565,7 @@ dat_cu_daph &lt;- dat %&gt;%
     log_Cu_Acute_Tox_Daphnia_nM
   ) %&gt;%
   pivot_longer(
-    cols      = c(
+    cols = c(
       log_Cu_nM,
       log_Cu_Chronic_Tox_Daphnia_nM,
       log_Cu_Acute_Tox_Daphnia_nM
@@ -5561,14 +5576,14 @@ dat_cu_daph &lt;- dat %&gt;%
   mutate(
     Copper_Concentrations = dplyr::recode(
       Copper_Concentrations,
-      &quot;log_Cu_nM&quot;                     = &quot;Measured Copper&quot;,
+      &quot;log_Cu_nM&quot;                     = &quot;Measured&quot;,
       &quot;log_Cu_Chronic_Tox_Daphnia_nM&quot; = &quot;Chronically Toxic&quot;,
       &quot;log_Cu_Acute_Tox_Daphnia_nM&quot;   = &quot;Acutely Toxic&quot;
     ),
     Copper_Concentrations = factor(
       Copper_Concentrations,
       levels = c(
-        &quot;Measured Copper&quot;,
+        &quot;Measured&quot;,
         &quot;Chronically Toxic&quot;,
         &quot;Acutely Toxic&quot;
       )
@@ -5578,57 +5593,79 @@ dat_cu_daph &lt;- dat %&gt;%
 
 # 2. Density plot faceted by Typology
 p_cu_daph_density &lt;- ggplot(
-    dat_cu_daph,
-    aes(x = Value, fill = Copper_Concentrations)
+  dat_cu_daph,
+  aes(x = Value, fill = Copper_Concentrations)
+) +
+  geom_density(
+    alpha = 0.5,
+    linewidth = 0.6,
+    color = &quot;black&quot;
   ) +
-  geom_density(alpha = 0.5, linewidth = 0.6) +
   facet_wrap(~ Typology, ncol = 2) +
-  scale_fill_manual(values = c(
-    &quot;Measured Copper&quot;   = &quot;chocolate4&quot;,
-    &quot;Chronically Toxic&quot; = &quot;maroon&quot;,
-    &quot;Acutely Toxic&quot;  = &quot;red&quot;
-  )) +
+  scale_fill_manual(
+    values = c(
+      &quot;Measured&quot;           = &quot;chocolate4&quot;,
+      &quot;Chronically Toxic&quot;  = &quot;maroon&quot;,
+      &quot;Acutely Toxic&quot;      = &quot;red&quot;
+    ),
+    guide = guide_legend(
+      override.aes = list(pattern = &quot;none&quot;)
+    )
+  ) +
   labs(
     title = &quot;Copper Toxicity Thresholds for C. dubia&quot;,
-    x     = &quot;Log Cu (nM)&quot;,
+    x     = expression(log[10]~Cu~(nM)),
     y     = &quot;Density&quot;,
-    fill  = &quot;Copper Concentration&quot;
+    fill  = &quot;Copper&quot;
   ) +
   theme_minimal(base_size = 12) +
   theme(
     legend.position = &quot;bottom&quot;,
+    strip.text      = element_text(size = 14),
     legend.title    = element_text(size = 11),
     legend.text     = element_text(size = 10),
-    strip.text      = element_text(size = 11),
     axis.text.x     = element_text(size = 10),
     axis.text.y     = element_text(size = 10),
     plot.title      = element_text(size = 14)
   )
 
+# Print plot
 p_cu_daph_density
 
-# Define output directory
+# 3. Save plot
 out_dir &lt;- &quot;Plots of Cu Toxicity&quot;
 
-# Create folder if it doesn&#39;t exist
 if (!dir.exists(out_dir)) {
   dir.create(out_dir, recursive = TRUE)
 }
 
-# Save plot
 ggsave(
   filename = file.path(out_dir, &quot;Cu_toxicity_daphnia.png&quot;),
   plot = p_cu_daph_density,
   width = 10,
   height = 6,
   units = &quot;in&quot;,
-  dpi = &quot;print&quot;
+  dpi = 300
 )</code></pre>
 </div>
 <div id="ii.-p.-promelas" class="section level3">
 <h3>ii. P. promelas</h3>
 <pre class="r"><code>library(dplyr)
+library(tidyr)
 library(ggplot2)
+
+dat$Typology &lt;- as.factor(dat$Typology)
+
+dat$Typology &lt;- factor(
+  dat$Typology,
+  levels = c(
+    &quot;Pooled&quot;,
+    &quot;Non-Perennial&quot;,
+    &quot;Perennial&quot;,
+    &quot;Developed Perennial&quot;,
+    &quot;Main Stem&quot;
+  )
+)
 
 # 1. Pivot to long format
 dat_cu_minn &lt;- dat %&gt;%
@@ -5639,7 +5676,7 @@ dat_cu_minn &lt;- dat %&gt;%
     log_Cu_Acute_Tox_Minnow_nM
   ) %&gt;%
   pivot_longer(
-    cols      = c(
+    cols = c(
       log_Cu_nM,
       log_Cu_Chronic_Tox_Minnow_nM,
       log_Cu_Acute_Tox_Minnow_nM
@@ -5650,14 +5687,14 @@ dat_cu_minn &lt;- dat %&gt;%
   mutate(
     Copper_Concentrations = dplyr::recode(
       Copper_Concentrations,
-      &quot;log_Cu_nM&quot;                    = &quot;Measured Copper&quot;,
+      &quot;log_Cu_nM&quot;                    = &quot;Measured&quot;,
       &quot;log_Cu_Chronic_Tox_Minnow_nM&quot; = &quot;Chronically Toxic&quot;,
       &quot;log_Cu_Acute_Tox_Minnow_nM&quot;   = &quot;Acutely Toxic&quot;
     ),
     Copper_Concentrations = factor(
       Copper_Concentrations,
       levels = c(
-        &quot;Measured Copper&quot;,
+        &quot;Measured&quot;,
         &quot;Chronically Toxic&quot;,
         &quot;Acutely Toxic&quot;
       )
@@ -5667,33 +5704,43 @@ dat_cu_minn &lt;- dat %&gt;%
 
 # 2. Density plot faceted by Typology
 p_cu_daph_density_minn &lt;- ggplot(
-    dat_cu_minn,
-    aes(x = Value, fill = Copper_Concentrations)
+  dat_cu_minn,
+  aes(x = Value, fill = Copper_Concentrations)
+) +
+  geom_density(
+    alpha = 0.5,
+    linewidth = 0.6,
+    color = &quot;black&quot;
   ) +
-  geom_density(alpha = 0.5, linewidth = 0.6) +
   facet_wrap(~ Typology, ncol = 2) +
-  scale_fill_manual(values = c(
-    &quot;Measured Copper&quot;   = &quot;chocolate4&quot;,
-    &quot;Chronically Toxic&quot; = &quot;maroon&quot;,
-    &quot;Acutely Toxic&quot;     = &quot;red&quot;
-  )) +
+  scale_fill_manual(
+    values = c(
+      &quot;Measured&quot;           = &quot;chocolate4&quot;,
+      &quot;Chronically Toxic&quot;  = &quot;maroon&quot;,
+      &quot;Acutely Toxic&quot;      = &quot;red&quot;
+    ),
+    guide = guide_legend(
+      override.aes = list(pattern = &quot;none&quot;)
+    )
+  ) +
   labs(
     title = &quot;Copper Toxicity Thresholds to P. promelas&quot;,
-    x     = &quot;Log Cu (nM)&quot;,
+    x     = expression(log[10]~Cu~(nM)),
     y     = &quot;Density&quot;,
-    fill  = &quot;Copper Concentration&quot;
+    fill  = &quot;Copper&quot;
   ) +
   theme_minimal(base_size = 12) +
   theme(
     legend.position = &quot;bottom&quot;,
+    strip.text      = element_text(size = 14),
     legend.title    = element_text(size = 11),
     legend.text     = element_text(size = 10),
-    strip.text      = element_text(size = 11),
     axis.text.x     = element_text(size = 10),
     axis.text.y     = element_text(size = 10),
     plot.title      = element_text(size = 14)
   )
 
+# Print
 p_cu_daph_density_minn
 
 # Save plot
@@ -5703,7 +5750,7 @@ ggsave(
   width = 10,
   height = 6,
   units = &quot;in&quot;,
-  dpi = &quot;print&quot;
+  dpi = 300
 )</code></pre>
 </div>
 <div id="iii.-both" class="section level3">
@@ -5940,6 +5987,8 @@ writeData(wb, &quot;Overlap_Cu_by_Typology&quot;, overlap_results_by_typology)
 
 # 5. Save
 saveWorkbook(wb, file_path, overwrite = TRUE)</code></pre>
+<pre><code>## Warning in file.create(to[okay]): cannot create file &#39;Plots of Cu
+## Toxicity/overlap_Cu_by_typology.xlsx&#39;, reason &#39;Permission denied&#39;</code></pre>
 </div>
 <div id="mle-of-cu-toxicity" class="section level2">
 <h2>3. MLE of Cu toxicity</h2>
