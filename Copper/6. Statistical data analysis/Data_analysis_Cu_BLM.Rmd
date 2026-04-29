@@ -1453,7 +1453,307 @@ write.xlsx(
 )
 ```
 
-### e. BL-bound cations
+### e. Publication plot
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(scales)
+library(ggnewscale)
+
+#-------------------------------------------------
+# 1. Typology order
+#-------------------------------------------------
+dat <- dat %>%
+  mutate(
+    Typology = factor(
+      Typology,
+      levels = c(
+        "Pooled",
+        "Non-Perennial",
+        "Perennial",
+        "Developed Perennial",
+        "Main Stem"
+      )
+    )
+  )
+
+#-------------------------------------------------
+# 2. Stacked barplot data: Cu species
+#-------------------------------------------------
+species_vars <- c(
+  "Free_Cu_nM",
+  "CuOH_nM",
+  "Cu_OH_2_nM",
+  "CuCO3_nM",
+  "Cu_CO3_2_nM",
+  "CuHCO3_nM",
+  "CuSO4_nM",
+  "CuCl_nM",
+  "TOrg_Cu_nM"
+)
+
+species_dat <- dat %>%
+  dplyr::select(Typology, all_of(species_vars)) %>%
+  pivot_longer(
+    cols = all_of(species_vars),
+    names_to = "Species",
+    values_to = "conc_nM"
+  ) %>%
+  group_by(Typology, Species) %>%
+  summarise(
+    mean_conc = mean(conc_nM, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    Panel = "a.~Cu~speciation~(nM)",
+    Species = dplyr::recode(
+      Species,
+      "Free_Cu_nM"    = "Cu²⁺",
+      "CuOH_nM"       = "CuOH",
+      "Cu_OH_2_nM"    = "Cu(OH)₂",
+      "CuCO3_nM"      = "CuCO₃",
+      "Cu_CO3_2_nM"   = "Cu(CO₃)₂",
+      "CuHCO3_nM"     = "CuHCO₃",
+      "CuSO4_nM"      = "CuSO₄",
+      "CuCl_nM"       = "CuCl",
+      "TOrg_Cu_nM"    = "Organic-Cu"
+    )
+  )
+
+species_levels <- species_dat %>%
+  group_by(Species) %>%
+  summarise(total = sum(mean_conc, na.rm = TRUE), .groups = "drop") %>%
+  arrange(desc(total)) %>%
+  pull(Species)
+
+species_dat <- species_dat %>%
+  mutate(Species = factor(Species, levels = species_levels))
+
+species_colors <- c(
+  "Cu²⁺"       = "orange3",
+  "CuOH"       = "orange1",
+  "Cu(OH)₂"    = "yellow",
+  "CuCO₃"      = "royalblue",
+  "Cu(CO₃)₂"   = "skyblue",
+  "CuHCO₃"     = "darkblue",
+  "CuSO₄"      = "gold",
+  "CuCl"       = "lightgreen",
+  "Organic-Cu" = "brown"
+)
+
+species_colors <- species_colors[species_levels]
+
+#-------------------------------------------------
+# 3. Boxplot data: free/total Cu and bioavailable Cu
+#-------------------------------------------------
+box_lookup <- c(
+  "rel_prop_Cu"       = "b.~Free~Cu^{2*'+'}/Total~Cu~('%')",
+  "log_TBL_Cu_nmol_g" = "c.~Bioavailable~Cu~(nmol~g^{-1}~wet)~'['~log[10]~']'"
+)
+
+box_colors <- c(
+  "b.~Free~Cu^{2*'+'}/Total~Cu~('%')" = "darkgray",
+  "c.~Bioavailable~Cu~(nmol~g^{-1}~wet)~'['~log[10]~']'" = "darkslategray"
+)
+
+box_dat <- dat %>%
+  dplyr::select(Typology, all_of(names(box_lookup))) %>%
+  pivot_longer(
+    cols = -Typology,
+    names_to = "Variable",
+    values_to = "Value"
+  ) %>%
+  filter(!is.na(Value)) %>%
+  mutate(
+    Panel = box_lookup[Variable],
+    Panel = factor(
+      Panel,
+      levels = c(
+        "a.~Cu~speciation~(nM)",
+        "b.~Free~Cu^{2*'+'}/Total~Cu~('%')",
+        "c.~Bioavailable~Cu~(nmol~g^{-1}~wet)~'['~log[10]~']'"
+      )
+    )
+  )
+
+species_dat <- species_dat %>%
+  mutate(
+    Panel = factor(
+      Panel,
+      levels = levels(box_dat$Panel)
+    )
+  )
+
+#-------------------------------------------------
+# 4. Letters for boxplot panels only
+#-------------------------------------------------
+letter_nudge <- c(
+  "b.~Free~Cu^{2*'+'}/Total~Cu~('%')" = 0.005,
+  "c.~Bioavailable~Cu~(nmol~g^{-1}~wet)~'['~log[10]~']'" = 0.7
+)
+
+letters_box <- letters_df %>%
+  filter(Variable %in% names(box_lookup)) %>%
+  mutate(
+    Panel = box_lookup[Variable],
+    Panel = factor(Panel, levels = levels(box_dat$Panel))
+  ) %>%
+  left_join(
+    box_dat %>%
+      group_by(Variable, Typology) %>%
+      summarise(y_max = max(Value, na.rm = TRUE), .groups = "drop"),
+    by = c("Variable", "Typology")
+  ) %>%
+  mutate(
+    y_pos = y_max + letter_nudge[as.character(Panel)]
+  )
+
+letters_species <- letters_df %>%
+  filter(Variable == "Cu_nM") %>%
+  mutate(
+    Panel = factor(
+      "a.~Cu~speciation~(nM)",
+      levels = levels(box_dat$Panel)
+    )
+  ) %>%
+  left_join(
+    species_dat %>%
+      group_by(Typology) %>%
+      summarise(y_max = sum(mean_conc, na.rm = TRUE), .groups = "drop"),
+    by = "Typology"
+  ) %>%
+  mutate(
+    y_pos = y_max + 20
+  )
+
+# Cu error bars
+cu_error <- dat %>%
+  group_by(Typology) %>%
+  summarise(
+    mean_Cu = mean(Cu_nM, na.rm = TRUE),
+    sd_Cu   = sd(Cu_nM, na.rm = TRUE),
+    n       = sum(!is.na(Cu_nM)),
+    se_Cu   = sd_Cu / sqrt(n),
+    .groups = "drop"
+  ) %>%
+  left_join(
+    species_dat %>%
+      group_by(Typology) %>%
+      summarise(bar_height = sum(mean_conc, na.rm = TRUE), .groups = "drop"),
+    by = "Typology"
+  ) %>%
+  mutate(
+    Panel = factor("a.~Cu~speciation~(nM)", levels = levels(species_dat$Panel)),
+    ymin = bar_height - se_Cu,
+    ymax = bar_height + se_Cu
+  )
+
+#-------------------------------------------------
+# 5. Combined faceted plot
+#-------------------------------------------------
+cu_combined_panel <- ggplot() +
+  
+  geom_col(
+    data = species_dat,
+    aes(x = Typology, y = mean_conc, fill = Species),
+    color = "black",
+    linewidth = 0.3
+  ) +
+  scale_fill_manual(
+    values = species_colors,
+    name = "Cu species",
+    guide = guide_legend(nrow = 2, byrow = TRUE)
+  ) +
+  
+  geom_errorbar(
+    data = cu_error,
+    aes(x = Typology, ymin = ymin, ymax = ymax),
+    inherit.aes = FALSE,
+    width = 0.5,
+    linewidth = 0.5,
+    color = "black"
+  ) +
+  
+  ggnewscale::new_scale_fill() +
+  
+  geom_boxplot(
+    data = box_dat,
+    aes(x = Typology, y = Value, fill = Panel, color = Panel),
+    width = 0.7,
+    alpha = 0.4,
+    linewidth = 0.3
+  ) +
+  geom_jitter(
+    data = box_dat,
+    aes(x = Typology, y = Value, color = Panel),
+    width = 0.15,
+    size = 0.7,
+    alpha = 0.7
+  ) +
+  
+  geom_text(
+    data = letters_species,
+    aes(x = Typology, y = y_pos, label = Letters),
+    inherit.aes = FALSE,
+    size = 3.5
+  ) +
+  
+  geom_text(
+    data = letters_box,
+    aes(x = Typology, y = y_pos, label = Letters),
+    inherit.aes = FALSE,
+    size = 3.5
+  ) +
+  
+  scale_fill_manual(values = box_colors, guide = "none") +
+  scale_color_manual(values = box_colors, guide = "none") +
+  
+  facet_wrap(
+    ~ Panel,
+    scales = "free_y",
+    ncol = 3,
+    labeller = labeller(Panel = label_parsed)
+  ) +
+  
+  labs(
+    title = "Copper Speciation and Bioavailability by Stream Typology",
+    x = NULL,
+    y = "Value"
+  ) +
+  
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "bottom",
+    legend.justification = "left",
+    legend.background = element_blank(),
+    legend.title = element_text(size = 9),
+    legend.text = element_text(size = 8),
+    legend.box = "horizontal",
+    axis.text.x = element_text(
+      size = 10,
+      angle = 30,
+      hjust = 1,
+      color = "black"
+    ),
+    axis.text.y = element_text(color = "black"),
+    strip.text = element_text(size = 12),
+    plot.title = element_text(size = 14)
+  )
+
+cu_combined_panel
+
+ggsave(
+  filename = file.path(out_dir, "Cu_pub_plot.png"),
+  plot     = cu_combined_panel,
+  width    = 12,
+  height   = 6,
+  dpi      = 300
+)
+```
+
+### f. BL-bound cations
 
 ```{r}
 library(dplyr)

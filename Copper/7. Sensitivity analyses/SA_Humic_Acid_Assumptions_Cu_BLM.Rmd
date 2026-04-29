@@ -80,152 +80,7 @@ str(ha_dat)
 head(ha_dat)
 ```
 
-# 2. Plots of Bioavailability by Increasing HA
-
-## i. All
-
-```{r}
-library(ggplot2)
-
-ha_all <-
-  ggplot(
-  ha_dat,
-  aes(x = HA_content,
-      y = log10(TBL_Cu_nmol_g))
-) +
-  
-  # Individual sample trajectories
-  geom_line(aes(group = Sample_ID), alpha = 0.2) +
-  geom_point(aes(group = Sample_ID), alpha = 0.2, size = 1) +
-  
-  # Overall mean line
-  stat_summary(
-    fun = mean,
-    geom = "line",
-    linewidth = 1.2
-  ) +
-  
-  # Overall mean points
-  stat_summary(
-    fun = mean,
-    geom = "point",
-    size = 2
-  ) +
-  
-  # Error bars (mean ± SE)
-  stat_summary(
-    fun.data = mean_se,
-    geom = "errorbar",
-    width = 2,
-    linewidth = 0.8
-  ) +
-  
-  labs(
-    x = "Humic Acid Content (%)",
-    y = "log TBL-Cu (nmol/g)",
-    title = "Sensitivity of Cu Bioavailability to HA Content"
-  ) +
-  
-  theme_classic(base_size = 14)
-
-# View
-ha_all
-
-# Define output directory
-out_dir <- file.path(getwd(), "Plots of HA SA")
-
-# Create it only if it doesn't exist
-if (!dir.exists(out_dir)) {
-  dir.create(out_dir)
-}
-
-# Save
-ggsave(
-  filename = file.path(out_dir, "All_Cu_samples_by_humic_acid.png"),
-  plot = ha_all,
-  width = 8,
-  height = 5,
-  dpi = 600
-)
-```
-
-## ii. By typology
-
-```{r}
-library(ggplot2)
-
-typology_colors <- c(
-  "Pooled"    = "yellow3",
-  "Perennial" = "#56B4E9",
-  "Developed Perennial" = "#D55E00",
-  "Non-Perennial" = "#009E73",
-  "Main Stem"       = "#999999"
-)
-
-# Set order of typologies
-ha_dat <- ha_dat %>%
-  dplyr::mutate(
-    Typology = factor(
-      Typology,
-      levels = names(typology_colors)
-    )
-  )
-
-ha_typ <- ggplot(
-  ha_dat,
-  aes(
-    x = HA_content,
-    y = log10(TBL_Cu_nmol_g),
-    color = Typology
-  )
-) +
-  
-  stat_summary(
-    fun = mean,
-    geom = "line",
-    size = 1.2
-  ) +
-  
-  stat_summary(
-    fun = mean,
-    geom = "point",
-    size = 2
-  ) +
-  
-  stat_summary(
-    fun.data = mean_se,
-    geom = "errorbar",
-    width = 2,
-    size = 0.8
-  ) +
-  
-  scale_color_manual(
-    values = typology_colors
-  ) +
-  
-  labs(
-    x = "Humic Acid Content (%)",
-    y = expression(log[10]~"TBL-Cu (nmol "~g^{-1}*")"),
-    color = "Stream Typology",
-    title = "Cu Bioavailability with Increasing Humic Acid Content"
-  ) +
-  
-  theme_classic(base_size = 14)
-
-# View
-ha_typ
-
-# Save
-ggsave(
-  filename = file.path(out_dir, "Cu_by_humic_acid_by_typology.png"),
-  plot = ha_typ,
-  width = 8,
-  height = 5,
-  dpi = 600
-)
-```
-
-# 3. Sensitivity Analysis
+# 2. Sensitivity Analysis
 
 Computed differences in TBL-Cu (nmol/g) within each Sample_ID for each incremental increase in HA (%). To do so, first create ha_sens
 
@@ -302,6 +157,14 @@ View(ha_summary)
 # Save
 library(openxlsx)
 
+# Define output directory
+out_dir <- file.path(getwd(), "Plots of HA SA")
+
+# Create it only if it doesn't exist
+if (!dir.exists(out_dir)) {
+  dir.create(out_dir)
+}
+
 # Create workbook
 wb <- createWorkbook()
 
@@ -359,84 +222,321 @@ writeData(wb, "Overall_Summary", ha_summary_overall)
 saveWorkbook(wb, file = file_path, overwrite = TRUE)
 ```
 
-# 4. Plots of Sensitivity Analysis
+# 3. Difference in bioavailability at 10 and 60% HA by Typology
+
+Paired t-test and Wilcox signed-rank test (parametric and non-parametric). If both are significant = robust difference.
 
 ```{r}
 library(dplyr)
-library(ggplot2)
+library(tidyr)
+library(purrr)
 
-# Prepare the data for plotting, ensure the increments are in order
+#-------------------------------------------------
+# 1. Prepare paired dataset (10% vs 60%)
+#-------------------------------------------------
+ha_ttest_dat <- ha_dat %>%
+  filter(HA_content %in% c(10, 60)) %>%
+  mutate(log_tbl_cu = log10(TBL_Cu_nmol_g)) %>%
+  dplyr::select(Sample_ID, Typology, HA_content, log_tbl_cu) %>%
+  
+  pivot_wider(
+    names_from  = HA_content,
+    values_from = log_tbl_cu,
+    names_prefix = "HA_"
+  ) %>%
+  
+  # Keep only complete pairs
+  filter(!is.na(HA_10), !is.na(HA_60))
 
-ha_summary <- ha_summary %>%
+#-------------------------------------------------
+# 2. Run paired t-test by Typology
+#-------------------------------------------------
+ttest_results <- ha_ttest_dat %>%
+  group_by(Typology) %>%
+  summarise(
+    # Paired t-test
+    t_test = list(t.test(HA_10, HA_60, paired = TRUE)),
+    
+    # Wilcoxon paired test
+    wilcox_test = list(wilcox.test(HA_10, HA_60, paired = TRUE)),
+    
+    mean_10 = mean(HA_10, na.rm = TRUE),
+    mean_60 = mean(HA_60, na.rm = TRUE),
+    
+    .groups = "drop"
+  ) %>%
+  
   mutate(
-    HA_transition = factor(
-      HA_transition,
-      levels = c("10-20","20-30","30-40","40-50","50-60")
-    )
+    t_stat      = map_dbl(t_test, ~ .x$statistic),
+    t_p_value   = map_dbl(t_test, ~ .x$p.value),
+    
+    w_stat      = map_dbl(wilcox_test, ~ .x$statistic),
+    w_p_value   = map_dbl(wilcox_test, ~ .x$p.value)
+  ) %>%
+  
+  dplyr::select(
+    Typology,
+    mean_10,
+    mean_60,
+    t_stat,
+    t_p_value,
+    w_stat,
+    w_p_value
   )
 
-```
-
-## i. LRR
-
-```{r}
-p_logrr <- ggplot(ha_summary,
-       aes(x = HA_transition,
-           y = mean_log_rr,
-           color = Typology,
-           group = Typology)) +
-  
-  geom_line(size = 1.2) +
-  
-  geom_point(size = 2.5) +
-  
-  geom_errorbar(
-    aes(ymin = mean_log_rr - se_log_rr,
-        ymax = mean_log_rr + se_log_rr),
-    width = 0.15,
-    size = 0.8
-  ) +
-  
-  geom_hline(yintercept = 0, linetype = "dashed", color = "black") +
-  
-  labs(
-    x = "Humic Acid Transition (%)",
-    y = expression(Log[10]~LRR~""),
-    color = "Stream Typology",
-    title = "Log Response Ratio"
-  ) +
-  
-  theme_classic(base_size = 14) +
-  theme(legend.position = "none")
-
-p_logrr
-
 # Save
-ggsave(
-  filename = file.path(out_dir, "Cu_LRR_by_typology.png"),
-  plot = p_logrr,
-  width = 8,
-  height = 5,
-  dpi = 600
+library(openxlsx)
+write.xlsx(
+  x = ttest_results,
+  file = file.path(out_dir, "HA10-60_t-test.xlsx"),
+  overwrite = TRUE
 )
 ```
 
-Publication figure
+# 4. Differences in Bioavailability by Typology at 60% HA
+
+Kruskal Wallis test
 
 ```{r}
-library(patchwork)
+# Isolate data for HA 60%
+ha_60 <- ha_dat %>%
+  filter(HA_content == 60) %>%
+  mutate(log_tbl_cu = log10(TBL_Cu_nmol_g)) %>%
+  filter(!is.na(Typology), !is.na(log_tbl_cu))
 
-final_plot <- (ha_typ / p_logrr) +
-  plot_annotation(tag_levels = "A")
+kruskal_res <- kruskal.test(log_tbl_cu ~ Typology, data = ha_60)
 
-final_plot
+kruskal_res
+```
+
+Post hoc comparisonsPost hoc comparisons
+
+```{r}
+library(dplyr)
+library(tibble)
+library(agricolae)
+
+alpha <- 0.05
+
+#-------------------------------------------------
+# 1. Prepare HA = 60% data
+#-------------------------------------------------
+ha_60 <- ha_dat %>%
+  filter(HA_content == 60) %>%
+  mutate(
+    log_tbl_cu = log10(TBL_Cu_nmol_g),
+    Typology = factor(Typology)
+  ) %>%
+  filter(!is.na(Typology), !is.na(log_tbl_cu))
+
+#-------------------------------------------------
+# 2. Kruskal-Wallis test
+#-------------------------------------------------
+kw_test <- kruskal.test(log_tbl_cu ~ Typology, data = ha_60)
+
+kw_test
+
+#-------------------------------------------------
+# 3. Agricolae Kruskal post-hoc letter groups
+#-------------------------------------------------
+k_out <- agricolae::kruskal(
+  y     = ha_60$log_tbl_cu,
+  trt   = ha_60$Typology,
+  alpha = alpha,
+  group = TRUE
+)
+
+#-------------------------------------------------
+# 4. Extract grouping letters
+#-------------------------------------------------
+letters_df <- k_out$groups %>%
+  rownames_to_column("Typology") %>%
+  rename(Letters = groups)
+
+#-------------------------------------------------
+# 5. Combined results table
+#-------------------------------------------------
+kw_letters_results <- letters_df %>%
+  mutate(
+    Variable = "log10_TBL_Cu_HA60",
+    Chi_sq = as.numeric(kw_test$statistic),
+    df = as.numeric(kw_test$parameter),
+    p_value = as.numeric(kw_test$p.value)
+  ) %>%
+  dplyr::select(Variable, Typology, Letters, Chi_sq, df, p_value)
+
+kw_letters_results
+
+#-------------------------------------------------
+# 6. Save
+#-------------------------------------------------
+library(openxlsx)
+file_path <- file.path(out_dir, "KW_test_HA60.xlsx")
+write.xlsx(
+  x = list(
+    "KW_letters" = kw_letters_results,
+    "KW_summary" = data.frame(
+      test    = kw_test$method,
+      variable = "log10_TBL_Cu_HA60",
+      chi_sq  = as.numeric(kw_test$statistic),
+      df      = as.numeric(kw_test$parameter),
+      p_value = kw_test$p.value
+    )
+  ),
+  file = file_path,
+  overwrite = TRUE
+)
+```
+
+# 5. Plots by Typology
+
+Quick re-assignment of letters by Typology at HA=10%
+
+```{r}
+library(dplyr)
+library(tibble)
+library(purrr)
+library(agricolae)
+
+alpha <- 0.05
+
+#-------------------------------------------------
+# 1. Post hoc letters at HA = 10 and HA = 60 only
+#-------------------------------------------------
+ha_letters <- ha_dat %>%
+  filter(HA_content %in% c(10, 60)) %>%
+  mutate(
+    log_tbl_cu = log10(TBL_Cu_nmol_g)
+  ) %>%
+  filter(!is.na(Typology), !is.na(log_tbl_cu)) %>%
+  group_by(HA_content) %>%
+  group_modify(~ {
+    
+    k_out <- agricolae::kruskal(
+      y     = .x$log_tbl_cu,
+      trt   = .x$Typology,
+      alpha = alpha,
+      group = TRUE
+    )
+    
+    k_out$groups %>%
+      rownames_to_column("Typology") %>%
+      rename(Letters = groups)
+  }) %>%
+  ungroup()
+
+#-------------------------------------------------
+# 2. Letter positions
+#-------------------------------------------------
+letter_positions <- ha_dat %>%
+  filter(HA_content %in% c(10, 60)) %>%
+  mutate(log_tbl_cu = log10(TBL_Cu_nmol_g)) %>%
+  group_by(HA_content, Typology) %>%
+  summarise(
+    y_pos = mean(log_tbl_cu, na.rm = TRUE) +
+      sd(log_tbl_cu, na.rm = TRUE) / sqrt(n()) +
+      0.05,
+    .groups = "drop"
+  ) %>%
+  left_join(ha_letters, by = c("HA_content", "Typology"))
+
+# Letters positions
+offset_map <- c(
+  "Pooled" = 0,
+  "Perennial" = 0,
+  "Developed Perennial" = 0,
+  "Non-Perennial" = 0,
+  "Main Stem" = 0.02
+)
+
+letter_positions <- letter_positions %>%
+  mutate(y_offset = offset_map[Typology])
+```
+
+Plot
+
+```{r}
+library(ggplot2)
+
+typology_colors <- c(
+  "Pooled"    = "yellow3",
+  "Perennial" = "#56B4E9",
+  "Developed Perennial" = "#D55E00",
+  "Non-Perennial" = "#009E73",
+  "Main Stem"       = "#999999"
+)
+
+# Set order of typologies
+ha_dat <- ha_dat %>%
+  dplyr::mutate(
+    Typology = factor(
+      Typology,
+      levels = names(typology_colors)
+    )
+  )
+
+ha_typ <- ggplot(
+  ha_dat,
+  aes(
+    x = HA_content,
+    y = log10(TBL_Cu_nmol_g),
+    color = Typology
+  )
+) +
+  
+  stat_summary(
+    fun = mean,
+    geom = "line",
+    size = 1.2
+  ) +
+  
+  stat_summary(
+    fun = mean,
+    geom = "point",
+    size = 2
+  ) +
+  
+  stat_summary(
+    fun.data = mean_se,
+    geom = "errorbar",
+    width = 2,
+    size = 0.8
+  ) +
+  
+  geom_text(
+  data = letter_positions,
+  aes(
+    x = HA_content,
+    y = y_pos + y_offset,   # stagger vertically
+    label = Letters
+  ),
+  position = position_nudge(x = -1.2),  # left shift only
+  color = "black",
+  show.legend = FALSE,
+  size = 4,
+  fontface = "bold"
+) +
+  
+  scale_color_manual(values = typology_colors) +
+  
+  labs(
+    x = "Humic Acid Content (%)",
+    y = expression(log[10]~"TBL-Cu (nmol "~g^{-1}*")"),
+    color = "Stream Typology",
+    title = "Cu Bioavailability with Increasing Humic Acid Content"
+  ) +
+  
+  theme_classic(base_size = 14)
+
+# View
+ha_typ
 
 # Save
 ggsave(
-  filename = file.path(out_dir, "Cu_humic_acid_sensitivity_analysis.png"),
-  plot = final_plot,
+  filename = file.path(out_dir, "Cu_by_humic_acid_by_typology.png"),
+  plot = ha_typ,
   width = 8,
-  height = 10,
+  height = 5,
   dpi = 600
 )
 ```

@@ -1691,7 +1691,306 @@ write.xlsx(
 )
 ```
 
-### f. BL-bound cations
+### f. Publication plot
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(scales)
+library(ggnewscale)
+
+#-------------------------------------------------
+# 1. Typology order
+#-------------------------------------------------
+dat <- dat %>%
+  mutate(
+    Typology = factor(
+      Typology,
+      levels = c(
+        "Pooled",
+        "Non-Perennial",
+        "Perennial",
+        "Developed Perennial",
+        "Main Stem"
+      )
+    )
+  )
+
+#-------------------------------------------------
+# 2. Stacked barplot data: Zn species
+#-------------------------------------------------
+species_vars <- c(
+  "Free_Zn_nM",
+  "ZnOH_nM",
+  "Zn_OH_2_nM",
+  "ZnCO3_nM",
+  "ZnHCO3_nM",
+  "ZnSO4_nM",
+  "ZnCl_nM",
+  "ZnS_nM",
+  "TOrg_Zn_nM"
+)
+
+species_dat <- dat %>%
+  dplyr::select(Typology, all_of(species_vars)) %>%
+  pivot_longer(
+    cols = all_of(species_vars),
+    names_to = "Species",
+    values_to = "conc_nM"
+  ) %>%
+  group_by(Typology, Species) %>%
+  summarise(
+    mean_conc = mean(conc_nM, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    Panel = "a.~Zn~speciation~(nM)",
+    Species = 
+      dplyr::recode(
+      Species,
+      "Free_Zn_nM"  = "Zn²⁺",
+      "ZnOH_nM"     = "ZnOH",
+      "Zn_OH_2_nM"  = "Zn(OH)₂",
+      "ZnCO3_nM"    = "ZnCO₃",
+      "ZnHCO3_nM"   = "ZnHCO₃",
+      "ZnSO4_nM"    = "ZnSO₄",
+      "ZnCl_nM"     = "ZnCl",
+      "ZnS_nM"      = "ZnS",
+      "TOrg_Zn_nM"  = "Organic-Zn"
+    )
+  )
+
+species_levels <- species_dat %>%
+  group_by(Species) %>%
+  summarise(total = sum(mean_conc, na.rm = TRUE), .groups = "drop") %>%
+  arrange(desc(total)) %>%
+  pull(Species)
+
+species_dat <- species_dat %>%
+  mutate(Species = factor(Species, levels = species_levels))
+
+species_colors <- colorRampPalette(
+  c("brown", "yellow", "skyblue", "darkblue")
+)(length(species_levels))
+
+#-------------------------------------------------
+# 3. Boxplot data: free/total Zn and bioavailable Zn
+#-------------------------------------------------
+box_lookup <- c(
+  "rel_prop_Zn"       = "b.~Free~Zn^{2*'+'}/Total~Zn~('%')",
+  "log_TBL_Zn_nmol_g" = "c.~Bioavailable~Zn~(nmol~g^{-1}~wet)~'['~log[10]~']'"
+)
+
+box_colors <- c(
+  "b.~Free~Zn^{2*'+'}/Total~Zn~('%')" = "darkgray",
+  "c.~Bioavailable~Zn~(nmol~g^{-1}~wet)~'['~log[10]~']'" = "darkslategray"
+)
+
+box_dat <- dat %>%
+  dplyr::select(Typology, all_of(names(box_lookup))) %>%
+  pivot_longer(
+    cols = -Typology,
+    names_to = "Variable",
+    values_to = "Value"
+  ) %>%
+  filter(!is.na(Value)) %>%
+  mutate(
+    Panel = box_lookup[Variable],
+    Panel = factor(
+      Panel,
+      levels = c(
+  "a.~Zn~speciation~(nM)",
+  "b.~Free~Zn^{2*'+'}/Total~Zn~('%')",
+  "c.~Bioavailable~Zn~(nmol~g^{-1}~wet)~'['~log[10]~']'"
+      )
+    )
+  )
+
+species_dat <- species_dat %>%
+  mutate(
+    Panel = factor(
+      Panel,
+      levels = levels(box_dat$Panel)
+    )
+  )
+
+
+#-------------------------------------------------
+# 4. Letters for boxplot panels only
+#-------------------------------------------------
+letter_nudge <- c(
+  "b.~Free~Zn^{2*'+'}/Total~Zn~('%')" = 0.05,
+  "c.~Bioavailable~Zn~(nmol~g^{-1}~wet)~'['~log[10]~']'" = 0.7
+)
+
+letters_box <- letters_df %>%
+  filter(Variable %in% names(box_lookup)) %>%
+  mutate(
+    Panel = box_lookup[Variable],
+    Panel = factor(Panel, levels = levels(box_dat$Panel))
+  ) %>%
+  left_join(
+    box_dat %>%
+      group_by(Variable, Typology) %>%
+      summarise(y_max = max(Value, na.rm = TRUE), .groups = "drop"),
+    by = c("Variable", "Typology")
+  ) %>%
+  mutate(
+    y_pos = y_max + letter_nudge[as.character(Panel)]
+  )
+
+letters_species <- letters_df %>%
+  filter(Variable == "Zn_nM") %>%
+  mutate(
+    Panel = factor(
+      "a.~Zn~speciation~(nM)",
+      levels = levels(box_dat$Panel)
+    )
+  ) %>%
+  left_join(
+    species_dat %>%
+      group_by(Typology) %>%
+      summarise(y_max = sum(mean_conc, na.rm = TRUE), .groups = "drop"),
+    by = "Typology"
+  ) %>%
+  mutate(
+    y_pos = y_max * 1.3
+  )
+
+
+# Zn error bars
+zn_error <- dat %>%
+  group_by(Typology) %>%
+  summarise(
+    mean_Zn = mean(Zn_nM, na.rm = TRUE),
+    sd_Zn   = sd(Zn_nM, na.rm = TRUE),
+    n       = sum(!is.na(Zn_nM)),
+    se_Zn   = sd_Zn / sqrt(n),
+    .groups = "drop"
+  ) %>%
+  left_join(
+    species_dat %>%
+      group_by(Typology) %>%
+      summarise(bar_height = sum(mean_conc, na.rm = TRUE), .groups = "drop"),
+    by = "Typology"
+  ) %>%
+  mutate(
+    Panel = factor("a.~Zn~speciation~(nM)", levels = levels(species_dat$Panel)),
+    ymin = bar_height - se_Zn,
+    ymax = bar_height + se_Zn
+  )
+
+#-------------------------------------------------
+# 5. Combined faceted plot
+#-------------------------------------------------
+zn_combined_panel <- ggplot() +
+  
+  # Stacked mean species barplot
+  geom_col(
+    data = species_dat,
+    aes(x = Typology, y = mean_conc, fill = Species),
+    color = "black",
+    linewidth = 0.3
+  ) +
+  scale_fill_manual(
+  values = species_colors,
+  name = "Zn species",
+  guide = guide_legend(nrow = 2, byrow = TRUE)
+) +
+  
+  # Error bars for stacked barplot
+  geom_errorbar(
+  data = zn_error,
+  aes(x = Typology, ymin = ymin, ymax = ymax),
+  inherit.aes = FALSE,
+  width = 0.5,
+  linewidth = 0.5,
+  color = "black"
+) +
+  
+  ggnewscale::new_scale_fill() +
+  
+  # Boxplots
+  geom_boxplot(
+  data = box_dat,
+  aes(x = Typology, y = Value, fill = Panel, color = Panel),
+  width = 0.7,
+  alpha = 0.4,   # slightly more transparent
+  linewidth = 0.3
+) +
+geom_jitter(
+  data = box_dat,
+  aes(x = Typology, y = Value, color = Panel),
+  width = 0.15,
+  size = 0.7,    # slightly smaller points
+  alpha = 0.7
+)  +
+  
+  # Letters for Zn speciation stacked bars
+  geom_text(
+    data = letters_species,
+    aes(x = Typology, y = y_pos, label = Letters),
+    inherit.aes = FALSE,
+    size = 3.5
+  ) +
+  
+  # Letters for boxplot panels
+  geom_text(
+    data = letters_box,
+    aes(x = Typology, y = y_pos, label = Letters),
+    inherit.aes = FALSE,
+    size = 3.5
+  ) +
+  
+  scale_fill_manual(values = box_colors, guide = "none") +
+  scale_color_manual(values = box_colors, guide = "none") +
+  
+    facet_wrap(
+    ~ Panel,
+    scales = "free_y",
+    ncol = 3,
+    labeller = labeller(Panel = label_parsed)
+  ) +
+  
+  labs(
+    title = "Zinc Speciation and Bioavailability by Stream Typology",
+    x = NULL,
+    y = "Value"
+  ) +
+  
+  theme_minimal(base_size = 12) +
+  theme(
+  legend.position = "bottom",
+  legend.justification = "left",
+  legend.background = element_blank(),
+  legend.title = element_text(size = 9),
+  legend.text = element_text(size = 8),
+  legend.box = "horizontal",
+  axis.text.x = element_text(
+    size = 10,
+    angle = 30,
+    hjust = 1,
+    color = "black"
+  ),
+  axis.text.y = element_text(color = "black"),
+  strip.text = element_text(size = 12),
+  plot.title = element_text(size = 14)
+)
+
+zn_combined_panel
+
+# Save
+ggsave(
+  filename = file.path(out_dir, "Zn_pub_plot.png"),
+  plot     = zn_combined_panel,
+  width    = 12,
+  height   = 6,
+  dpi      = 300
+)
+```
+
+### g. BL-bound cations
 
 ```{r}
 library(dplyr)
