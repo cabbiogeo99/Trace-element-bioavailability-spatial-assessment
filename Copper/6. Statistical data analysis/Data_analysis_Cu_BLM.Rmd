@@ -32,9 +32,7 @@ unique(dat$Typology)
 
 # Identifying Important Predictors of Bioavailability
 
-To determine the relative importance of each BLM predictor on trace element bioavailability, we will conduct a multiple linear regressions (MLR), use step wise selection of the most important predictors, and determine their standardized beta coefficients using the formula:
-
-total bioavailable element = sum of BLM predictors (as standardized log-transformed variables)
+To determine the relative importance of each BLM predictor on trace element bioavailability, we will conduct a multiple linear regressions (MLR), determine their standardized beta coefficients, VIF, and relative importance
 
 ## 1. Build and the MLR
 
@@ -179,7 +177,7 @@ library(dplyr)
 library(ggplot2)
 library(broom)
 
-# 1. Extract retained predictors from stepwise model
+# 1. Extract predictors
 retained_vars <- names(coef(full_mod))[-1]  # drop intercept
 
 # 2. Function to get partial residuals for each predictor
@@ -2399,6 +2397,913 @@ addWorksheet(wb, "Log10 variables")
 writeData(wb, "Log10 variables", mle_summary_log)
 
 # 5. Save
+saveWorkbook(wb, file_path, overwrite = TRUE)
+```
+
+## 4. Bioavailability-toxicity relationship
+
+### a. Daphnia
+
+#### i. Chronic toxicity
+
+```{r}
+# Fit linear model
+mod <- lm(log_Cu_Chronic_Tox_Daphnia_M ~ log_TBL_Cu_mol_kg, data = dat)
+
+# View full summary
+summary(mod)
+
+# CIs
+cis <- confint(mod)
+
+# Save
+library(openxlsx)
+
+# 1. Define file path
+file_path <- file.path(out_dir, "Bioavail_predict_chronic_Cu_toxicity_daph.xlsx")
+
+#2. Create workbook and write tables
+wb <- createWorkbook()
+addWorksheet(wb, "Chronic tox ~ bioavail")
+writeData(wb, "Chronic tox ~ bioavail", mod)
+addWorksheet(wb, "Confidence intervals")
+writeData(wb, "Confidence intervals", cis)
+
+# 5. Save
+saveWorkbook(wb, file_path, overwrite = TRUE)
+```
+
+Plot
+
+```{r}
+library(ggplot2)
+
+chronic_plot <- ggplot(dat, aes(x = log_TBL_Cu_mol_kg, y = log_Cu_Chronic_Tox_Daphnia_M)) +
+  
+  # points
+  geom_point(color = "black", size = 2, alpha = 0.7) +
+  
+  # regression line + CI
+  geom_smooth(method = "lm", color = "blue", fill = "lightblue", alpha = 0.3) +
+  
+  labs(
+    y = expression(log[10]~"Chronic Cu Toxicity (M)"),
+    x = expression(log[10]~"Bioavailable Cu (mol kg"^{-1}*")"),
+    title = "Relationship Between Chronic Cu Toxicity Threshold for Daphnia and Bioavailability"
+  ) +
+  
+  theme_classic(base_size = 12)
+
+chronic_plot
+
+# Save
+ggsave(
+  filename = file.path(out_dir, "Chronic_Cu_tox_daph_vs_bioavail.png"),
+  plot = chronic_plot,
+  width = 8,
+  height = 6,
+  units = "in",
+  dpi = 300
+)
+```
+
+Determine the top predictors of chronic toxicity
+
+```{r}
+library(dplyr)
+library(tibble)
+library(car)
+library(relaimpo)
+
+#-------------------------------
+# 1. Define candidate predictors
+#-------------------------------
+vars_to_select <- c(
+  "log_Cu_nM", "log_Temp_C", 
+  "pH", "log_DOC_nM", "log_DIC_nM", "log_Cl_nM", 
+  "log_Ca_nM", "log_Mg_nM", "log_SO4_nM", 
+  "log_Na_nM", "log_K_nM"
+)
+
+#-------------------------------
+# 2. Fit full model
+#-------------------------------
+full_formula <- as.formula(
+  paste("log_Cu_Chronic_Tox_Daphnia_nM ~", paste(vars_to_select, collapse = " + "))
+)
+
+full_mod <- lm(full_formula, data = dat)
+
+#-------------------------------
+# 3. Stepwise model selection
+#-------------------------------
+step_mod <- step(full_mod, direction = "both", trace = TRUE)
+
+#-------------------------------
+# 4. Extract retained estimates
+#-------------------------------
+estimate_table <- broom::tidy(step_mod) %>%
+  filter(term != "(Intercept)") %>%
+  dplyr::select(
+    Variable = term,
+    Estimate = estimate,
+    Std_Error = std.error,
+    p_value = p.value
+  )
+
+#-------------------------------
+# 5. Extract VIF values
+#-------------------------------
+vif_table <- tibble(
+  Variable = names(vif(step_mod)),
+  VIF = as.numeric(vif(step_mod))
+)
+
+#-------------------------------
+# 6. Calculate relative importance
+#-------------------------------
+rel_importance <- calc.relimp(step_mod, type = "lmg", rela = TRUE)
+
+importance_table <- tibble(
+  Variable = names(rel_importance$lmg),
+  Relative_Importance = as.numeric(rel_importance$lmg)
+)
+
+#-------------------------------
+# 7. Combine final table
+#-------------------------------
+final_model_table <- estimate_table %>%
+  left_join(vif_table, by = "Variable") %>%
+  left_join(importance_table, by = "Variable") %>%
+  mutate(
+    across(
+      c(Estimate, Std_Error, p_value, VIF, Relative_Importance),
+      ~ round(.x, 4)
+    )
+  ) %>%
+  arrange(desc(Relative_Importance))
+
+final_model_table
+
+#-------------------------------
+# 8. Model fit statistics
+#-------------------------------
+model_summary <- summary(step_mod)
+
+model_fit_table <- tibble(
+  Metric = c("R_squared", "Adjusted_R_squared"),
+  Value  = c(
+    model_summary$r.squared,
+    model_summary$adj.r.squared
+  )
+) %>%
+  mutate(Value = round(Value, 4))
+
+# Save
+library(openxlsx)
+
+file_path <- file.path(out_dir, "Chronic_Cu_toxicity_threshold_daph_MLR.xlsx")
+
+wb <- createWorkbook()
+
+addWorksheet(wb, "Stepwise selected model")
+writeData(wb, "Stepwise selected model", final_model_table)
+
+addWorksheet(wb, "Model fit")
+writeData(wb, "Model fit", model_fit_table)
+
+saveWorkbook(wb, file_path, overwrite = TRUE)
+```
+
+Simple MLR
+
+```{r}
+library(dplyr)
+library(tibble)
+library(car)
+library(relaimpo)
+
+#-------------------------------
+# 1. Define candidate predictors ################ change
+#-------------------------------
+vars_to_select <- c(
+  "log_DOC_nM", "pH", "log_Cu_nM", "log_K_nM"
+)
+
+#-------------------------------
+# 2. Fit full model
+#-------------------------------
+full_formula <- as.formula(
+  paste("log_Cu_Chronic_Tox_Daphnia_nM ~", paste(vars_to_select, collapse = " + "))
+)
+
+full_mod <- lm(full_formula, data = dat)
+
+#-------------------------------
+# 3. Stepwise model selection
+#-------------------------------
+step_mod <- step(full_mod, direction = "both", trace = TRUE)
+
+#-------------------------------
+# 4. Extract retained estimates
+#-------------------------------
+estimate_table <- broom::tidy(step_mod) %>%
+  filter(term != "(Intercept)") %>%
+  dplyr::select(
+    Variable = term,
+    Estimate = estimate,
+    Std_Error = std.error,
+    p_value = p.value
+  )
+
+#-------------------------------
+# 5. Extract VIF values
+#-------------------------------
+vif_table <- tibble(
+  Variable = names(vif(step_mod)),
+  VIF = as.numeric(vif(step_mod))
+)
+
+#-------------------------------
+# 6. Calculate relative importance
+#-------------------------------
+rel_importance <- calc.relimp(step_mod, type = "lmg", rela = TRUE)
+
+importance_table <- tibble(
+  Variable = names(rel_importance$lmg),
+  Relative_Importance = as.numeric(rel_importance$lmg)
+)
+
+#-------------------------------
+# 7. Combine final table
+#-------------------------------
+final_model_table <- estimate_table %>%
+  left_join(vif_table, by = "Variable") %>%
+  left_join(importance_table, by = "Variable") %>%
+  mutate(
+    across(
+      c(Estimate, Std_Error, p_value, VIF, Relative_Importance),
+      ~ round(.x, 4)
+    )
+  ) %>%
+  arrange(desc(Relative_Importance))
+
+final_model_table
+
+#-------------------------------
+# 8. Model fit statistics
+#-------------------------------
+model_summary <- summary(step_mod)
+
+model_fit_table <- tibble(
+  Metric = c("R_squared", "Adjusted_R_squared"),
+  Value  = c(
+    model_summary$r.squared,
+    model_summary$adj.r.squared
+  )
+) %>%
+  mutate(Value = round(Value, 4))
+
+# Save
+library(openxlsx)
+
+file_path <- file.path(out_dir, "Chronic_Cu_toxicity_threshold_daph_simple_MLR.xlsx")
+
+wb <- createWorkbook()
+
+addWorksheet(wb, "Stepwise selected model")
+writeData(wb, "Stepwise selected model", final_model_table)
+
+addWorksheet(wb, "Model fit")
+writeData(wb, "Model fit", model_fit_table)
+
+saveWorkbook(wb, file_path, overwrite = TRUE)
+```
+
+### b. Acute toxicity
+
+```{r}
+# Fit linear model
+mod <- lm(log_Cu_Acute_Tox_Daphnia_M ~ log_TBL_Cu_mol_kg, data = dat)
+
+# View full summary
+summary(mod)
+
+# CIs
+cis <- confint(mod)
+
+# Save
+library(openxlsx)
+
+# 1. Define file path
+file_path <- file.path(out_dir, "Bioavail_predict_acute_Cu_toxicity_daph.xlsx")
+
+#2. Create workbook and write tables
+wb <- createWorkbook()
+addWorksheet(wb, "Chronic tox ~ bioavail")
+writeData(wb, "Chronic tox ~ bioavail", mod)
+addWorksheet(wb, "Confidence intervals")
+writeData(wb, "Confidence intervals", cis)
+
+# 5. Save
+saveWorkbook(wb, file_path, overwrite = TRUE)
+```
+
+Plot
+
+```{r}
+library(ggplot2)
+
+acute_plot <- ggplot(dat, aes(x = log_TBL_Cu_mol_kg, y = log_Cu_Acute_Tox_Daphnia_M)) +
+  
+  # points
+  geom_point(color = "black", size = 2, alpha = 0.7) +
+  
+  # regression line + CI
+  geom_smooth(method = "lm", color = "red", fill = "pink", alpha = 0.3) +
+  
+  labs(
+    y = expression(log[10]~"Acute Cu Toxicity (M)"),
+    x = expression(log[10]~"Bioavailable Cu (mol kg"^{-1}*")"),
+    title = "Relationship Between Acute Cu Toxicity Threshold for Daphnia and Bioavailability"
+  ) +
+  
+  theme_classic(base_size = 12)
+
+chronic_plot
+
+# Save
+ggsave(
+  filename = file.path(out_dir, "Acute_Cu_tox_daph_vs_bioavail.png"),
+  plot = acute_plot,
+  width = 8,
+  height = 6,
+  units = "in",
+  dpi = 300
+)
+```
+
+Determine top predictors of acute toxicity
+
+```{r}
+library(dplyr)
+library(tibble)
+library(car)
+library(relaimpo)
+
+#-------------------------------
+# 1. Define candidate predictors
+#-------------------------------
+vars_to_select <- c(
+  "log_Cu_nM", "log_Temp_C", 
+  "pH", "log_DOC_nM", "log_DIC_nM", "log_Cl_nM", 
+  "log_Ca_nM", "log_Mg_nM", "log_SO4_nM", 
+  "log_Na_nM", "log_K_nM"
+)
+
+#-------------------------------
+# 2. Fit full model
+#-------------------------------
+full_formula <- as.formula(
+  paste("log_Cu_Acute_Tox_Daphnia_M ~", paste(vars_to_select, collapse = " + "))
+)
+
+full_mod <- lm(full_formula, data = dat)
+
+#-------------------------------
+# 3. Stepwise model selection
+#-------------------------------
+step_mod <- step(full_mod, direction = "both", trace = TRUE)
+
+#-------------------------------
+# 4. Extract retained estimates
+#-------------------------------
+estimate_table <- broom::tidy(step_mod) %>%
+  filter(term != "(Intercept)") %>%
+  dplyr::select(
+    Variable = term,
+    Estimate = estimate,
+    Std_Error = std.error,
+    p_value = p.value
+  )
+
+#-------------------------------
+# 5. Extract VIF values
+#-------------------------------
+vif_table <- tibble(
+  Variable = names(vif(step_mod)),
+  VIF = as.numeric(vif(step_mod))
+)
+
+#-------------------------------
+# 6. Calculate relative importance
+#-------------------------------
+rel_importance <- calc.relimp(step_mod, type = "lmg", rela = TRUE)
+
+importance_table <- tibble(
+  Variable = names(rel_importance$lmg),
+  Relative_Importance = as.numeric(rel_importance$lmg)
+)
+
+#-------------------------------
+# 7. Combine final table
+#-------------------------------
+final_model_table <- estimate_table %>%
+  left_join(vif_table, by = "Variable") %>%
+  left_join(importance_table, by = "Variable") %>%
+  mutate(
+    across(
+      c(Estimate, Std_Error, p_value, VIF, Relative_Importance),
+      ~ round(.x, 4)
+    )
+  ) %>%
+  arrange(desc(Relative_Importance))
+
+final_model_table
+
+#-------------------------------
+# 8. Model fit statistics
+#-------------------------------
+model_summary <- summary(step_mod)
+
+model_fit_table <- tibble(
+  Metric = c("R_squared", "Adjusted_R_squared"),
+  Value  = c(
+    model_summary$r.squared,
+    model_summary$adj.r.squared
+  )
+) %>%
+  mutate(Value = round(Value, 4))
+
+# Save
+library(openxlsx)
+
+file_path <- file.path(out_dir, "Acute_Cu_toxicity_threshold_daph_MLR.xlsx")
+
+wb <- createWorkbook()
+
+addWorksheet(wb, "Stepwise selected model")
+writeData(wb, "Stepwise selected model", final_model_table)
+
+addWorksheet(wb, "Model fit")
+writeData(wb, "Model fit", model_fit_table)
+
+saveWorkbook(wb, file_path, overwrite = TRUE)
+```
+
+Simple MLR
+
+```{r}
+library(dplyr)
+library(tibble)
+library(car)
+library(relaimpo)
+
+#-------------------------------
+# 1. Define candidate predictors ################ change
+#-------------------------------
+vars_to_select <- c(
+  "log_DOC_nM", "pH", "log_Cu_nM", "log_K_nM"
+)
+
+#-------------------------------
+# 2. Fit full model
+#-------------------------------
+full_formula <- as.formula(
+  paste("log_Cu_Acute_Tox_Daphnia_nM ~", paste(vars_to_select, collapse = " + "))
+)
+
+full_mod <- lm(full_formula, data = dat)
+
+#-------------------------------
+# 3. Stepwise model selection
+#-------------------------------
+step_mod <- step(full_mod, direction = "both", trace = TRUE)
+
+#-------------------------------
+# 4. Extract retained estimates
+#-------------------------------
+estimate_table <- broom::tidy(step_mod) %>%
+  filter(term != "(Intercept)") %>%
+  dplyr::select(
+    Variable = term,
+    Estimate = estimate,
+    Std_Error = std.error,
+    p_value = p.value
+  )
+
+#-------------------------------
+# 5. Extract VIF values
+#-------------------------------
+vif_table <- tibble(
+  Variable = names(vif(step_mod)),
+  VIF = as.numeric(vif(step_mod))
+)
+
+#-------------------------------
+# 6. Calculate relative importance
+#-------------------------------
+rel_importance <- calc.relimp(step_mod, type = "lmg", rela = TRUE)
+
+importance_table <- tibble(
+  Variable = names(rel_importance$lmg),
+  Relative_Importance = as.numeric(rel_importance$lmg)
+)
+
+#-------------------------------
+# 7. Combine final table
+#-------------------------------
+final_model_table <- estimate_table %>%
+  left_join(vif_table, by = "Variable") %>%
+  left_join(importance_table, by = "Variable") %>%
+  mutate(
+    across(
+      c(Estimate, Std_Error, p_value, VIF, Relative_Importance),
+      ~ round(.x, 4)
+    )
+  ) %>%
+  arrange(desc(Relative_Importance))
+
+final_model_table
+
+#-------------------------------
+# 8. Model fit statistics
+#-------------------------------
+model_summary <- summary(step_mod)
+
+model_fit_table <- tibble(
+  Metric = c("R_squared", "Adjusted_R_squared"),
+  Value  = c(
+    model_summary$r.squared,
+    model_summary$adj.r.squared
+  )
+) %>%
+  mutate(Value = round(Value, 4))
+
+# Save
+library(openxlsx)
+
+file_path <- file.path(out_dir, "Acute_Cu_toxicity_threshold_daph_simple_MLR.xlsx")
+
+wb <- createWorkbook()
+
+addWorksheet(wb, "Stepwise selected model")
+writeData(wb, "Stepwise selected model", final_model_table)
+
+addWorksheet(wb, "Model fit")
+writeData(wb, "Model fit", model_fit_table)
+
+saveWorkbook(wb, file_path, overwrite = TRUE)
+```
+
+### b. Fathead minnow
+
+#### i. Chronic toxicity
+
+```{r}
+# Fit linear model
+mod <- lm(log_Cu_Chronic_Tox_Minnow_M ~ log_TBL_Cu_mol_kg, data = dat)
+
+# View full summary
+summary(mod)
+
+# CIs
+cis <- confint(mod)
+
+# Save
+library(openxlsx)
+
+# 1. Define file path
+file_path <- file.path(out_dir, "Bioavail_predict_chronic_Cu_toxicity_minnow.xlsx")
+
+#2. Create workbook and write tables
+wb <- createWorkbook()
+addWorksheet(wb, "Chronic tox ~ bioavail")
+writeData(wb, "Chronic tox ~ bioavail", mod)
+addWorksheet(wb, "Confidence intervals")
+writeData(wb, "Confidence intervals", cis)
+
+# 5. Save
+saveWorkbook(wb, file_path, overwrite = TRUE)
+```
+
+Determine top predictors of chronic tox
+
+```{r}
+library(dplyr)
+library(tibble)
+library(car)
+library(relaimpo)
+
+#-------------------------------
+# 1. Define candidate predictors
+#-------------------------------
+vars_to_select <- c(
+  "log_Cu_nM", "log_Temp_C", 
+  "pH", "log_DOC_nM", "log_DIC_nM", "log_Cl_nM", 
+  "log_Ca_nM", "log_Mg_nM", "log_SO4_nM", 
+  "log_Na_nM", "log_K_nM"
+)
+
+#-------------------------------
+# 2. Fit full model
+#-------------------------------
+full_formula <- as.formula(
+  paste("log_Cu_Chronic_Tox_Minnow_M ~", paste(vars_to_select, collapse = " + "))
+)
+
+full_mod <- lm(full_formula, data = dat)
+
+#-------------------------------
+# 3. Stepwise model selection
+#-------------------------------
+step_mod <- step(full_mod, direction = "both", trace = TRUE)
+
+#-------------------------------
+# 4. Extract retained estimates
+#-------------------------------
+estimate_table <- broom::tidy(step_mod) %>%
+  filter(term != "(Intercept)") %>%
+  dplyr::select(
+    Variable = term,
+    Estimate = estimate,
+    Std_Error = std.error,
+    p_value = p.value
+  )
+
+#-------------------------------
+# 5. Extract VIF values
+#-------------------------------
+vif_table <- tibble(
+  Variable = names(vif(step_mod)),
+  VIF = as.numeric(vif(step_mod))
+)
+
+#-------------------------------
+# 6. Calculate relative importance
+#-------------------------------
+rel_importance <- calc.relimp(step_mod, type = "lmg", rela = TRUE)
+
+importance_table <- tibble(
+  Variable = names(rel_importance$lmg),
+  Relative_Importance = as.numeric(rel_importance$lmg)
+)
+
+#-------------------------------
+# 7. Combine final table
+#-------------------------------
+final_model_table <- estimate_table %>%
+  left_join(vif_table, by = "Variable") %>%
+  left_join(importance_table, by = "Variable") %>%
+  mutate(
+    across(
+      c(Estimate, Std_Error, p_value, VIF, Relative_Importance),
+      ~ round(.x, 4)
+    )
+  ) %>%
+  arrange(desc(Relative_Importance))
+
+final_model_table
+
+#-------------------------------
+# 8. Model fit statistics
+#-------------------------------
+model_summary <- summary(step_mod)
+
+model_fit_table <- tibble(
+  Metric = c("R_squared", "Adjusted_R_squared"),
+  Value  = c(
+    model_summary$r.squared,
+    model_summary$adj.r.squared
+  )
+) %>%
+  mutate(Value = round(Value, 4))
+
+# Save
+library(openxlsx)
+
+file_path <- file.path(out_dir, "Chronic_Cu_toxicity_threshold_minnow_MLR.xlsx")
+
+wb <- createWorkbook()
+
+addWorksheet(wb, "Stepwise selected model")
+writeData(wb, "Stepwise selected model", final_model_table)
+
+addWorksheet(wb, "Model fit")
+writeData(wb, "Model fit", model_fit_table)
+
+saveWorkbook(wb, file_path, overwrite = TRUE)
+```
+
+Simple MLR
+
+```{r}
+library(dplyr)
+library(tibble)
+library(car)
+library(relaimpo)
+
+#-------------------------------
+# 1. Define candidate predictors ################ change
+#-------------------------------
+vars_to_select <- c(
+  "log_DOC_nM", "pH", "log_Cu_nM", "log_K_nM"
+)
+
+#-------------------------------
+# 2. Fit full model
+#-------------------------------
+full_formula <- as.formula(
+  paste("log_Cu_Chronic_Tox_Minnow_nM ~", paste(vars_to_select, collapse = " + "))
+)
+
+full_mod <- lm(full_formula, data = dat)
+
+#-------------------------------
+# 3. Stepwise model selection
+#-------------------------------
+step_mod <- step(full_mod, direction = "both", trace = TRUE)
+
+#-------------------------------
+# 4. Extract retained estimates
+#-------------------------------
+estimate_table <- broom::tidy(step_mod) %>%
+  filter(term != "(Intercept)") %>%
+  dplyr::select(
+    Variable = term,
+    Estimate = estimate,
+    Std_Error = std.error,
+    p_value = p.value
+  )
+
+#-------------------------------
+# 5. Extract VIF values
+#-------------------------------
+vif_table <- tibble(
+  Variable = names(vif(step_mod)),
+  VIF = as.numeric(vif(step_mod))
+)
+
+#-------------------------------
+# 6. Calculate relative importance
+#-------------------------------
+rel_importance <- calc.relimp(step_mod, type = "lmg", rela = TRUE)
+
+importance_table <- tibble(
+  Variable = names(rel_importance$lmg),
+  Relative_Importance = as.numeric(rel_importance$lmg)
+)
+
+#-------------------------------
+# 7. Combine final table
+#-------------------------------
+final_model_table <- estimate_table %>%
+  left_join(vif_table, by = "Variable") %>%
+  left_join(importance_table, by = "Variable") %>%
+  mutate(
+    across(
+      c(Estimate, Std_Error, p_value, VIF, Relative_Importance),
+      ~ round(.x, 4)
+    )
+  ) %>%
+  arrange(desc(Relative_Importance))
+
+final_model_table
+
+#-------------------------------
+# 8. Model fit statistics
+#-------------------------------
+model_summary <- summary(step_mod)
+
+model_fit_table <- tibble(
+  Metric = c("R_squared", "Adjusted_R_squared"),
+  Value  = c(
+    model_summary$r.squared,
+    model_summary$adj.r.squared
+  )
+) %>%
+  mutate(Value = round(Value, 4))
+
+# Save
+library(openxlsx)
+
+file_path <- file.path(out_dir, "Chronic_Cu_toxicity_threshold_minnow_simple_MLR.xlsx")
+
+wb <- createWorkbook()
+
+addWorksheet(wb, "Stepwise selected model")
+writeData(wb, "Stepwise selected model", final_model_table)
+
+addWorksheet(wb, "Model fit")
+writeData(wb, "Model fit", model_fit_table)
+
+saveWorkbook(wb, file_path, overwrite = TRUE)
+```
+
+#### ii. Acute toxicity
+
+Simple MLR
+
+```{r}
+library(dplyr)
+library(tibble)
+library(car)
+library(relaimpo)
+
+#-------------------------------
+# 1. Define candidate predictors ################ change
+#-------------------------------
+vars_to_select <- c(
+  "log_DOC_nM", "pH", "log_Cu_nM", "log_K_nM"
+)
+
+#-------------------------------
+# 2. Fit full model
+#-------------------------------
+full_formula <- as.formula(
+  paste("log_Cu_Acute_Tox_Minnow_nM ~", paste(vars_to_select, collapse = " + "))
+)
+
+full_mod <- lm(full_formula, data = dat)
+
+#-------------------------------
+# 3. Stepwise model selection
+#-------------------------------
+step_mod <- step(full_mod, direction = "both", trace = TRUE)
+
+#-------------------------------
+# 4. Extract retained estimates
+#-------------------------------
+estimate_table <- broom::tidy(step_mod) %>%
+  filter(term != "(Intercept)") %>%
+  dplyr::select(
+    Variable = term,
+    Estimate = estimate,
+    Std_Error = std.error,
+    p_value = p.value
+  )
+
+#-------------------------------
+# 5. Extract VIF values
+#-------------------------------
+vif_table <- tibble(
+  Variable = names(vif(step_mod)),
+  VIF = as.numeric(vif(step_mod))
+)
+
+#-------------------------------
+# 6. Calculate relative importance
+#-------------------------------
+rel_importance <- calc.relimp(step_mod, type = "lmg", rela = TRUE)
+
+importance_table <- tibble(
+  Variable = names(rel_importance$lmg),
+  Relative_Importance = as.numeric(rel_importance$lmg)
+)
+
+#-------------------------------
+# 7. Combine final table
+#-------------------------------
+final_model_table <- estimate_table %>%
+  left_join(vif_table, by = "Variable") %>%
+  left_join(importance_table, by = "Variable") %>%
+  mutate(
+    across(
+      c(Estimate, Std_Error, p_value, VIF, Relative_Importance),
+      ~ round(.x, 4)
+    )
+  ) %>%
+  arrange(desc(Relative_Importance))
+
+final_model_table
+
+#-------------------------------
+# 8. Model fit statistics
+#-------------------------------
+model_summary <- summary(step_mod)
+
+model_fit_table <- tibble(
+  Metric = c("R_squared", "Adjusted_R_squared"),
+  Value  = c(
+    model_summary$r.squared,
+    model_summary$adj.r.squared
+  )
+) %>%
+  mutate(Value = round(Value, 4))
+
+# Save
+library(openxlsx)
+
+file_path <- file.path(out_dir, "Acute_Cu_toxicity_threshold_minnow_simple_MLR.xlsx")
+
+wb <- createWorkbook()
+
+addWorksheet(wb, "Stepwise selected model")
+writeData(wb, "Stepwise selected model", final_model_table)
+
+addWorksheet(wb, "Model fit")
+writeData(wb, "Model fit", model_fit_table)
+
 saveWorkbook(wb, file_path, overwrite = TRUE)
 ```
 

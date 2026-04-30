@@ -389,10 +389,8 @@ head(dat)</code></pre>
 <h1>Identifying Important Predictors of Bioavailability</h1>
 <p>To determine the relative importance of each BLM predictor on trace
 element bioavailability, we will conduct a multiple linear regressions
-(MLR), use step wise selection of the most important predictors, and
-determine their standardized beta coefficients using the formula:</p>
-<p>total bioavailable element = sum of BLM predictors (as standardized
-log-transformed variables)</p>
+(MLR), determine their standardized beta coefficients, VIF, and relative
+importance</p>
 <div id="build-and-the-mlr" class="section level2">
 <h2>1. Build and the MLR</h2>
 <p>Use log-transformed and standardized variables</p>
@@ -583,7 +581,7 @@ library(ggplot2)</code></pre>
 <pre><code>## Warning: package &#39;ggplot2&#39; was built under R version 4.5.2</code></pre>
 <pre class="r"><code>library(broom)
 
-# 1. Extract retained predictors from stepwise model
+# 1. Extract predictors
 retained_vars &lt;- names(coef(full_mod))[-1]  # drop intercept
 
 # 2. Function to get partial residuals for each predictor
@@ -6418,6 +6416,1151 @@ writeData(wb, &quot;Log10 variables&quot;, mle_summary_log)
 
 # 5. Save
 saveWorkbook(wb, file_path, overwrite = TRUE)</code></pre>
+</div>
+<div id="bioavailability-toxicity-relationship" class="section level2">
+<h2>4. Bioavailability-toxicity relationship</h2>
+<div id="a.-daphnia" class="section level3">
+<h3>a. Daphnia</h3>
+<div id="i.-chronic-toxicity" class="section level4">
+<h4>i. Chronic toxicity</h4>
+<pre class="r"><code># Fit linear model
+mod &lt;- lm(log_Cu_Chronic_Tox_Daphnia_M ~ log_TBL_Cu_mol_kg, data = dat)
+
+# View full summary
+summary(mod)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = log_Cu_Chronic_Tox_Daphnia_M ~ log_TBL_Cu_mol_kg, 
+##     data = dat)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -1.60413 -0.25708  0.05798  0.27172  0.94789 
+## 
+## Coefficients:
+##                   Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)       -6.68383    0.62121 -10.759   &lt;2e-16 ***
+## log_TBL_Cu_mol_kg  0.02356    0.04488   0.525      0.6    
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 0.4143 on 384 degrees of freedom
+## Multiple R-squared:  0.0007172,  Adjusted R-squared:  -0.001885 
+## F-statistic: 0.2756 on 1 and 384 DF,  p-value: 0.5999</code></pre>
+<pre class="r"><code># CIs
+cis &lt;- confint(mod)
+
+# Save
+library(openxlsx)
+
+# 1. Define file path
+file_path &lt;- file.path(out_dir, &quot;Bioavail_predict_chronic_Cu_toxicity_daph.xlsx&quot;)
+
+#2. Create workbook and write tables
+wb &lt;- createWorkbook()
+addWorksheet(wb, &quot;Chronic tox ~ bioavail&quot;)
+writeData(wb, &quot;Chronic tox ~ bioavail&quot;, mod)
+addWorksheet(wb, &quot;Confidence intervals&quot;)
+writeData(wb, &quot;Confidence intervals&quot;, cis)
+
+# 5. Save
+saveWorkbook(wb, file_path, overwrite = TRUE)</code></pre>
+<p>Plot</p>
+<pre class="r"><code>library(ggplot2)
+
+chronic_plot &lt;- ggplot(dat, aes(x = log_TBL_Cu_mol_kg, y = log_Cu_Chronic_Tox_Daphnia_M)) +
+  
+  # points
+  geom_point(color = &quot;black&quot;, size = 2, alpha = 0.7) +
+  
+  # regression line + CI
+  geom_smooth(method = &quot;lm&quot;, color = &quot;blue&quot;, fill = &quot;lightblue&quot;, alpha = 0.3) +
+  
+  labs(
+    y = expression(log[10]~&quot;Chronic Cu Toxicity (M)&quot;),
+    x = expression(log[10]~&quot;Bioavailable Cu (mol kg&quot;^{-1}*&quot;)&quot;),
+    title = &quot;Relationship Between Chronic Cu Toxicity Threshold for Daphnia and Bioavailability&quot;
+  ) +
+  
+  theme_classic(base_size = 12)
+
+chronic_plot</code></pre>
+<pre><code>## `geom_smooth()` using formula = &#39;y ~ x&#39;</code></pre>
+<pre class="r"><code># Save
+ggsave(
+  filename = file.path(out_dir, &quot;Chronic_Cu_tox_daph_vs_bioavail.png&quot;),
+  plot = chronic_plot,
+  width = 8,
+  height = 6,
+  units = &quot;in&quot;,
+  dpi = 300
+)</code></pre>
+<pre><code>## `geom_smooth()` using formula = &#39;y ~ x&#39;</code></pre>
+<p>Determine the top predictors of chronic toxicity</p>
+<pre class="r"><code>library(dplyr)
+library(tibble)
+library(car)
+library(relaimpo)
+
+#-------------------------------
+# 1. Define candidate predictors
+#-------------------------------
+vars_to_select &lt;- c(
+  &quot;log_Cu_nM&quot;, &quot;log_Temp_C&quot;, 
+  &quot;pH&quot;, &quot;log_DOC_nM&quot;, &quot;log_DIC_nM&quot;, &quot;log_Cl_nM&quot;, 
+  &quot;log_Ca_nM&quot;, &quot;log_Mg_nM&quot;, &quot;log_SO4_nM&quot;, 
+  &quot;log_Na_nM&quot;, &quot;log_K_nM&quot;
+)
+
+#-------------------------------
+# 2. Fit full model
+#-------------------------------
+full_formula &lt;- as.formula(
+  paste(&quot;log_Cu_Chronic_Tox_Daphnia_nM ~&quot;, paste(vars_to_select, collapse = &quot; + &quot;))
+)
+
+full_mod &lt;- lm(full_formula, data = dat)
+
+#-------------------------------
+# 3. Stepwise model selection
+#-------------------------------
+step_mod &lt;- step(full_mod, direction = &quot;both&quot;, trace = TRUE)</code></pre>
+<pre><code>## Start:  AIC=-2365.74
+## log_Cu_Chronic_Tox_Daphnia_nM ~ log_Cu_nM + log_Temp_C + pH + 
+##     log_DOC_nM + log_DIC_nM + log_Cl_nM + log_Ca_nM + log_Mg_nM + 
+##     log_SO4_nM + log_Na_nM + log_K_nM
+## 
+##              Df Sum of Sq     RSS     AIC
+## - log_DIC_nM  1    0.0009  0.7913 -2367.3
+## - log_Na_nM   1    0.0015  0.7919 -2367.0
+## &lt;none&gt;                     0.7904 -2365.7
+## - log_Mg_nM   1    0.0056  0.7960 -2365.0
+## - log_K_nM    1    0.0108  0.8012 -2362.5
+## - log_Cu_nM   1    0.0151  0.8055 -2360.4
+## - log_Ca_nM   1    0.0154  0.8058 -2360.3
+## - log_Cl_nM   1    0.0178  0.8082 -2359.2
+## - log_SO4_nM  1    0.0191  0.8096 -2358.5
+## - log_Temp_C  1    0.1624  0.9528 -2295.6
+## - log_DOC_nM  1   12.1302 12.9206 -1289.2
+## - pH          1   15.3333 16.1238 -1203.8
+## 
+## Step:  AIC=-2367.31
+## log_Cu_Chronic_Tox_Daphnia_nM ~ log_Cu_nM + log_Temp_C + pH + 
+##     log_DOC_nM + log_Cl_nM + log_Ca_nM + log_Mg_nM + log_SO4_nM + 
+##     log_Na_nM + log_K_nM
+## 
+##              Df Sum of Sq     RSS     AIC
+## - log_Na_nM   1    0.0017  0.7930 -2368.5
+## &lt;none&gt;                     0.7913 -2367.3
+## + log_DIC_nM  1    0.0009  0.7904 -2365.7
+## - log_Mg_nM   1    0.0084  0.7997 -2365.2
+## - log_K_nM    1    0.0109  0.8022 -2364.0
+## - log_Cu_nM   1    0.0152  0.8066 -2361.9
+## - log_Cl_nM   1    0.0173  0.8086 -2361.0
+## - log_SO4_nM  1    0.0187  0.8100 -2360.3
+## - log_Ca_nM   1    0.0563  0.8476 -2342.8
+## - log_Temp_C  1    0.1665  0.9578 -2295.6
+## - log_DOC_nM  1   12.3150 13.1063 -1285.7
+## - pH          1   15.5260 16.3173 -1201.2
+## 
+## Step:  AIC=-2368.47
+## log_Cu_Chronic_Tox_Daphnia_nM ~ log_Cu_nM + log_Temp_C + pH + 
+##     log_DOC_nM + log_Cl_nM + log_Ca_nM + log_Mg_nM + log_SO4_nM + 
+##     log_K_nM
+## 
+##              Df Sum of Sq     RSS     AIC
+## &lt;none&gt;                     0.7930 -2368.5
+## + log_Na_nM   1    0.0017  0.7913 -2367.3
+## + log_DIC_nM  1    0.0011  0.7919 -2367.0
+## - log_K_nM    1    0.0093  0.8023 -2366.0
+## - log_Mg_nM   1    0.0097  0.8027 -2365.8
+## - log_Cu_nM   1    0.0150  0.8080 -2363.3
+## - log_SO4_nM  1    0.0287  0.8217 -2356.7
+## - log_Cl_nM   1    0.0391  0.8322 -2351.9
+## - log_Ca_nM   1    0.0546  0.8476 -2344.8
+## - log_Temp_C  1    0.1661  0.9591 -2297.1
+## - log_DOC_nM  1   12.6285 13.4215 -1278.6
+## - pH          1   15.5597 16.3527 -1202.3</code></pre>
+<pre class="r"><code>#-------------------------------
+# 4. Extract retained estimates
+#-------------------------------
+estimate_table &lt;- broom::tidy(step_mod) %&gt;%
+  filter(term != &quot;(Intercept)&quot;) %&gt;%
+  dplyr::select(
+    Variable = term,
+    Estimate = estimate,
+    Std_Error = std.error,
+    p_value = p.value
+  )
+
+#-------------------------------
+# 5. Extract VIF values
+#-------------------------------
+vif_table &lt;- tibble(
+  Variable = names(vif(step_mod)),
+  VIF = as.numeric(vif(step_mod))
+)
+
+#-------------------------------
+# 6. Calculate relative importance
+#-------------------------------
+rel_importance &lt;- calc.relimp(step_mod, type = &quot;lmg&quot;, rela = TRUE)
+
+importance_table &lt;- tibble(
+  Variable = names(rel_importance$lmg),
+  Relative_Importance = as.numeric(rel_importance$lmg)
+)
+
+#-------------------------------
+# 7. Combine final table
+#-------------------------------
+final_model_table &lt;- estimate_table %&gt;%
+  left_join(vif_table, by = &quot;Variable&quot;) %&gt;%
+  left_join(importance_table, by = &quot;Variable&quot;) %&gt;%
+  mutate(
+    across(
+      c(Estimate, Std_Error, p_value, VIF, Relative_Importance),
+      ~ round(.x, 4)
+    )
+  ) %&gt;%
+  arrange(desc(Relative_Importance))
+
+final_model_table</code></pre>
+<pre><code>## # A tibble: 9 × 6
+##   Variable   Estimate Std_Error p_value   VIF Relative_Importance
+##   &lt;chr&gt;         &lt;dbl&gt;     &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt;               &lt;dbl&gt;
+## 1 log_DOC_nM   0.922     0.0119  0       2.86              0.333 
+## 2 pH           0.547     0.0064  0       1.37              0.263 
+## 3 log_Cu_nM    0.0157    0.0059  0.0081  2.54              0.136 
+## 4 log_K_nM     0.037     0.0176  0.0364  3.05              0.130 
+## 5 log_SO4_nM  -0.0378    0.0103  0.0003  3.18              0.0628
+## 6 log_Temp_C   0.146     0.0165  0       1.18              0.0232
+## 7 log_Ca_nM    0.0879    0.0173  0       3.47              0.0176
+## 8 log_Mg_nM    0.0435    0.0203  0.0326  4.11              0.017 
+## 9 log_Cl_nM    0.0363    0.0084  0       2.18              0.0167</code></pre>
+<pre class="r"><code>#-------------------------------
+# 8. Model fit statistics
+#-------------------------------
+model_summary &lt;- summary(step_mod)
+
+model_fit_table &lt;- tibble(
+  Metric = c(&quot;R_squared&quot;, &quot;Adjusted_R_squared&quot;),
+  Value  = c(
+    model_summary$r.squared,
+    model_summary$adj.r.squared
+  )
+) %&gt;%
+  mutate(Value = round(Value, 4))
+
+# Save
+library(openxlsx)
+
+file_path &lt;- file.path(out_dir, &quot;Chronic_Cu_toxicity_threshold_daph_MLR.xlsx&quot;)
+
+wb &lt;- createWorkbook()
+
+addWorksheet(wb, &quot;Stepwise selected model&quot;)
+writeData(wb, &quot;Stepwise selected model&quot;, final_model_table)
+
+addWorksheet(wb, &quot;Model fit&quot;)
+writeData(wb, &quot;Model fit&quot;, model_fit_table)
+
+saveWorkbook(wb, file_path, overwrite = TRUE)</code></pre>
+<p>Simple MLR</p>
+<pre class="r"><code>library(dplyr)
+library(tibble)
+library(car)
+library(relaimpo)
+
+#-------------------------------
+# 1. Define candidate predictors ################ change
+#-------------------------------
+vars_to_select &lt;- c(
+  &quot;log_DOC_nM&quot;, &quot;pH&quot;, &quot;log_Cu_nM&quot;, &quot;log_K_nM&quot;
+)
+
+#-------------------------------
+# 2. Fit full model
+#-------------------------------
+full_formula &lt;- as.formula(
+  paste(&quot;log_Cu_Chronic_Tox_Daphnia_nM ~&quot;, paste(vars_to_select, collapse = &quot; + &quot;))
+)
+
+full_mod &lt;- lm(full_formula, data = dat)
+
+#-------------------------------
+# 3. Stepwise model selection
+#-------------------------------
+step_mod &lt;- step(full_mod, direction = &quot;both&quot;, trace = TRUE)</code></pre>
+<pre><code>## Start:  AIC=-2155.96
+## log_Cu_Chronic_Tox_Daphnia_nM ~ log_DOC_nM + pH + log_Cu_nM + 
+##     log_K_nM
+## 
+##              Df Sum of Sq     RSS     AIC
+## &lt;none&gt;                     1.4113 -2156.0
+## - log_K_nM    1    0.0551  1.4664 -2143.2
+## - log_Cu_nM   1    0.1066  1.5179 -2129.9
+## - log_DOC_nM  1   16.7149 18.1262 -1172.6
+## - pH          1   17.1648 18.5761 -1163.1</code></pre>
+<pre class="r"><code>#-------------------------------
+# 4. Extract retained estimates
+#-------------------------------
+estimate_table &lt;- broom::tidy(step_mod) %&gt;%
+  filter(term != &quot;(Intercept)&quot;) %&gt;%
+  dplyr::select(
+    Variable = term,
+    Estimate = estimate,
+    Std_Error = std.error,
+    p_value = p.value
+  )
+
+#-------------------------------
+# 5. Extract VIF values
+#-------------------------------
+vif_table &lt;- tibble(
+  Variable = names(vif(step_mod)),
+  VIF = as.numeric(vif(step_mod))
+)
+
+#-------------------------------
+# 6. Calculate relative importance
+#-------------------------------
+rel_importance &lt;- calc.relimp(step_mod, type = &quot;lmg&quot;, rela = TRUE)
+
+importance_table &lt;- tibble(
+  Variable = names(rel_importance$lmg),
+  Relative_Importance = as.numeric(rel_importance$lmg)
+)
+
+#-------------------------------
+# 7. Combine final table
+#-------------------------------
+final_model_table &lt;- estimate_table %&gt;%
+  left_join(vif_table, by = &quot;Variable&quot;) %&gt;%
+  left_join(importance_table, by = &quot;Variable&quot;) %&gt;%
+  mutate(
+    across(
+      c(Estimate, Std_Error, p_value, VIF, Relative_Importance),
+      ~ round(.x, 4)
+    )
+  ) %&gt;%
+  arrange(desc(Relative_Importance))
+
+final_model_table</code></pre>
+<pre><code>## # A tibble: 4 × 6
+##   Variable   Estimate Std_Error p_value   VIF Relative_Importance
+##   &lt;chr&gt;         &lt;dbl&gt;     &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt;               &lt;dbl&gt;
+## 1 log_DOC_nM   0.879     0.0131  0       1.96               0.376
+## 2 pH           0.545     0.008   0       1.23               0.288
+## 3 log_Cu_nM    0.0392    0.0073  0       2.21               0.173
+## 4 log_K_nM     0.0748    0.0194  0.0001  2.10               0.163</code></pre>
+<pre class="r"><code>#-------------------------------
+# 8. Model fit statistics
+#-------------------------------
+model_summary &lt;- summary(step_mod)
+
+model_fit_table &lt;- tibble(
+  Metric = c(&quot;R_squared&quot;, &quot;Adjusted_R_squared&quot;),
+  Value  = c(
+    model_summary$r.squared,
+    model_summary$adj.r.squared
+  )
+) %&gt;%
+  mutate(Value = round(Value, 4))
+
+# Save
+library(openxlsx)
+
+file_path &lt;- file.path(out_dir, &quot;Chronic_Cu_toxicity_threshold_daph_simple_MLR.xlsx&quot;)
+
+wb &lt;- createWorkbook()
+
+addWorksheet(wb, &quot;Stepwise selected model&quot;)
+writeData(wb, &quot;Stepwise selected model&quot;, final_model_table)
+
+addWorksheet(wb, &quot;Model fit&quot;)
+writeData(wb, &quot;Model fit&quot;, model_fit_table)
+
+saveWorkbook(wb, file_path, overwrite = TRUE)</code></pre>
+</div>
+</div>
+<div id="b.-acute-toxicity" class="section level3">
+<h3>b. Acute toxicity</h3>
+<pre class="r"><code># Fit linear model
+mod &lt;- lm(log_Cu_Acute_Tox_Daphnia_M ~ log_TBL_Cu_mol_kg, data = dat)
+
+# View full summary
+summary(mod)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = log_Cu_Acute_Tox_Daphnia_M ~ log_TBL_Cu_mol_kg, 
+##     data = dat)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -1.44404 -0.23524  0.06172  0.24363  0.89051 
+## 
+## Coefficients:
+##                   Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)       -5.89987    0.57214 -10.312   &lt;2e-16 ***
+## log_TBL_Cu_mol_kg  0.03893    0.04133   0.942    0.347    
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 0.3815 on 384 degrees of freedom
+## Multiple R-squared:  0.002304,   Adjusted R-squared:  -0.0002937 
+## F-statistic: 0.887 on 1 and 384 DF,  p-value: 0.3469</code></pre>
+<pre class="r"><code># CIs
+cis &lt;- confint(mod)
+
+# Save
+library(openxlsx)
+
+# 1. Define file path
+file_path &lt;- file.path(out_dir, &quot;Bioavail_predict_acute_Cu_toxicity_daph.xlsx&quot;)
+
+#2. Create workbook and write tables
+wb &lt;- createWorkbook()
+addWorksheet(wb, &quot;Chronic tox ~ bioavail&quot;)
+writeData(wb, &quot;Chronic tox ~ bioavail&quot;, mod)
+addWorksheet(wb, &quot;Confidence intervals&quot;)
+writeData(wb, &quot;Confidence intervals&quot;, cis)
+
+# 5. Save
+saveWorkbook(wb, file_path, overwrite = TRUE)</code></pre>
+<p>Plot</p>
+<pre class="r"><code>library(ggplot2)
+
+acute_plot &lt;- ggplot(dat, aes(x = log_TBL_Cu_mol_kg, y = log_Cu_Acute_Tox_Daphnia_M)) +
+  
+  # points
+  geom_point(color = &quot;black&quot;, size = 2, alpha = 0.7) +
+  
+  # regression line + CI
+  geom_smooth(method = &quot;lm&quot;, color = &quot;red&quot;, fill = &quot;pink&quot;, alpha = 0.3) +
+  
+  labs(
+    y = expression(log[10]~&quot;Acute Cu Toxicity (M)&quot;),
+    x = expression(log[10]~&quot;Bioavailable Cu (mol kg&quot;^{-1}*&quot;)&quot;),
+    title = &quot;Relationship Between Acute Cu Toxicity Threshold for Daphnia and Bioavailability&quot;
+  ) +
+  
+  theme_classic(base_size = 12)
+
+chronic_plot</code></pre>
+<pre><code>## `geom_smooth()` using formula = &#39;y ~ x&#39;</code></pre>
+<pre class="r"><code># Save
+ggsave(
+  filename = file.path(out_dir, &quot;Acute_Cu_tox_daph_vs_bioavail.png&quot;),
+  plot = acute_plot,
+  width = 8,
+  height = 6,
+  units = &quot;in&quot;,
+  dpi = 300
+)</code></pre>
+<pre><code>## `geom_smooth()` using formula = &#39;y ~ x&#39;</code></pre>
+<p>Determine top predictors of acute toxicity</p>
+<pre class="r"><code>library(dplyr)
+library(tibble)
+library(car)
+library(relaimpo)
+
+#-------------------------------
+# 1. Define candidate predictors
+#-------------------------------
+vars_to_select &lt;- c(
+  &quot;log_Cu_nM&quot;, &quot;log_Temp_C&quot;, 
+  &quot;pH&quot;, &quot;log_DOC_nM&quot;, &quot;log_DIC_nM&quot;, &quot;log_Cl_nM&quot;, 
+  &quot;log_Ca_nM&quot;, &quot;log_Mg_nM&quot;, &quot;log_SO4_nM&quot;, 
+  &quot;log_Na_nM&quot;, &quot;log_K_nM&quot;
+)
+
+#-------------------------------
+# 2. Fit full model
+#-------------------------------
+full_formula &lt;- as.formula(
+  paste(&quot;log_Cu_Acute_Tox_Daphnia_M ~&quot;, paste(vars_to_select, collapse = &quot; + &quot;))
+)
+
+full_mod &lt;- lm(full_formula, data = dat)
+
+#-------------------------------
+# 3. Stepwise model selection
+#-------------------------------
+step_mod &lt;- step(full_mod, direction = &quot;both&quot;, trace = TRUE)</code></pre>
+<pre><code>## Start:  AIC=-2380.07
+## log_Cu_Acute_Tox_Daphnia_M ~ log_Cu_nM + log_Temp_C + pH + log_DOC_nM + 
+##     log_DIC_nM + log_Cl_nM + log_Ca_nM + log_Mg_nM + log_SO4_nM + 
+##     log_Na_nM + log_K_nM
+## 
+##              Df Sum of Sq     RSS     AIC
+## - log_Mg_nM   1    0.0028  0.7644 -2380.7
+## - log_DIC_nM  1    0.0035  0.7651 -2380.3
+## &lt;none&gt;                     0.7616 -2380.1
+## - log_Na_nM   1    0.0059  0.7675 -2379.1
+## - log_Cu_nM   1    0.0080  0.7696 -2378.0
+## - log_Cl_nM   1    0.0205  0.7821 -2371.8
+## - log_K_nM    1    0.0213  0.7829 -2371.4
+## - log_SO4_nM  1    0.0221  0.7837 -2371.1
+## - log_Ca_nM   1    0.0391  0.8007 -2362.8
+## - log_Temp_C  1    0.1168  0.8784 -2327.0
+## - pH          1   10.3954 11.1570 -1345.9
+## - log_DOC_nM  1   11.4016 12.1632 -1312.6
+## 
+## Step:  AIC=-2380.66
+## log_Cu_Acute_Tox_Daphnia_M ~ log_Cu_nM + log_Temp_C + pH + log_DOC_nM + 
+##     log_DIC_nM + log_Cl_nM + log_Ca_nM + log_SO4_nM + log_Na_nM + 
+##     log_K_nM
+## 
+##              Df Sum of Sq     RSS     AIC
+## &lt;none&gt;                     0.7644 -2380.7
+## + log_Mg_nM   1    0.0028  0.7616 -2380.1
+## - log_Na_nM   1    0.0068  0.7712 -2379.2
+## - log_DIC_nM  1    0.0070  0.7714 -2379.1
+## - log_Cu_nM   1    0.0076  0.7720 -2378.8
+## - log_K_nM    1    0.0266  0.7910 -2369.4
+## - log_SO4_nM  1    0.0266  0.7910 -2369.4
+## - log_Cl_nM   1    0.0277  0.7921 -2368.9
+## - log_Ca_nM   1    0.0434  0.8078 -2361.4
+## - log_Temp_C  1    0.1164  0.8808 -2327.9
+## - pH          1   11.1466 11.9110 -1322.7
+## - log_DOC_nM  1   13.0370 13.8014 -1265.8</code></pre>
+<pre class="r"><code>#-------------------------------
+# 4. Extract retained estimates
+#-------------------------------
+estimate_table &lt;- broom::tidy(step_mod) %&gt;%
+  filter(term != &quot;(Intercept)&quot;) %&gt;%
+  dplyr::select(
+    Variable = term,
+    Estimate = estimate,
+    Std_Error = std.error,
+    p_value = p.value
+  )
+
+#-------------------------------
+# 5. Extract VIF values
+#-------------------------------
+vif_table &lt;- tibble(
+  Variable = names(vif(step_mod)),
+  VIF = as.numeric(vif(step_mod))
+)
+
+#-------------------------------
+# 6. Calculate relative importance
+#-------------------------------
+rel_importance &lt;- calc.relimp(step_mod, type = &quot;lmg&quot;, rela = TRUE)
+
+importance_table &lt;- tibble(
+  Variable = names(rel_importance$lmg),
+  Relative_Importance = as.numeric(rel_importance$lmg)
+)
+
+#-------------------------------
+# 7. Combine final table
+#-------------------------------
+final_model_table &lt;- estimate_table %&gt;%
+  left_join(vif_table, by = &quot;Variable&quot;) %&gt;%
+  left_join(importance_table, by = &quot;Variable&quot;) %&gt;%
+  mutate(
+    across(
+      c(Estimate, Std_Error, p_value, VIF, Relative_Importance),
+      ~ round(.x, 4)
+    )
+  ) %&gt;%
+  arrange(desc(Relative_Importance))
+
+final_model_table</code></pre>
+<pre><code>## # A tibble: 10 × 6
+##    Variable   Estimate Std_Error p_value   VIF Relative_Importance
+##    &lt;chr&gt;         &lt;dbl&gt;     &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt;               &lt;dbl&gt;
+##  1 log_DOC_nM   0.889     0.0111  0       2.57              0.371 
+##  2 pH           0.453     0.0061  0       1.31              0.202 
+##  3 log_Cu_nM    0.0112    0.0058  0.0543  2.53              0.137 
+##  4 log_K_nM     0.0693    0.0192  0.0003  3.74              0.129 
+##  5 log_SO4_nM  -0.0393    0.0109  0.0003  3.70              0.0525
+##  6 log_Na_nM   -0.0435    0.0239  0.069  16.0               0.0382
+##  7 log_Temp_C   0.123     0.0163  0       1.19              0.0238
+##  8 log_Ca_nM    0.126     0.0272  0       8.92              0.0199
+##  9 log_Cl_nM    0.0608    0.0165  0.0003  8.69              0.0167
+## 10 log_DIC_nM   0.0501    0.027   0.0648  7.61              0.0106</code></pre>
+<pre class="r"><code>#-------------------------------
+# 8. Model fit statistics
+#-------------------------------
+model_summary &lt;- summary(step_mod)
+
+model_fit_table &lt;- tibble(
+  Metric = c(&quot;R_squared&quot;, &quot;Adjusted_R_squared&quot;),
+  Value  = c(
+    model_summary$r.squared,
+    model_summary$adj.r.squared
+  )
+) %&gt;%
+  mutate(Value = round(Value, 4))
+
+# Save
+library(openxlsx)
+
+file_path &lt;- file.path(out_dir, &quot;Acute_Cu_toxicity_threshold_daph_MLR.xlsx&quot;)
+
+wb &lt;- createWorkbook()
+
+addWorksheet(wb, &quot;Stepwise selected model&quot;)
+writeData(wb, &quot;Stepwise selected model&quot;, final_model_table)
+
+addWorksheet(wb, &quot;Model fit&quot;)
+writeData(wb, &quot;Model fit&quot;, model_fit_table)
+
+saveWorkbook(wb, file_path, overwrite = TRUE)</code></pre>
+<p>Simple MLR</p>
+<pre class="r"><code>library(dplyr)
+library(tibble)
+library(car)
+library(relaimpo)
+
+#-------------------------------
+# 1. Define candidate predictors ################ change
+#-------------------------------
+vars_to_select &lt;- c(
+  &quot;log_DOC_nM&quot;, &quot;pH&quot;, &quot;log_Cu_nM&quot;, &quot;log_K_nM&quot;
+)
+
+#-------------------------------
+# 2. Fit full model
+#-------------------------------
+full_formula &lt;- as.formula(
+  paste(&quot;log_Cu_Acute_Tox_Daphnia_nM ~&quot;, paste(vars_to_select, collapse = &quot; + &quot;))
+)
+
+full_mod &lt;- lm(full_formula, data = dat)
+
+#-------------------------------
+# 3. Stepwise model selection
+#-------------------------------
+step_mod &lt;- step(full_mod, direction = &quot;both&quot;, trace = TRUE)</code></pre>
+<pre><code>## Start:  AIC=-2113.28
+## log_Cu_Acute_Tox_Daphnia_nM ~ log_DOC_nM + pH + log_Cu_nM + log_K_nM
+## 
+##              Df Sum of Sq     RSS     AIC
+## &lt;none&gt;                     1.5764 -2113.3
+## - log_K_nM    1    0.0808  1.6572 -2096.0
+## - log_Cu_nM   1    0.0972  1.6736 -2092.2
+## - pH          1   11.5410 13.1174 -1297.4
+## - log_DOC_nM  1   15.3797 16.9561 -1198.3</code></pre>
+<pre class="r"><code>#-------------------------------
+# 4. Extract retained estimates
+#-------------------------------
+estimate_table &lt;- broom::tidy(step_mod) %&gt;%
+  filter(term != &quot;(Intercept)&quot;) %&gt;%
+  dplyr::select(
+    Variable = term,
+    Estimate = estimate,
+    Std_Error = std.error,
+    p_value = p.value
+  )
+
+#-------------------------------
+# 5. Extract VIF values
+#-------------------------------
+vif_table &lt;- tibble(
+  Variable = names(vif(step_mod)),
+  VIF = as.numeric(vif(step_mod))
+)
+
+#-------------------------------
+# 6. Calculate relative importance
+#-------------------------------
+rel_importance &lt;- calc.relimp(step_mod, type = &quot;lmg&quot;, rela = TRUE)
+
+importance_table &lt;- tibble(
+  Variable = names(rel_importance$lmg),
+  Relative_Importance = as.numeric(rel_importance$lmg)
+)
+
+#-------------------------------
+# 7. Combine final table
+#-------------------------------
+final_model_table &lt;- estimate_table %&gt;%
+  left_join(vif_table, by = &quot;Variable&quot;) %&gt;%
+  left_join(importance_table, by = &quot;Variable&quot;) %&gt;%
+  mutate(
+    across(
+      c(Estimate, Std_Error, p_value, VIF, Relative_Importance),
+      ~ round(.x, 4)
+    )
+  ) %&gt;%
+  arrange(desc(Relative_Importance))
+
+final_model_table</code></pre>
+<pre><code>## # A tibble: 4 × 6
+##   Variable   Estimate Std_Error p_value   VIF Relative_Importance
+##   &lt;chr&gt;         &lt;dbl&gt;     &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt;               &lt;dbl&gt;
+## 1 log_DOC_nM   0.843     0.0138       0  1.96               0.417
+## 2 pH           0.447     0.0085       0  1.23               0.231
+## 3 log_Cu_nM    0.0375    0.0077       0  2.21               0.181
+## 4 log_K_nM     0.0906    0.0205       0  2.10               0.171</code></pre>
+<pre class="r"><code>#-------------------------------
+# 8. Model fit statistics
+#-------------------------------
+model_summary &lt;- summary(step_mod)
+
+model_fit_table &lt;- tibble(
+  Metric = c(&quot;R_squared&quot;, &quot;Adjusted_R_squared&quot;),
+  Value  = c(
+    model_summary$r.squared,
+    model_summary$adj.r.squared
+  )
+) %&gt;%
+  mutate(Value = round(Value, 4))
+
+# Save
+library(openxlsx)
+
+file_path &lt;- file.path(out_dir, &quot;Acute_Cu_toxicity_threshold_daph_simple_MLR.xlsx&quot;)
+
+wb &lt;- createWorkbook()
+
+addWorksheet(wb, &quot;Stepwise selected model&quot;)
+writeData(wb, &quot;Stepwise selected model&quot;, final_model_table)
+
+addWorksheet(wb, &quot;Model fit&quot;)
+writeData(wb, &quot;Model fit&quot;, model_fit_table)
+
+saveWorkbook(wb, file_path, overwrite = TRUE)</code></pre>
+</div>
+<div id="b.-fathead-minnow" class="section level3">
+<h3>b. Fathead minnow</h3>
+<div id="i.-chronic-toxicity-1" class="section level4">
+<h4>i. Chronic toxicity</h4>
+<pre class="r"><code># Fit linear model
+mod &lt;- lm(log_Cu_Chronic_Tox_Minnow_M ~ log_TBL_Cu_mol_kg, data = dat)
+
+# View full summary
+summary(mod)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = log_Cu_Chronic_Tox_Minnow_M ~ log_TBL_Cu_mol_kg, 
+##     data = dat)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -1.4047 -0.2325  0.0608  0.2388  0.8869 
+## 
+## Coefficients:
+##                   Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)       -5.76891    0.56037 -10.295   &lt;2e-16 ***
+## log_TBL_Cu_mol_kg  0.04242    0.04048   1.048    0.295    
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 0.3737 on 384 degrees of freedom
+## Multiple R-squared:  0.002851,   Adjusted R-squared:  0.0002541 
+## F-statistic: 1.098 on 1 and 384 DF,  p-value: 0.2954</code></pre>
+<pre class="r"><code># CIs
+cis &lt;- confint(mod)
+
+# Save
+library(openxlsx)
+
+# 1. Define file path
+file_path &lt;- file.path(out_dir, &quot;Bioavail_predict_chronic_Cu_toxicity_minnow.xlsx&quot;)
+
+#2. Create workbook and write tables
+wb &lt;- createWorkbook()
+addWorksheet(wb, &quot;Chronic tox ~ bioavail&quot;)
+writeData(wb, &quot;Chronic tox ~ bioavail&quot;, mod)
+addWorksheet(wb, &quot;Confidence intervals&quot;)
+writeData(wb, &quot;Confidence intervals&quot;, cis)
+
+# 5. Save
+saveWorkbook(wb, file_path, overwrite = TRUE)</code></pre>
+<p>Determine top predictors of chronic tox</p>
+<pre class="r"><code>library(dplyr)
+library(tibble)
+library(car)
+library(relaimpo)
+
+#-------------------------------
+# 1. Define candidate predictors
+#-------------------------------
+vars_to_select &lt;- c(
+  &quot;log_Cu_nM&quot;, &quot;log_Temp_C&quot;, 
+  &quot;pH&quot;, &quot;log_DOC_nM&quot;, &quot;log_DIC_nM&quot;, &quot;log_Cl_nM&quot;, 
+  &quot;log_Ca_nM&quot;, &quot;log_Mg_nM&quot;, &quot;log_SO4_nM&quot;, 
+  &quot;log_Na_nM&quot;, &quot;log_K_nM&quot;
+)
+
+#-------------------------------
+# 2. Fit full model
+#-------------------------------
+full_formula &lt;- as.formula(
+  paste(&quot;log_Cu_Chronic_Tox_Minnow_M ~&quot;, paste(vars_to_select, collapse = &quot; + &quot;))
+)
+
+full_mod &lt;- lm(full_formula, data = dat)
+
+#-------------------------------
+# 3. Stepwise model selection
+#-------------------------------
+step_mod &lt;- step(full_mod, direction = &quot;both&quot;, trace = TRUE)</code></pre>
+<pre><code>## Start:  AIC=-2381.19
+## log_Cu_Chronic_Tox_Minnow_M ~ log_Cu_nM + log_Temp_C + pH + log_DOC_nM + 
+##     log_DIC_nM + log_Cl_nM + log_Ca_nM + log_Mg_nM + log_SO4_nM + 
+##     log_Na_nM + log_K_nM
+## 
+##              Df Sum of Sq     RSS     AIC
+## - log_Mg_nM   1    0.0021  0.7615 -2382.1
+## &lt;none&gt;                     0.7594 -2381.2
+## - log_DIC_nM  1    0.0046  0.7640 -2380.8
+## - log_Na_nM   1    0.0066  0.7660 -2379.8
+## - log_Cu_nM   1    0.0080  0.7674 -2379.2
+## - log_Cl_nM   1    0.0214  0.7808 -2372.4
+## - log_K_nM    1    0.0218  0.7812 -2372.2
+## - log_SO4_nM  1    0.0240  0.7834 -2371.2
+## - log_Ca_nM   1    0.0427  0.8021 -2362.1
+## - log_Temp_C  1    0.1104  0.8698 -2330.8
+## - pH          1    9.4274 10.1868 -1381.0
+## - log_DOC_nM  1   11.1743 11.9337 -1319.9
+## 
+## Step:  AIC=-2382.1
+## log_Cu_Chronic_Tox_Minnow_M ~ log_Cu_nM + log_Temp_C + pH + log_DOC_nM + 
+##     log_DIC_nM + log_Cl_nM + log_Ca_nM + log_SO4_nM + log_Na_nM + 
+##     log_K_nM
+## 
+##              Df Sum of Sq     RSS     AIC
+## &lt;none&gt;                     0.7615 -2382.1
+## + log_Mg_nM   1    0.0021  0.7594 -2381.2
+## - log_Na_nM   1    0.0075  0.7690 -2380.3
+## - log_Cu_nM   1    0.0076  0.7692 -2380.3
+## - log_DIC_nM  1    0.0083  0.7698 -2379.9
+## - log_K_nM    1    0.0267  0.7883 -2370.8
+## - log_Cl_nM   1    0.0281  0.7896 -2370.1
+## - log_SO4_nM  1    0.0284  0.7899 -2370.0
+## - log_Ca_nM   1    0.0468  0.8083 -2361.1
+## - log_Temp_C  1    0.1102  0.8717 -2331.9
+## - pH          1   10.1023 10.8639 -1358.2
+## - log_DOC_nM  1   12.7939 13.5554 -1272.7</code></pre>
+<pre class="r"><code>#-------------------------------
+# 4. Extract retained estimates
+#-------------------------------
+estimate_table &lt;- broom::tidy(step_mod) %&gt;%
+  filter(term != &quot;(Intercept)&quot;) %&gt;%
+  dplyr::select(
+    Variable = term,
+    Estimate = estimate,
+    Std_Error = std.error,
+    p_value = p.value
+  )
+
+#-------------------------------
+# 5. Extract VIF values
+#-------------------------------
+vif_table &lt;- tibble(
+  Variable = names(vif(step_mod)),
+  VIF = as.numeric(vif(step_mod))
+)
+
+#-------------------------------
+# 6. Calculate relative importance
+#-------------------------------
+rel_importance &lt;- calc.relimp(step_mod, type = &quot;lmg&quot;, rela = TRUE)
+
+importance_table &lt;- tibble(
+  Variable = names(rel_importance$lmg),
+  Relative_Importance = as.numeric(rel_importance$lmg)
+)
+
+#-------------------------------
+# 7. Combine final table
+#-------------------------------
+final_model_table &lt;- estimate_table %&gt;%
+  left_join(vif_table, by = &quot;Variable&quot;) %&gt;%
+  left_join(importance_table, by = &quot;Variable&quot;) %&gt;%
+  mutate(
+    across(
+      c(Estimate, Std_Error, p_value, VIF, Relative_Importance),
+      ~ round(.x, 4)
+    )
+  ) %&gt;%
+  arrange(desc(Relative_Importance))
+
+final_model_table</code></pre>
+<pre><code>## # A tibble: 10 × 6
+##    Variable   Estimate Std_Error p_value   VIF Relative_Importance
+##    &lt;chr&gt;         &lt;dbl&gt;     &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt;               &lt;dbl&gt;
+##  1 log_DOC_nM   0.880     0.0111  0       2.57              0.380 
+##  2 pH           0.431     0.0061  0       1.31              0.190 
+##  3 log_Cu_nM    0.0112    0.0058  0.0534  2.53              0.139 
+##  4 log_K_nM     0.0694    0.0191  0.0003  3.74              0.130 
+##  5 log_SO4_nM  -0.0406    0.0109  0.0002  3.70              0.0518
+##  6 log_Na_nM   -0.0456    0.0238  0.0562 16.0               0.0379
+##  7 log_Temp_C   0.120     0.0162  0       1.19              0.0241
+##  8 log_Ca_nM    0.130     0.0272  0       8.92              0.0207
+##  9 log_Cl_nM    0.0613    0.0165  0.0002  8.69              0.0166
+## 10 log_DIC_nM   0.0545    0.027   0.0442  7.61              0.0109</code></pre>
+<pre class="r"><code>#-------------------------------
+# 8. Model fit statistics
+#-------------------------------
+model_summary &lt;- summary(step_mod)
+
+model_fit_table &lt;- tibble(
+  Metric = c(&quot;R_squared&quot;, &quot;Adjusted_R_squared&quot;),
+  Value  = c(
+    model_summary$r.squared,
+    model_summary$adj.r.squared
+  )
+) %&gt;%
+  mutate(Value = round(Value, 4))
+
+# Save
+library(openxlsx)
+
+file_path &lt;- file.path(out_dir, &quot;Chronic_Cu_toxicity_threshold_minnow_MLR.xlsx&quot;)
+
+wb &lt;- createWorkbook()
+
+addWorksheet(wb, &quot;Stepwise selected model&quot;)
+writeData(wb, &quot;Stepwise selected model&quot;, final_model_table)
+
+addWorksheet(wb, &quot;Model fit&quot;)
+writeData(wb, &quot;Model fit&quot;, model_fit_table)
+
+saveWorkbook(wb, file_path, overwrite = TRUE)</code></pre>
+<p>Simple MLR</p>
+<pre class="r"><code>library(dplyr)
+library(tibble)
+library(car)
+library(relaimpo)
+
+#-------------------------------
+# 1. Define candidate predictors ################ change
+#-------------------------------
+vars_to_select &lt;- c(
+  &quot;log_DOC_nM&quot;, &quot;pH&quot;, &quot;log_Cu_nM&quot;, &quot;log_K_nM&quot;
+)
+
+#-------------------------------
+# 2. Fit full model
+#-------------------------------
+full_formula &lt;- as.formula(
+  paste(&quot;log_Cu_Chronic_Tox_Minnow_nM ~&quot;, paste(vars_to_select, collapse = &quot; + &quot;))
+)
+
+full_mod &lt;- lm(full_formula, data = dat)
+
+#-------------------------------
+# 3. Stepwise model selection
+#-------------------------------
+step_mod &lt;- step(full_mod, direction = &quot;both&quot;, trace = TRUE)</code></pre>
+<pre><code>## Start:  AIC=-2102.55
+## log_Cu_Chronic_Tox_Minnow_nM ~ log_DOC_nM + pH + log_Cu_nM + 
+##     log_K_nM
+## 
+##              Df Sum of Sq     RSS     AIC
+## &lt;none&gt;                     1.6208 -2102.6
+## - log_K_nM    1    0.0813  1.7021 -2085.7
+## - log_Cu_nM   1    0.0996  1.7204 -2081.5
+## - pH          1   10.4334 12.0542 -1330.0
+## - log_DOC_nM  1   15.0028 16.6236 -1206.0</code></pre>
+<pre class="r"><code>#-------------------------------
+# 4. Extract retained estimates
+#-------------------------------
+estimate_table &lt;- broom::tidy(step_mod) %&gt;%
+  filter(term != &quot;(Intercept)&quot;) %&gt;%
+  dplyr::select(
+    Variable = term,
+    Estimate = estimate,
+    Std_Error = std.error,
+    p_value = p.value
+  )
+
+#-------------------------------
+# 5. Extract VIF values
+#-------------------------------
+vif_table &lt;- tibble(
+  Variable = names(vif(step_mod)),
+  VIF = as.numeric(vif(step_mod))
+)
+
+#-------------------------------
+# 6. Calculate relative importance
+#-------------------------------
+rel_importance &lt;- calc.relimp(step_mod, type = &quot;lmg&quot;, rela = TRUE)
+
+importance_table &lt;- tibble(
+  Variable = names(rel_importance$lmg),
+  Relative_Importance = as.numeric(rel_importance$lmg)
+)
+
+#-------------------------------
+# 7. Combine final table
+#-------------------------------
+final_model_table &lt;- estimate_table %&gt;%
+  left_join(vif_table, by = &quot;Variable&quot;) %&gt;%
+  left_join(importance_table, by = &quot;Variable&quot;) %&gt;%
+  mutate(
+    across(
+      c(Estimate, Std_Error, p_value, VIF, Relative_Importance),
+      ~ round(.x, 4)
+    )
+  ) %&gt;%
+  arrange(desc(Relative_Importance))
+
+final_model_table</code></pre>
+<pre><code>## # A tibble: 4 × 6
+##   Variable   Estimate Std_Error p_value   VIF Relative_Importance
+##   &lt;chr&gt;         &lt;dbl&gt;     &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt;               &lt;dbl&gt;
+## 1 log_DOC_nM   0.832     0.014        0  1.96               0.427
+## 2 pH           0.425     0.0086       0  1.23               0.218
+## 3 log_Cu_nM    0.0379    0.0078       0  2.21               0.183
+## 4 log_K_nM     0.0909    0.0208       0  2.10               0.172</code></pre>
+<pre class="r"><code>#-------------------------------
+# 8. Model fit statistics
+#-------------------------------
+model_summary &lt;- summary(step_mod)
+
+model_fit_table &lt;- tibble(
+  Metric = c(&quot;R_squared&quot;, &quot;Adjusted_R_squared&quot;),
+  Value  = c(
+    model_summary$r.squared,
+    model_summary$adj.r.squared
+  )
+) %&gt;%
+  mutate(Value = round(Value, 4))
+
+# Save
+library(openxlsx)
+
+file_path &lt;- file.path(out_dir, &quot;Chronic_Cu_toxicity_threshold_minnow_simple_MLR.xlsx&quot;)
+
+wb &lt;- createWorkbook()
+
+addWorksheet(wb, &quot;Stepwise selected model&quot;)
+writeData(wb, &quot;Stepwise selected model&quot;, final_model_table)
+
+addWorksheet(wb, &quot;Model fit&quot;)
+writeData(wb, &quot;Model fit&quot;, model_fit_table)
+
+saveWorkbook(wb, file_path, overwrite = TRUE)</code></pre>
+</div>
+<div id="ii.-acute-toxicity" class="section level4">
+<h4>ii. Acute toxicity</h4>
+<p>Simple MLR</p>
+<pre class="r"><code>library(dplyr)
+library(tibble)
+library(car)
+library(relaimpo)
+
+#-------------------------------
+# 1. Define candidate predictors ################ change
+#-------------------------------
+vars_to_select &lt;- c(
+  &quot;log_DOC_nM&quot;, &quot;pH&quot;, &quot;log_Cu_nM&quot;, &quot;log_K_nM&quot;
+)
+
+#-------------------------------
+# 2. Fit full model
+#-------------------------------
+full_formula &lt;- as.formula(
+  paste(&quot;log_Cu_Acute_Tox_Minnow_nM ~&quot;, paste(vars_to_select, collapse = &quot; + &quot;))
+)
+
+full_mod &lt;- lm(full_formula, data = dat)
+
+#-------------------------------
+# 3. Stepwise model selection
+#-------------------------------
+step_mod &lt;- step(full_mod, direction = &quot;both&quot;, trace = TRUE)</code></pre>
+<pre><code>## Start:  AIC=-1990.12
+## log_Cu_Acute_Tox_Minnow_nM ~ log_DOC_nM + pH + log_Cu_nM + log_K_nM
+## 
+##              Df Sum of Sq     RSS     AIC
+## &lt;none&gt;                     2.1688 -1990.1
+## - log_K_nM    1    0.0825  2.2513 -1977.7
+## - log_Cu_nM   1    0.1603  2.3291 -1964.6
+## - pH          1    5.1710  7.3398 -1521.5
+## - log_DOC_nM  1   11.1057 13.2745 -1292.8</code></pre>
+<pre class="r"><code>#-------------------------------
+# 4. Extract retained estimates
+#-------------------------------
+estimate_table &lt;- broom::tidy(step_mod) %&gt;%
+  filter(term != &quot;(Intercept)&quot;) %&gt;%
+  dplyr::select(
+    Variable = term,
+    Estimate = estimate,
+    Std_Error = std.error,
+    p_value = p.value
+  )
+
+#-------------------------------
+# 5. Extract VIF values
+#-------------------------------
+vif_table &lt;- tibble(
+  Variable = names(vif(step_mod)),
+  VIF = as.numeric(vif(step_mod))
+)
+
+#-------------------------------
+# 6. Calculate relative importance
+#-------------------------------
+rel_importance &lt;- calc.relimp(step_mod, type = &quot;lmg&quot;, rela = TRUE)
+
+importance_table &lt;- tibble(
+  Variable = names(rel_importance$lmg),
+  Relative_Importance = as.numeric(rel_importance$lmg)
+)
+
+#-------------------------------
+# 7. Combine final table
+#-------------------------------
+final_model_table &lt;- estimate_table %&gt;%
+  left_join(vif_table, by = &quot;Variable&quot;) %&gt;%
+  left_join(importance_table, by = &quot;Variable&quot;) %&gt;%
+  mutate(
+    across(
+      c(Estimate, Std_Error, p_value, VIF, Relative_Importance),
+      ~ round(.x, 4)
+    )
+  ) %&gt;%
+  arrange(desc(Relative_Importance))
+
+final_model_table</code></pre>
+<pre><code>## # A tibble: 4 × 6
+##   Variable   Estimate Std_Error p_value   VIF Relative_Importance
+##   &lt;chr&gt;         &lt;dbl&gt;     &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt;               &lt;dbl&gt;
+## 1 log_DOC_nM   0.716     0.0162  0       1.96               0.463
+## 2 log_Cu_nM    0.0481    0.0091  0       2.21               0.201
+## 3 log_K_nM     0.0916    0.024   0.0002  2.10               0.18 
+## 4 pH           0.299     0.0099  0       1.23               0.156</code></pre>
+<pre class="r"><code>#-------------------------------
+# 8. Model fit statistics
+#-------------------------------
+model_summary &lt;- summary(step_mod)
+
+model_fit_table &lt;- tibble(
+  Metric = c(&quot;R_squared&quot;, &quot;Adjusted_R_squared&quot;),
+  Value  = c(
+    model_summary$r.squared,
+    model_summary$adj.r.squared
+  )
+) %&gt;%
+  mutate(Value = round(Value, 4))
+
+# Save
+library(openxlsx)
+
+file_path &lt;- file.path(out_dir, &quot;Acute_Cu_toxicity_threshold_minnow_simple_MLR.xlsx&quot;)
+
+wb &lt;- createWorkbook()
+
+addWorksheet(wb, &quot;Stepwise selected model&quot;)
+writeData(wb, &quot;Stepwise selected model&quot;, final_model_table)
+
+addWorksheet(wb, &quot;Model fit&quot;)
+writeData(wb, &quot;Model fit&quot;, model_fit_table)
+
+saveWorkbook(wb, file_path, overwrite = TRUE)</code></pre>
+</div>
+</div>
 </div>
 </div>
 <div id="plots-by-site-within-typology" class="section level1">

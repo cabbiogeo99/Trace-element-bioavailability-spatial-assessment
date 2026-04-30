@@ -89,7 +89,7 @@ dev.off()
 
 ## 2. Build MLR
 
-Use log-transformed and standardized variables to build a large model, stepwise select a better model, calculate standardized beta coefficients, variance inflation factors (VIF), and relative importance on bioavailability
+Use log-transformed and standardized variables to build a large model, calculate standardized beta coefficients, variance inflation factors (VIF), and relative importance on bioavailability
 
 ```{r}
 library(MASS)
@@ -831,7 +831,7 @@ KW test relies on the following assumptions
 
 3.  ***The distributions of the groups should have the same shape.***
 
-### i. Distribution of variables by typology
+### a. Distribution of variables by typology
 
 ```{r}
 library(dplyr)
@@ -880,7 +880,7 @@ ggplot(dat_long, aes(x = Value, fill = Typology)) +
   )
 ```
 
-### ii. Check for missing values
+### b. Check for missing values
 
 The KW test also can't handle variables with missing values and no variance, we'll check to see if any variables have these two conditions
 
@@ -901,7 +901,7 @@ na_counts
 dat$log_Upstream_from_main_stem_km <- NULL
 ```
 
-### iii. Check for zero variance
+### c. Check for zero variance
 
 No variables have missing values, now we'll check for lack of variance
 
@@ -918,7 +918,7 @@ no_variance <- dat %>%
 no_variance
 ```
 
-### iv. Run KW tests
+### d. Run KW tests
 
 Now we can perform the KW test
 
@@ -2349,6 +2349,560 @@ addWorksheet(wb, "Log10 variables")
 writeData(wb, "Log10 variables", mle_summary_log)
 
 # 5. Save
+saveWorkbook(wb, file_path, overwrite = TRUE)
+```
+
+## 4. Bioavailability-toxicity relationship
+
+### a. Chronic toxicity
+
+```{r}
+# Fit linear model
+mod <- lm(log_Zn_chronic_tox_M ~ log_TBL_Zn_mol_kg, data = dat)
+
+# View full summary
+summary(mod)
+
+# CIs
+cis <- confint(mod)
+
+# Save
+library(openxlsx)
+
+# 1. Define file path
+file_path <- file.path(out_dir, "Bioavail_predict_chronic_Zn_toxicity.xlsx")
+
+#2. Create workbook and write tables
+wb <- createWorkbook()
+addWorksheet(wb, "Chronic tox ~ bioavail")
+writeData(wb, "Chronic tox ~ bioavail", mod)
+addWorksheet(wb, "Confidence intervals")
+writeData(wb, "Confidence intervals", cis)
+
+# 5. Save
+saveWorkbook(wb, file_path, overwrite = TRUE)
+```
+
+Plot
+
+```{r}
+library(ggplot2)
+
+chronic_plot <- ggplot(dat, aes(x = log_TBL_Zn_mol_kg, y = log_Zn_chronic_tox_M)) +
+  
+  # points
+  geom_point(color = "black", size = 2, alpha = 0.7) +
+  
+  # regression line + CI
+  geom_smooth(method = "lm", color = "blue", fill = "lightblue", alpha = 0.3) +
+  
+  labs(
+    y = expression(log[10]~"Chronic Zn Toxicity (M)"),
+    x = expression(log[10]~"Bioavailable Zn (mol kg"^{-1}*")"),
+    title = "Relationship Between Chronic Zn Toxicity Threshold and Bioavailability"
+  ) +
+  
+  theme_classic(base_size = 12)
+
+chronic_plot
+
+# Save
+ggsave(
+  filename = file.path(out_dir, "Chronic_Zn_tox_vs_bioavail.png"),
+  plot = chronic_plot,
+  width = 8,
+  height = 6,
+  units = "in",
+  dpi = 300
+)
+```
+
+Determine the top predictors of chronic toxicity
+
+```{r}
+library(dplyr)
+library(tibble)
+library(car)
+library(relaimpo)
+
+#-------------------------------
+# 1. Define candidate predictors
+#-------------------------------
+vars_to_select <- c(
+  "log_Zn_nM", "log_Temp_C", 
+  "pH", "log_DOC_nM", "log_DIC_nM", "log_Cl_nM", 
+  "log_Ca_nM", "log_Mg_nM", "log_SO4_nM", 
+  "log_Na_nM", "log_K_nM"
+)
+
+#-------------------------------
+# 2. Fit full model
+#-------------------------------
+full_formula <- as.formula(
+  paste("log_Zn_chronic_tox_nM ~", paste(vars_to_select, collapse = " + "))
+)
+
+full_mod <- lm(full_formula, data = dat)
+
+#-------------------------------
+# 3. Stepwise model selection
+#-------------------------------
+step_mod <- step(full_mod, direction = "both", trace = TRUE)
+
+#-------------------------------
+# 4. Extract retained estimates
+#-------------------------------
+estimate_table <- broom::tidy(step_mod) %>%
+  filter(term != "(Intercept)") %>%
+  dplyr::select(
+    Variable = term,
+    Estimate = estimate,
+    Std_Error = std.error,
+    p_value = p.value
+  )
+
+#-------------------------------
+# 5. Extract VIF values
+#-------------------------------
+vif_table <- tibble(
+  Variable = names(vif(step_mod)),
+  VIF = as.numeric(vif(step_mod))
+)
+
+#-------------------------------
+# 6. Calculate relative importance
+#-------------------------------
+rel_importance <- calc.relimp(step_mod, type = "lmg", rela = TRUE)
+
+importance_table <- tibble(
+  Variable = names(rel_importance$lmg),
+  Relative_Importance = as.numeric(rel_importance$lmg)
+)
+
+#-------------------------------
+# 7. Combine final table
+#-------------------------------
+final_model_table <- estimate_table %>%
+  left_join(vif_table, by = "Variable") %>%
+  left_join(importance_table, by = "Variable") %>%
+  mutate(
+    across(
+      c(Estimate, Std_Error, p_value, VIF, Relative_Importance),
+      ~ round(.x, 4)
+    )
+  ) %>%
+  arrange(desc(Relative_Importance))
+
+final_model_table
+
+#-------------------------------
+# 8. Model fit statistics
+#-------------------------------
+model_summary <- summary(step_mod)
+
+model_fit_table <- tibble(
+  Metric = c("R_squared", "Adjusted_R_squared"),
+  Value  = c(
+    model_summary$r.squared,
+    model_summary$adj.r.squared
+  )
+) %>%
+  mutate(Value = round(Value, 4))
+
+# Save
+library(openxlsx)
+
+file_path <- file.path(out_dir, "Chronic_Zn_toxicity_threshold_MLR.xlsx")
+
+wb <- createWorkbook()
+
+addWorksheet(wb, "Stepwise selected model")
+writeData(wb, "Stepwise selected model", final_model_table)
+
+addWorksheet(wb, "Model fit")
+writeData(wb, "Model fit", model_fit_table)
+
+saveWorkbook(wb, file_path, overwrite = TRUE)
+```
+
+Simple MLR
+
+```{r}
+library(dplyr)
+library(tibble)
+library(car)
+library(relaimpo)
+
+#-------------------------------
+# 1. Define candidate predictors
+#-------------------------------
+vars_to_select <- c(
+  "log_DOC_nM", "log_DIC_nM", "log_Ca_nM"
+)
+
+#-------------------------------
+# 2. Fit full model
+#-------------------------------
+full_formula <- as.formula(
+  paste("log_Zn_acute_tox_nM ~", paste(vars_to_select, collapse = " + "))
+)
+
+full_mod <- lm(full_formula, data = dat)
+
+#-------------------------------
+# 3. Stepwise model selection
+#-------------------------------
+step_mod <- step(full_mod, direction = "both", trace = TRUE)
+
+#-------------------------------
+# 4. Extract retained estimates
+#-------------------------------
+estimate_table <- broom::tidy(step_mod) %>%
+  filter(term != "(Intercept)") %>%
+  dplyr::select(
+    Variable = term,
+    Estimate = estimate,
+    Std_Error = std.error,
+    p_value = p.value
+  )
+
+#-------------------------------
+# 5. Extract VIF values
+#-------------------------------
+vif_table <- tibble(
+  Variable = names(vif(step_mod)),
+  VIF = as.numeric(vif(step_mod))
+)
+
+#-------------------------------
+# 6. Calculate relative importance
+#-------------------------------
+rel_importance <- calc.relimp(step_mod, type = "lmg", rela = TRUE)
+
+importance_table <- tibble(
+  Variable = names(rel_importance$lmg),
+  Relative_Importance = as.numeric(rel_importance$lmg)
+)
+
+#-------------------------------
+# 7. Combine final table
+#-------------------------------
+final_model_table <- estimate_table %>%
+  left_join(vif_table, by = "Variable") %>%
+  left_join(importance_table, by = "Variable") %>%
+  mutate(
+    across(
+      c(Estimate, Std_Error, p_value, VIF, Relative_Importance),
+      ~ round(.x, 4)
+    )
+  ) %>%
+  arrange(desc(Relative_Importance))
+
+final_model_table
+
+#-------------------------------
+# 8. Model fit statistics
+#-------------------------------
+model_summary <- summary(step_mod)
+
+model_fit_table <- tibble(
+  Metric = c("R_squared", "Adjusted_R_squared"),
+  Value  = c(
+    model_summary$r.squared,
+    model_summary$adj.r.squared
+  )
+) %>%
+  mutate(Value = round(Value, 4))
+
+# Save
+library(openxlsx)
+
+file_path <- file.path(out_dir, "Chronic_Zn_toxicity_threshold_simple_MLR.xlsx")
+
+wb <- createWorkbook()
+
+addWorksheet(wb, "Stepwise selected model")
+writeData(wb, "Stepwise selected model", final_model_table)
+
+addWorksheet(wb, "Model fit")
+writeData(wb, "Model fit", model_fit_table)
+
+saveWorkbook(wb, file_path, overwrite = TRUE)
+```
+
+### b. Acute toxicity
+
+```{r}
+# Fit linear model
+mod <- lm(log_Zn_acute_tox_M ~ log_TBL_Zn_mol_kg, data = dat)
+
+# View full summary
+summary(mod)
+
+# CIs
+cis <- confint(mod)
+
+# Save
+library(openxlsx)
+
+# 1. Define file path
+file_path <- file.path(out_dir, "Bioavail_predict_acute_Zn_toxicity.xlsx")
+
+#2. Create workbook and write tables
+wb <- createWorkbook()
+addWorksheet(wb, "Acute tox ~ bioavail")
+writeData(wb, "Acute tox ~ bioavail", mod)
+addWorksheet(wb, "Confidence intervals")
+writeData(wb, "Confidence intervals", cis)
+
+# 5. Save
+saveWorkbook(wb, file_path, overwrite = TRUE)
+```
+
+Plot
+
+```{r}
+library(ggplot2)
+
+acute_plot <- ggplot(dat, aes(x = log_TBL_Zn_mol_kg, y = log_Zn_acute_tox_M)) +
+  
+  # points
+  geom_point(color = "black", size = 2, alpha = 0.7) +
+  
+  # regression line + CI
+  geom_smooth(method = "lm", color = "red", fill = "pink", alpha = 0.3) +
+  
+  labs(
+    y = expression(log[10]~"Acute Zn Toxicity (M)"),
+    x = expression(log[10]~"Bioavailable Zn (mol kg"^{-1}*")"),
+    title = "Relationship Between Acute Zn Toxicity Threshold and Bioavailability"
+  ) +
+  
+  theme_classic(base_size = 12)
+
+acute_plot
+
+# Save
+ggsave(
+  filename = file.path(out_dir, "Acute_Zn_tox_vs_bioavail.png"),
+  plot = acute_plot,
+  width = 8,
+  height = 6,
+  units = "in",
+  dpi = 300
+)
+```
+
+Stepwise MLR selection
+
+```{r}
+library(dplyr)
+library(tibble)
+library(car)
+library(relaimpo)
+
+#-------------------------------
+# 1. Define candidate predictors
+#-------------------------------
+vars_to_select <- c(
+  "log_Zn_nM", "log_Temp_C", 
+  "pH", "log_DOC_nM", "log_DIC_nM", "log_Cl_nM", 
+  "log_Ca_nM", "log_Mg_nM", "log_SO4_nM", 
+  "log_Na_nM", "log_K_nM"
+)
+
+#-------------------------------
+# 2. Fit full model
+#-------------------------------
+full_formula <- as.formula(
+  paste("log_Zn_acute_tox_nM ~", paste(vars_to_select, collapse = " + "))
+)
+
+full_mod <- lm(full_formula, data = dat)
+
+#-------------------------------
+# 3. Stepwise model selection
+#-------------------------------
+step_mod <- step(full_mod, direction = "both", trace = TRUE)
+
+#-------------------------------
+# 4. Extract retained estimates
+#-------------------------------
+estimate_table <- broom::tidy(step_mod) %>%
+  filter(term != "(Intercept)") %>%
+  dplyr::select(
+    Variable = term,
+    Estimate = estimate,
+    Std_Error = std.error,
+    p_value = p.value
+  )
+
+#-------------------------------
+# 5. Extract VIF values
+#-------------------------------
+vif_table <- tibble(
+  Variable = names(vif(step_mod)),
+  VIF = as.numeric(vif(step_mod))
+)
+
+#-------------------------------
+# 6. Calculate relative importance
+#-------------------------------
+rel_importance <- calc.relimp(step_mod, type = "lmg", rela = TRUE)
+
+importance_table <- tibble(
+  Variable = names(rel_importance$lmg),
+  Relative_Importance = as.numeric(rel_importance$lmg)
+)
+
+#-------------------------------
+# 7. Combine final table
+#-------------------------------
+final_model_table <- estimate_table %>%
+  left_join(vif_table, by = "Variable") %>%
+  left_join(importance_table, by = "Variable") %>%
+  mutate(
+    across(
+      c(Estimate, Std_Error, p_value, VIF, Relative_Importance),
+      ~ round(.x, 4)
+    )
+  ) %>%
+  arrange(desc(Relative_Importance))
+
+final_model_table
+
+#-------------------------------
+# 8. Model fit statistics
+#-------------------------------
+model_summary <- summary(step_mod)
+
+model_fit_table <- tibble(
+  Metric = c("R_squared", "Adjusted_R_squared"),
+  Value  = c(
+    model_summary$r.squared,
+    model_summary$adj.r.squared
+  )
+) %>%
+  mutate(Value = round(Value, 4))
+
+# Save
+library(openxlsx)
+
+file_path <- file.path(out_dir, "Acute_Zn_toxicity_threshold_MLR.xlsx")
+
+wb <- createWorkbook()
+
+addWorksheet(wb, "Stepwise selected model")
+writeData(wb, "Stepwise selected model", final_model_table)
+
+addWorksheet(wb, "Model fit")
+writeData(wb, "Model fit", model_fit_table)
+
+saveWorkbook(wb, file_path, overwrite = TRUE)
+```
+
+Simple MLR
+
+```{r}
+library(dplyr)
+library(tibble)
+library(car)
+library(relaimpo)
+
+#-------------------------------
+# 1. Define candidate predictors
+#-------------------------------
+vars_to_select <- c(
+  "log_DOC_nM", "log_DIC_nM", "log_Ca_nM"
+)
+
+#-------------------------------
+# 2. Fit full model
+#-------------------------------
+full_formula <- as.formula(
+  paste("log_Zn_acute_tox_nM ~", paste(vars_to_select, collapse = " + "))
+)
+
+full_mod <- lm(full_formula, data = dat)
+
+#-------------------------------
+# 3. Stepwise model selection
+#-------------------------------
+step_mod <- step(full_mod, direction = "both", trace = TRUE)
+
+#-------------------------------
+# 4. Extract retained estimates
+#-------------------------------
+estimate_table <- broom::tidy(step_mod) %>%
+  filter(term != "(Intercept)") %>%
+  dplyr::select(
+    Variable = term,
+    Estimate = estimate,
+    Std_Error = std.error,
+    p_value = p.value
+  )
+
+#-------------------------------
+# 5. Extract VIF values
+#-------------------------------
+vif_table <- tibble(
+  Variable = names(vif(step_mod)),
+  VIF = as.numeric(vif(step_mod))
+)
+
+#-------------------------------
+# 6. Calculate relative importance
+#-------------------------------
+rel_importance <- calc.relimp(step_mod, type = "lmg", rela = TRUE)
+
+importance_table <- tibble(
+  Variable = names(rel_importance$lmg),
+  Relative_Importance = as.numeric(rel_importance$lmg)
+)
+
+#-------------------------------
+# 7. Combine final table
+#-------------------------------
+final_model_table <- estimate_table %>%
+  left_join(vif_table, by = "Variable") %>%
+  left_join(importance_table, by = "Variable") %>%
+  mutate(
+    across(
+      c(Estimate, Std_Error, p_value, VIF, Relative_Importance),
+      ~ round(.x, 4)
+    )
+  ) %>%
+  arrange(desc(Relative_Importance))
+
+final_model_table
+
+#-------------------------------
+# 8. Model fit statistics
+#-------------------------------
+model_summary <- summary(step_mod)
+
+model_fit_table <- tibble(
+  Metric = c("R_squared", "Adjusted_R_squared"),
+  Value  = c(
+    model_summary$r.squared,
+    model_summary$adj.r.squared
+  )
+) %>%
+  mutate(Value = round(Value, 4))
+
+# Save
+library(openxlsx)
+
+file_path <- file.path(out_dir, "Acute_Zn_toxicity_threshold_simple_MLR.xlsx")
+
+wb <- createWorkbook()
+
+addWorksheet(wb, "Stepwise selected model")
+writeData(wb, "Stepwise selected model", final_model_table)
+
+addWorksheet(wb, "Model fit")
+writeData(wb, "Model fit", model_fit_table)
+
 saveWorkbook(wb, file_path, overwrite = TRUE)
 ```
 

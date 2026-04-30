@@ -452,9 +452,8 @@ dev.off()</code></pre>
 <div id="build-mlr" class="section level2">
 <h2>2. Build MLR</h2>
 <p>Use log-transformed and standardized variables to build a large
-model, stepwise select a better model, calculate standardized beta
-coefficients, variance inflation factors (VIF), and relative importance
-on bioavailability</p>
+model, calculate standardized beta coefficients, variance inflation
+factors (VIF), and relative importance on bioavailability</p>
 <pre class="r"><code>library(MASS)</code></pre>
 <pre><code>## 
 ## Attaching package: &#39;MASS&#39;</code></pre>
@@ -1890,8 +1889,8 @@ each group:</em></strong> Our variables meet this assumption.</p></li>
 <li><p><strong><em>The distributions of the groups should have the same
 shape.</em></strong></p></li>
 </ol>
-<div id="i.-distribution-of-variables-by-typology" class="section level3">
-<h3>i. Distribution of variables by typology</h3>
+<div id="a.-distribution-of-variables-by-typology" class="section level3">
+<h3>a. Distribution of variables by typology</h3>
 <pre class="r"><code>library(dplyr)
 library(tidyr)
 library(ggplot2)
@@ -1937,8 +1936,8 @@ ggplot(dat_long, aes(x = Value, fill = Typology)) +
     axis.text.x = element_text(angle = 30, hjust = 1)
   )</code></pre>
 </div>
-<div id="ii.-check-for-missing-values" class="section level3">
-<h3>ii. Check for missing values</h3>
+<div id="b.-check-for-missing-values" class="section level3">
+<h3>b. Check for missing values</h3>
 <p>The KW test also can’t handle variables with missing values and no
 variance, we’ll check to see if any variables have these two
 conditions</p>
@@ -1960,8 +1959,8 @@ na_counts</code></pre>
 ## 1 log_Upstream_from_main_stem_km      106</code></pre>
 <pre class="r"><code>dat$log_Upstream_from_main_stem_km &lt;- NULL</code></pre>
 </div>
-<div id="iii.-check-for-zero-variance" class="section level3">
-<h3>iii. Check for zero variance</h3>
+<div id="c.-check-for-zero-variance" class="section level3">
+<h3>c. Check for zero variance</h3>
 <p>No variables have missing values, now we’ll check for lack of
 variance</p>
 <pre class="r"><code>no_variance &lt;- dat %&gt;%
@@ -1977,8 +1976,8 @@ no_variance</code></pre>
 <pre><code>## # A tibble: 0 × 2
 ## # ℹ 2 variables: Variable &lt;chr&gt;, Distinct_values &lt;int&gt;</code></pre>
 </div>
-<div id="iv.-run-kw-tests" class="section level3">
-<h3>iv. Run KW tests</h3>
+<div id="d.-run-kw-tests" class="section level3">
+<h3>d. Run KW tests</h3>
 <p>Now we can perform the KW test</p>
 <pre class="r"><code>library(tibble)
 library(agricolae)
@@ -2746,8 +2745,312 @@ write.xlsx(
   overwrite = TRUE
 )</code></pre>
 </div>
-<div id="f.-bl-bound-cations" class="section level3">
-<h3>f. BL-bound cations</h3>
+<div id="f.-publication-plot" class="section level3">
+<h3>f. Publication plot</h3>
+<pre class="r"><code>library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(scales)
+library(ggnewscale)
+
+#-------------------------------------------------
+# 1. Typology order
+#-------------------------------------------------
+dat &lt;- dat %&gt;%
+  mutate(
+    Typology = factor(
+      Typology,
+      levels = c(
+        &quot;Pooled&quot;,
+        &quot;Non-Perennial&quot;,
+        &quot;Perennial&quot;,
+        &quot;Developed Perennial&quot;,
+        &quot;Main Stem&quot;
+      )
+    )
+  )
+
+#-------------------------------------------------
+# 2. Stacked barplot data: Zn species
+#-------------------------------------------------
+species_vars &lt;- c(
+  &quot;Free_Zn_nM&quot;,
+  &quot;ZnOH_nM&quot;,
+  &quot;Zn_OH_2_nM&quot;,
+  &quot;ZnCO3_nM&quot;,
+  &quot;ZnHCO3_nM&quot;,
+  &quot;ZnSO4_nM&quot;,
+  &quot;ZnCl_nM&quot;,
+  &quot;ZnS_nM&quot;,
+  &quot;TOrg_Zn_nM&quot;
+)
+
+species_dat &lt;- dat %&gt;%
+  dplyr::select(Typology, all_of(species_vars)) %&gt;%
+  pivot_longer(
+    cols = all_of(species_vars),
+    names_to = &quot;Species&quot;,
+    values_to = &quot;conc_nM&quot;
+  ) %&gt;%
+  group_by(Typology, Species) %&gt;%
+  summarise(
+    mean_conc = mean(conc_nM, na.rm = TRUE),
+    .groups = &quot;drop&quot;
+  ) %&gt;%
+  mutate(
+    Panel = &quot;a.~Zn~speciation~(nM)&quot;,
+    Species = 
+      dplyr::recode(
+      Species,
+      &quot;Free_Zn_nM&quot;  = &quot;Zn²⁺&quot;,
+      &quot;ZnOH_nM&quot;     = &quot;ZnOH&quot;,
+      &quot;Zn_OH_2_nM&quot;  = &quot;Zn(OH)₂&quot;,
+      &quot;ZnCO3_nM&quot;    = &quot;ZnCO₃&quot;,
+      &quot;ZnHCO3_nM&quot;   = &quot;ZnHCO₃&quot;,
+      &quot;ZnSO4_nM&quot;    = &quot;ZnSO₄&quot;,
+      &quot;ZnCl_nM&quot;     = &quot;ZnCl&quot;,
+      &quot;ZnS_nM&quot;      = &quot;ZnS&quot;,
+      &quot;TOrg_Zn_nM&quot;  = &quot;Organic-Zn&quot;
+    )
+  )
+
+species_levels &lt;- species_dat %&gt;%
+  group_by(Species) %&gt;%
+  summarise(total = sum(mean_conc, na.rm = TRUE), .groups = &quot;drop&quot;) %&gt;%
+  arrange(desc(total)) %&gt;%
+  pull(Species)
+
+species_dat &lt;- species_dat %&gt;%
+  mutate(Species = factor(Species, levels = species_levels))
+
+species_colors &lt;- colorRampPalette(
+  c(&quot;brown&quot;, &quot;yellow&quot;, &quot;skyblue&quot;, &quot;darkblue&quot;)
+)(length(species_levels))
+
+#-------------------------------------------------
+# 3. Boxplot data: free/total Zn and bioavailable Zn
+#-------------------------------------------------
+box_lookup &lt;- c(
+  &quot;rel_prop_Zn&quot;       = &quot;b.~Free~Zn^{2*&#39;+&#39;}/Total~Zn~(&#39;%&#39;)&quot;,
+  &quot;log_TBL_Zn_nmol_g&quot; = &quot;c.~Bioavailable~Zn~(nmol~g^{-1}~wet)~&#39;[&#39;~log[10]~&#39;]&#39;&quot;
+)
+
+box_colors &lt;- c(
+  &quot;b.~Free~Zn^{2*&#39;+&#39;}/Total~Zn~(&#39;%&#39;)&quot; = &quot;darkgray&quot;,
+  &quot;c.~Bioavailable~Zn~(nmol~g^{-1}~wet)~&#39;[&#39;~log[10]~&#39;]&#39;&quot; = &quot;darkslategray&quot;
+)
+
+box_dat &lt;- dat %&gt;%
+  dplyr::select(Typology, all_of(names(box_lookup))) %&gt;%
+  pivot_longer(
+    cols = -Typology,
+    names_to = &quot;Variable&quot;,
+    values_to = &quot;Value&quot;
+  ) %&gt;%
+  filter(!is.na(Value)) %&gt;%
+  mutate(
+    Panel = box_lookup[Variable],
+    Panel = factor(
+      Panel,
+      levels = c(
+  &quot;a.~Zn~speciation~(nM)&quot;,
+  &quot;b.~Free~Zn^{2*&#39;+&#39;}/Total~Zn~(&#39;%&#39;)&quot;,
+  &quot;c.~Bioavailable~Zn~(nmol~g^{-1}~wet)~&#39;[&#39;~log[10]~&#39;]&#39;&quot;
+      )
+    )
+  )
+
+species_dat &lt;- species_dat %&gt;%
+  mutate(
+    Panel = factor(
+      Panel,
+      levels = levels(box_dat$Panel)
+    )
+  )
+
+
+#-------------------------------------------------
+# 4. Letters for boxplot panels only
+#-------------------------------------------------
+letter_nudge &lt;- c(
+  &quot;b.~Free~Zn^{2*&#39;+&#39;}/Total~Zn~(&#39;%&#39;)&quot; = 0.05,
+  &quot;c.~Bioavailable~Zn~(nmol~g^{-1}~wet)~&#39;[&#39;~log[10]~&#39;]&#39;&quot; = 0.7
+)
+
+letters_box &lt;- letters_df %&gt;%
+  filter(Variable %in% names(box_lookup)) %&gt;%
+  mutate(
+    Panel = box_lookup[Variable],
+    Panel = factor(Panel, levels = levels(box_dat$Panel))
+  ) %&gt;%
+  left_join(
+    box_dat %&gt;%
+      group_by(Variable, Typology) %&gt;%
+      summarise(y_max = max(Value, na.rm = TRUE), .groups = &quot;drop&quot;),
+    by = c(&quot;Variable&quot;, &quot;Typology&quot;)
+  ) %&gt;%
+  mutate(
+    y_pos = y_max + letter_nudge[as.character(Panel)]
+  )
+
+letters_species &lt;- letters_df %&gt;%
+  filter(Variable == &quot;Zn_nM&quot;) %&gt;%
+  mutate(
+    Panel = factor(
+      &quot;a.~Zn~speciation~(nM)&quot;,
+      levels = levels(box_dat$Panel)
+    )
+  ) %&gt;%
+  left_join(
+    species_dat %&gt;%
+      group_by(Typology) %&gt;%
+      summarise(y_max = sum(mean_conc, na.rm = TRUE), .groups = &quot;drop&quot;),
+    by = &quot;Typology&quot;
+  ) %&gt;%
+  mutate(
+    y_pos = y_max * 1.3
+  )
+
+
+# Zn error bars
+zn_error &lt;- dat %&gt;%
+  group_by(Typology) %&gt;%
+  summarise(
+    mean_Zn = mean(Zn_nM, na.rm = TRUE),
+    sd_Zn   = sd(Zn_nM, na.rm = TRUE),
+    n       = sum(!is.na(Zn_nM)),
+    se_Zn   = sd_Zn / sqrt(n),
+    .groups = &quot;drop&quot;
+  ) %&gt;%
+  left_join(
+    species_dat %&gt;%
+      group_by(Typology) %&gt;%
+      summarise(bar_height = sum(mean_conc, na.rm = TRUE), .groups = &quot;drop&quot;),
+    by = &quot;Typology&quot;
+  ) %&gt;%
+  mutate(
+    Panel = factor(&quot;a.~Zn~speciation~(nM)&quot;, levels = levels(species_dat$Panel)),
+    ymin = bar_height - se_Zn,
+    ymax = bar_height + se_Zn
+  )
+
+#-------------------------------------------------
+# 5. Combined faceted plot
+#-------------------------------------------------
+zn_combined_panel &lt;- ggplot() +
+  
+  # Stacked mean species barplot
+  geom_col(
+    data = species_dat,
+    aes(x = Typology, y = mean_conc, fill = Species),
+    color = &quot;black&quot;,
+    linewidth = 0.3
+  ) +
+  scale_fill_manual(
+  values = species_colors,
+  name = &quot;Zn species&quot;,
+  guide = guide_legend(nrow = 2, byrow = TRUE)
+) +
+  
+  # Error bars for stacked barplot
+  geom_errorbar(
+  data = zn_error,
+  aes(x = Typology, ymin = ymin, ymax = ymax),
+  inherit.aes = FALSE,
+  width = 0.5,
+  linewidth = 0.5,
+  color = &quot;black&quot;
+) +
+  
+  ggnewscale::new_scale_fill() +
+  
+  # Boxplots
+  geom_boxplot(
+  data = box_dat,
+  aes(x = Typology, y = Value, fill = Panel, color = Panel),
+  width = 0.7,
+  alpha = 0.4,   # slightly more transparent
+  linewidth = 0.3
+) +
+geom_jitter(
+  data = box_dat,
+  aes(x = Typology, y = Value, color = Panel),
+  width = 0.15,
+  size = 0.7,    # slightly smaller points
+  alpha = 0.7
+)  +
+  
+  # Letters for Zn speciation stacked bars
+  geom_text(
+    data = letters_species,
+    aes(x = Typology, y = y_pos, label = Letters),
+    inherit.aes = FALSE,
+    size = 3.5
+  ) +
+  
+  # Letters for boxplot panels
+  geom_text(
+    data = letters_box,
+    aes(x = Typology, y = y_pos, label = Letters),
+    inherit.aes = FALSE,
+    size = 3.5
+  ) +
+  
+  scale_fill_manual(values = box_colors, guide = &quot;none&quot;) +
+  scale_color_manual(values = box_colors, guide = &quot;none&quot;) +
+  
+    facet_wrap(
+    ~ Panel,
+    scales = &quot;free_y&quot;,
+    ncol = 3,
+    labeller = labeller(Panel = label_parsed)
+  ) +
+  
+  labs(
+    title = &quot;Zinc Speciation and Bioavailability by Stream Typology&quot;,
+    x = NULL,
+    y = &quot;Value&quot;
+  ) +
+  
+  theme_minimal(base_size = 12) +
+  theme(
+  legend.position = &quot;bottom&quot;,
+  legend.justification = &quot;left&quot;,
+  legend.background = element_blank(),
+  legend.title = element_text(size = 9),
+  legend.text = element_text(size = 8),
+  legend.box = &quot;horizontal&quot;,
+  axis.text.x = element_text(
+    size = 10,
+    angle = 30,
+    hjust = 1,
+    color = &quot;black&quot;
+  ),
+  axis.text.y = element_text(color = &quot;black&quot;),
+  strip.text = element_text(size = 12),
+  plot.title = element_text(size = 14)
+)
+
+zn_combined_panel</code></pre>
+<pre><code>## Warning in min(x): no non-missing arguments to min; returning Inf</code></pre>
+<pre><code>## Warning in max(x): no non-missing arguments to max; returning -Inf</code></pre>
+<pre><code>## Warning in min(x): no non-missing arguments to min; returning Inf</code></pre>
+<pre><code>## Warning in max(x): no non-missing arguments to max; returning -Inf</code></pre>
+<pre class="r"><code># Save
+ggsave(
+  filename = file.path(out_dir, &quot;Zn_pub_plot.png&quot;),
+  plot     = zn_combined_panel,
+  width    = 12,
+  height   = 6,
+  dpi      = 300
+)</code></pre>
+<pre><code>## Warning in min(x): no non-missing arguments to min; returning Inf
+## Warning in min(x): no non-missing arguments to max; returning -Inf</code></pre>
+<pre><code>## Warning in min(x): no non-missing arguments to min; returning Inf</code></pre>
+<pre><code>## Warning in max(x): no non-missing arguments to max; returning -Inf</code></pre>
+</div>
+<div id="g.-bl-bound-cations" class="section level3">
+<h3>g. BL-bound cations</h3>
 <pre class="r"><code>library(dplyr)
 library(tidyr)
 library(ggplot2)
@@ -3135,6 +3438,721 @@ writeData(wb, &quot;Log10 variables&quot;, mle_summary_log)
 
 # 5. Save
 saveWorkbook(wb, file_path, overwrite = TRUE)</code></pre>
+</div>
+<div id="bioavailability-toxicity-relationship" class="section level2">
+<h2>4. Bioavailability-toxicity relationship</h2>
+<div id="a.-chronic-toxicity" class="section level3">
+<h3>a. Chronic toxicity</h3>
+<pre class="r"><code># Fit linear model
+mod &lt;- lm(log_Zn_chronic_tox_M ~ log_TBL_Zn_mol_kg, data = dat)
+
+# View full summary
+summary(mod)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = log_Zn_chronic_tox_M ~ log_TBL_Zn_mol_kg, data = dat)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -0.87917 -0.11130  0.01815  0.13094  0.51329 
+## 
+## Coefficients:
+##                   Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)       -9.57250    0.37155 -25.764   &lt;2e-16 ***
+## log_TBL_Zn_mol_kg -0.28773    0.03016  -9.539   &lt;2e-16 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 0.1879 on 384 degrees of freedom
+## Multiple R-squared:  0.1916, Adjusted R-squared:  0.1895 
+## F-statistic: 90.99 on 1 and 384 DF,  p-value: &lt; 2.2e-16</code></pre>
+<pre class="r"><code># CIs
+cis &lt;- confint(mod)
+
+# Save
+library(openxlsx)
+
+# 1. Define file path
+file_path &lt;- file.path(out_dir, &quot;Bioavail_predict_chronic_Zn_toxicity.xlsx&quot;)
+
+#2. Create workbook and write tables
+wb &lt;- createWorkbook()
+addWorksheet(wb, &quot;Chronic tox ~ bioavail&quot;)
+writeData(wb, &quot;Chronic tox ~ bioavail&quot;, mod)
+addWorksheet(wb, &quot;Confidence intervals&quot;)
+writeData(wb, &quot;Confidence intervals&quot;, cis)
+
+# 5. Save
+saveWorkbook(wb, file_path, overwrite = TRUE)</code></pre>
+<p>Plot</p>
+<pre class="r"><code>library(ggplot2)
+
+chronic_plot &lt;- ggplot(dat, aes(x = log_TBL_Zn_mol_kg, y = log_Zn_chronic_tox_M)) +
+  
+  # points
+  geom_point(color = &quot;black&quot;, size = 2, alpha = 0.7) +
+  
+  # regression line + CI
+  geom_smooth(method = &quot;lm&quot;, color = &quot;blue&quot;, fill = &quot;lightblue&quot;, alpha = 0.3) +
+  
+  labs(
+    y = expression(log[10]~&quot;Chronic Zn Toxicity (M)&quot;),
+    x = expression(log[10]~&quot;Bioavailable Zn (mol kg&quot;^{-1}*&quot;)&quot;),
+    title = &quot;Relationship Between Chronic Zn Toxicity Threshold and Bioavailability&quot;
+  ) +
+  
+  theme_classic(base_size = 12)
+
+chronic_plot</code></pre>
+<pre><code>## `geom_smooth()` using formula = &#39;y ~ x&#39;</code></pre>
+<pre class="r"><code># Save
+ggsave(
+  filename = file.path(out_dir, &quot;Chronic_Zn_tox_vs_bioavail.png&quot;),
+  plot = chronic_plot,
+  width = 8,
+  height = 6,
+  units = &quot;in&quot;,
+  dpi = 300
+)</code></pre>
+<pre><code>## `geom_smooth()` using formula = &#39;y ~ x&#39;</code></pre>
+<p>Determine the top predictors of chronic toxicity</p>
+<pre class="r"><code>library(dplyr)
+library(tibble)
+library(car)
+library(relaimpo)
+
+#-------------------------------
+# 1. Define candidate predictors
+#-------------------------------
+vars_to_select &lt;- c(
+  &quot;log_Zn_nM&quot;, &quot;log_Temp_C&quot;, 
+  &quot;pH&quot;, &quot;log_DOC_nM&quot;, &quot;log_DIC_nM&quot;, &quot;log_Cl_nM&quot;, 
+  &quot;log_Ca_nM&quot;, &quot;log_Mg_nM&quot;, &quot;log_SO4_nM&quot;, 
+  &quot;log_Na_nM&quot;, &quot;log_K_nM&quot;
+)
+
+#-------------------------------
+# 2. Fit full model
+#-------------------------------
+full_formula &lt;- as.formula(
+  paste(&quot;log_Zn_chronic_tox_nM ~&quot;, paste(vars_to_select, collapse = &quot; + &quot;))
+)
+
+full_mod &lt;- lm(full_formula, data = dat)
+
+#-------------------------------
+# 3. Stepwise model selection
+#-------------------------------
+step_mod &lt;- step(full_mod, direction = &quot;both&quot;, trace = TRUE)</code></pre>
+<pre><code>## Start:  AIC=-2007.81
+## log_Zn_chronic_tox_nM ~ log_Zn_nM + log_Temp_C + pH + log_DOC_nM + 
+##     log_DIC_nM + log_Cl_nM + log_Ca_nM + log_Mg_nM + log_SO4_nM + 
+##     log_Na_nM + log_K_nM
+## 
+##              Df Sum of Sq    RSS     AIC
+## &lt;none&gt;                    1.9979 -2007.8
+## - log_DIC_nM  1   0.01162 2.0095 -2007.6
+## - log_Mg_nM   1   0.02235 2.0202 -2005.5
+## - log_SO4_nM  1   0.03474 2.0326 -2003.2
+## - log_Zn_nM   1   0.03523 2.0331 -2003.1
+## - log_K_nM    1   0.05636 2.0542 -1999.1
+## - log_Na_nM   1   0.05966 2.0575 -1998.5
+## - log_Cl_nM   1   0.11442 2.1123 -1988.3
+## - log_Temp_C  1   0.12891 2.1268 -1985.7
+## - log_Ca_nM   1   0.72515 2.7230 -1890.3
+## - pH          1   0.97097 2.9688 -1856.9
+## - log_DOC_nM  1   2.04650 4.0444 -1737.6</code></pre>
+<pre class="r"><code>#-------------------------------
+# 4. Extract retained estimates
+#-------------------------------
+estimate_table &lt;- broom::tidy(step_mod) %&gt;%
+  filter(term != &quot;(Intercept)&quot;) %&gt;%
+  dplyr::select(
+    Variable = term,
+    Estimate = estimate,
+    Std_Error = std.error,
+    p_value = p.value
+  )
+
+#-------------------------------
+# 5. Extract VIF values
+#-------------------------------
+vif_table &lt;- tibble(
+  Variable = names(vif(step_mod)),
+  VIF = as.numeric(vif(step_mod))
+)
+
+#-------------------------------
+# 6. Calculate relative importance
+#-------------------------------
+rel_importance &lt;- calc.relimp(step_mod, type = &quot;lmg&quot;, rela = TRUE)
+
+importance_table &lt;- tibble(
+  Variable = names(rel_importance$lmg),
+  Relative_Importance = as.numeric(rel_importance$lmg)
+)
+
+#-------------------------------
+# 7. Combine final table
+#-------------------------------
+final_model_table &lt;- estimate_table %&gt;%
+  left_join(vif_table, by = &quot;Variable&quot;) %&gt;%
+  left_join(importance_table, by = &quot;Variable&quot;) %&gt;%
+  mutate(
+    across(
+      c(Estimate, Std_Error, p_value, VIF, Relative_Importance),
+      ~ round(.x, 4)
+    )
+  ) %&gt;%
+  arrange(desc(Relative_Importance))
+
+final_model_table</code></pre>
+<pre><code>## # A tibble: 11 × 6
+##    Variable   Estimate Std_Error p_value   VIF Relative_Importance
+##    &lt;chr&gt;         &lt;dbl&gt;     &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt;               &lt;dbl&gt;
+##  1 log_DOC_nM   0.349     0.0178  0       2.53              0.298 
+##  2 log_Ca_nM    0.529     0.0454  0       9.46              0.206 
+##  3 log_DIC_nM   0.0696    0.0472  0.141   8.85              0.114 
+##  4 log_K_nM     0.106     0.0325  0.0013  4.10              0.0896
+##  5 pH          -0.138     0.0102  0       1.39              0.0833
+##  6 log_Mg_nM   -0.0715    0.035   0.0415  4.83              0.0494
+##  7 log_Na_nM   -0.130     0.0388  0.0009 16.1               0.0382
+##  8 log_Temp_C   0.128     0.026   0       1.17              0.038 
+##  9 log_Cl_nM    0.131     0.0283  0       9.75              0.0318
+## 10 log_SO4_nM  -0.0458    0.0179  0.0112  3.84              0.0302
+## 11 log_Zn_nM    0.041     0.016   0.0106  1.54              0.0208</code></pre>
+<pre class="r"><code>#-------------------------------
+# 8. Model fit statistics
+#-------------------------------
+model_summary &lt;- summary(step_mod)
+
+model_fit_table &lt;- tibble(
+  Metric = c(&quot;R_squared&quot;, &quot;Adjusted_R_squared&quot;),
+  Value  = c(
+    model_summary$r.squared,
+    model_summary$adj.r.squared
+  )
+) %&gt;%
+  mutate(Value = round(Value, 4))
+
+# Save
+library(openxlsx)
+
+file_path &lt;- file.path(out_dir, &quot;Chronic_Zn_toxicity_threshold_MLR.xlsx&quot;)
+
+wb &lt;- createWorkbook()
+
+addWorksheet(wb, &quot;Stepwise selected model&quot;)
+writeData(wb, &quot;Stepwise selected model&quot;, final_model_table)
+
+addWorksheet(wb, &quot;Model fit&quot;)
+writeData(wb, &quot;Model fit&quot;, model_fit_table)
+
+saveWorkbook(wb, file_path, overwrite = TRUE)</code></pre>
+<p>Simple MLR</p>
+<pre class="r"><code>library(dplyr)
+library(tibble)
+library(car)
+library(relaimpo)
+
+#-------------------------------
+# 1. Define candidate predictors
+#-------------------------------
+vars_to_select &lt;- c(
+  &quot;log_DOC_nM&quot;, &quot;log_DIC_nM&quot;, &quot;log_Ca_nM&quot;
+)
+
+#-------------------------------
+# 2. Fit full model
+#-------------------------------
+full_formula &lt;- as.formula(
+  paste(&quot;log_Zn_acute_tox_nM ~&quot;, paste(vars_to_select, collapse = &quot; + &quot;))
+)
+
+full_mod &lt;- lm(full_formula, data = dat)
+
+#-------------------------------
+# 3. Stepwise model selection
+#-------------------------------
+step_mod &lt;- step(full_mod, direction = &quot;both&quot;, trace = TRUE)</code></pre>
+<pre><code>## Start:  AIC=-1471.7
+## log_Zn_acute_tox_nM ~ log_DOC_nM + log_DIC_nM + log_Ca_nM
+## 
+##              Df Sum of Sq     RSS     AIC
+## - log_Ca_nM   1   0.00023  8.3516 -1473.7
+## &lt;none&gt;                     8.3513 -1471.7
+## - log_DOC_nM  1   0.04884  8.4002 -1471.5
+## - log_DIC_nM  1   2.03872 10.3900 -1389.4
+## 
+## Step:  AIC=-1473.69
+## log_Zn_acute_tox_nM ~ log_DOC_nM + log_DIC_nM
+## 
+##              Df Sum of Sq     RSS     AIC
+## &lt;none&gt;                     8.3516 -1473.7
+## - log_DOC_nM  1    0.0602  8.4118 -1472.9
+## + log_Ca_nM   1    0.0002  8.3513 -1471.7
+## - log_DIC_nM  1   14.1814 22.5329 -1092.6</code></pre>
+<pre class="r"><code>#-------------------------------
+# 4. Extract retained estimates
+#-------------------------------
+estimate_table &lt;- broom::tidy(step_mod) %&gt;%
+  filter(term != &quot;(Intercept)&quot;) %&gt;%
+  dplyr::select(
+    Variable = term,
+    Estimate = estimate,
+    Std_Error = std.error,
+    p_value = p.value
+  )
+
+#-------------------------------
+# 5. Extract VIF values
+#-------------------------------
+vif_table &lt;- tibble(
+  Variable = names(vif(step_mod)),
+  VIF = as.numeric(vif(step_mod))
+)
+
+#-------------------------------
+# 6. Calculate relative importance
+#-------------------------------
+rel_importance &lt;- calc.relimp(step_mod, type = &quot;lmg&quot;, rela = TRUE)
+
+importance_table &lt;- tibble(
+  Variable = names(rel_importance$lmg),
+  Relative_Importance = as.numeric(rel_importance$lmg)
+)
+
+#-------------------------------
+# 7. Combine final table
+#-------------------------------
+final_model_table &lt;- estimate_table %&gt;%
+  left_join(vif_table, by = &quot;Variable&quot;) %&gt;%
+  left_join(importance_table, by = &quot;Variable&quot;) %&gt;%
+  mutate(
+    across(
+      c(Estimate, Std_Error, p_value, VIF, Relative_Importance),
+      ~ round(.x, 4)
+    )
+  ) %&gt;%
+  arrange(desc(Relative_Importance))
+
+final_model_table</code></pre>
+<pre><code>## # A tibble: 2 × 6
+##   Variable   Estimate Std_Error p_value   VIF Relative_Importance
+##   &lt;chr&gt;         &lt;dbl&gt;     &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt;               &lt;dbl&gt;
+## 1 log_DIC_nM   0.822     0.0322  0       1.01              0.997 
+## 2 log_DOC_nM   0.0379    0.0228  0.0974  1.01              0.0031</code></pre>
+<pre class="r"><code>#-------------------------------
+# 8. Model fit statistics
+#-------------------------------
+model_summary &lt;- summary(step_mod)
+
+model_fit_table &lt;- tibble(
+  Metric = c(&quot;R_squared&quot;, &quot;Adjusted_R_squared&quot;),
+  Value  = c(
+    model_summary$r.squared,
+    model_summary$adj.r.squared
+  )
+) %&gt;%
+  mutate(Value = round(Value, 4))
+
+# Save
+library(openxlsx)
+
+file_path &lt;- file.path(out_dir, &quot;Chronic_Zn_toxicity_threshold_simple_MLR.xlsx&quot;)
+
+wb &lt;- createWorkbook()
+
+addWorksheet(wb, &quot;Stepwise selected model&quot;)
+writeData(wb, &quot;Stepwise selected model&quot;, final_model_table)
+
+addWorksheet(wb, &quot;Model fit&quot;)
+writeData(wb, &quot;Model fit&quot;, model_fit_table)
+
+saveWorkbook(wb, file_path, overwrite = TRUE)</code></pre>
+</div>
+<div id="b.-acute-toxicity" class="section level3">
+<h3>b. Acute toxicity</h3>
+<pre class="r"><code># Fit linear model
+mod &lt;- lm(log_Zn_acute_tox_M ~ log_TBL_Zn_mol_kg, data = dat)
+
+# View full summary
+summary(mod)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = log_Zn_acute_tox_M ~ log_TBL_Zn_mol_kg, data = dat)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -1.23641 -0.11372  0.05026  0.15163  0.53403 
+## 
+## Coefficients:
+##                   Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)       -3.19022    0.46490  -6.862 2.73e-11 ***
+## log_TBL_Zn_mol_kg -0.18622    0.03774  -4.934 1.20e-06 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 0.235 on 384 degrees of freedom
+## Multiple R-squared:  0.05962,    Adjusted R-squared:  0.05717 
+## F-statistic: 24.34 on 1 and 384 DF,  p-value: 1.203e-06</code></pre>
+<pre class="r"><code># CIs
+cis &lt;- confint(mod)
+
+# Save
+library(openxlsx)
+
+# 1. Define file path
+file_path &lt;- file.path(out_dir, &quot;Bioavail_predict_acute_Zn_toxicity.xlsx&quot;)
+
+#2. Create workbook and write tables
+wb &lt;- createWorkbook()
+addWorksheet(wb, &quot;Acute tox ~ bioavail&quot;)
+writeData(wb, &quot;Acute tox ~ bioavail&quot;, mod)
+addWorksheet(wb, &quot;Confidence intervals&quot;)
+writeData(wb, &quot;Confidence intervals&quot;, cis)
+
+# 5. Save
+saveWorkbook(wb, file_path, overwrite = TRUE)</code></pre>
+<p>Plot</p>
+<pre class="r"><code>library(ggplot2)
+
+acute_plot &lt;- ggplot(dat, aes(x = log_TBL_Zn_mol_kg, y = log_Zn_acute_tox_M)) +
+  
+  # points
+  geom_point(color = &quot;black&quot;, size = 2, alpha = 0.7) +
+  
+  # regression line + CI
+  geom_smooth(method = &quot;lm&quot;, color = &quot;red&quot;, fill = &quot;pink&quot;, alpha = 0.3) +
+  
+  labs(
+    y = expression(log[10]~&quot;Acute Zn Toxicity (M)&quot;),
+    x = expression(log[10]~&quot;Bioavailable Zn (mol kg&quot;^{-1}*&quot;)&quot;),
+    title = &quot;Relationship Between Acute Zn Toxicity Threshold and Bioavailability&quot;
+  ) +
+  
+  theme_classic(base_size = 12)
+
+acute_plot</code></pre>
+<pre><code>## `geom_smooth()` using formula = &#39;y ~ x&#39;</code></pre>
+<pre class="r"><code># Save
+ggsave(
+  filename = file.path(out_dir, &quot;Acute_Zn_tox_vs_bioavail.png&quot;),
+  plot = acute_plot,
+  width = 8,
+  height = 6,
+  units = &quot;in&quot;,
+  dpi = 300
+)</code></pre>
+<pre><code>## `geom_smooth()` using formula = &#39;y ~ x&#39;</code></pre>
+<p>Stepwise MLR selection</p>
+<pre class="r"><code>library(dplyr)
+library(tibble)
+library(car)
+library(relaimpo)
+
+#-------------------------------
+# 1. Define candidate predictors
+#-------------------------------
+vars_to_select &lt;- c(
+  &quot;log_Zn_nM&quot;, &quot;log_Temp_C&quot;, 
+  &quot;pH&quot;, &quot;log_DOC_nM&quot;, &quot;log_DIC_nM&quot;, &quot;log_Cl_nM&quot;, 
+  &quot;log_Ca_nM&quot;, &quot;log_Mg_nM&quot;, &quot;log_SO4_nM&quot;, 
+  &quot;log_Na_nM&quot;, &quot;log_K_nM&quot;
+)
+
+#-------------------------------
+# 2. Fit full model
+#-------------------------------
+full_formula &lt;- as.formula(
+  paste(&quot;log_Zn_acute_tox_nM ~&quot;, paste(vars_to_select, collapse = &quot; + &quot;))
+)
+
+full_mod &lt;- lm(full_formula, data = dat)
+
+#-------------------------------
+# 3. Stepwise model selection
+#-------------------------------
+step_mod &lt;- step(full_mod, direction = &quot;both&quot;, trace = TRUE)</code></pre>
+<pre><code>## Start:  AIC=-1932.77
+## log_Zn_acute_tox_nM ~ log_Zn_nM + log_Temp_C + pH + log_DOC_nM + 
+##     log_DIC_nM + log_Cl_nM + log_Ca_nM + log_Mg_nM + log_SO4_nM + 
+##     log_Na_nM + log_K_nM
+## 
+##              Df Sum of Sq    RSS     AIC
+## - log_Cl_nM   1    0.0000 2.4266 -1934.8
+## - log_Mg_nM   1    0.0001 2.4267 -1934.8
+## - log_K_nM    1    0.0018 2.4284 -1934.5
+## - log_Na_nM   1    0.0096 2.4362 -1933.2
+## - log_DOC_nM  1    0.0104 2.4370 -1933.1
+## &lt;none&gt;                    2.4266 -1932.8
+## - log_Zn_nM   1    0.0200 2.4466 -1931.6
+## - log_SO4_nM  1    0.0335 2.4601 -1929.5
+## - log_Ca_nM   1    0.0414 2.4680 -1928.2
+## - log_Temp_C  1    0.6560 3.0826 -1842.4
+## - log_DIC_nM  1    1.2180 3.6446 -1777.8
+## - pH          1    4.4698 6.8964 -1531.6
+## 
+## Step:  AIC=-1934.77
+## log_Zn_acute_tox_nM ~ log_Zn_nM + log_Temp_C + pH + log_DOC_nM + 
+##     log_DIC_nM + log_Ca_nM + log_Mg_nM + log_SO4_nM + log_Na_nM + 
+##     log_K_nM
+## 
+##              Df Sum of Sq    RSS     AIC
+## - log_Mg_nM   1    0.0001 2.4267 -1936.8
+## - log_K_nM    1    0.0023 2.4289 -1936.4
+## - log_DOC_nM  1    0.0104 2.4370 -1935.1
+## &lt;none&gt;                    2.4266 -1934.8
+## - log_Zn_nM   1    0.0207 2.4473 -1933.5
+## + log_Cl_nM   1    0.0000 2.4266 -1932.8
+## - log_SO4_nM  1    0.0343 2.4609 -1931.3
+## - log_Na_nM   1    0.0370 2.4636 -1930.9
+## - log_Ca_nM   1    0.0414 2.4680 -1930.2
+## - log_Temp_C  1    0.6600 3.0866 -1843.9
+## - log_DIC_nM  1    1.2278 3.6544 -1778.7
+## - pH          1    4.5144 6.9410 -1531.1
+## 
+## Step:  AIC=-1936.76
+## log_Zn_acute_tox_nM ~ log_Zn_nM + log_Temp_C + pH + log_DOC_nM + 
+##     log_DIC_nM + log_Ca_nM + log_SO4_nM + log_Na_nM + log_K_nM
+## 
+##              Df Sum of Sq    RSS     AIC
+## - log_K_nM    1    0.0024 2.4291 -1938.4
+## - log_DOC_nM  1    0.0119 2.4385 -1936.9
+## &lt;none&gt;                    2.4267 -1936.8
+## - log_Zn_nM   1    0.0207 2.4473 -1935.5
+## + log_Mg_nM   1    0.0001 2.4266 -1934.8
+## + log_Cl_nM   1    0.0000 2.4267 -1934.8
+## - log_SO4_nM  1    0.0379 2.4645 -1932.8
+## - log_Na_nM   1    0.0393 2.4659 -1932.6
+## - log_Ca_nM   1    0.0420 2.4686 -1932.1
+## - log_Temp_C  1    0.6600 3.0866 -1845.9
+## - log_DIC_nM  1    1.3881 3.8147 -1764.2
+## - pH          1    4.7659 7.1925 -1519.4
+## 
+## Step:  AIC=-1938.37
+## log_Zn_acute_tox_nM ~ log_Zn_nM + log_Temp_C + pH + log_DOC_nM + 
+##     log_DIC_nM + log_Ca_nM + log_SO4_nM + log_Na_nM
+## 
+##              Df Sum of Sq    RSS     AIC
+## &lt;none&gt;                    2.4291 -1938.4
+## - log_Zn_nM   1    0.0188 2.4479 -1937.4
+## + log_K_nM    1    0.0024 2.4267 -1936.8
+## + log_Cl_nM   1    0.0004 2.4287 -1936.4
+## + log_Mg_nM   1    0.0002 2.4289 -1936.4
+## - log_DOC_nM  1    0.0260 2.4551 -1936.3
+## - log_SO4_nM  1    0.0355 2.4646 -1934.8
+## - log_Na_nM   1    0.0369 2.4660 -1934.5
+## - log_Ca_nM   1    0.0435 2.4725 -1933.5
+## - log_Temp_C  1    0.6588 3.0879 -1847.7
+## - log_DIC_nM  1    1.3881 3.8172 -1765.9
+## - pH          1    4.9431 7.3722 -1511.8</code></pre>
+<pre class="r"><code>#-------------------------------
+# 4. Extract retained estimates
+#-------------------------------
+estimate_table &lt;- broom::tidy(step_mod) %&gt;%
+  filter(term != &quot;(Intercept)&quot;) %&gt;%
+  dplyr::select(
+    Variable = term,
+    Estimate = estimate,
+    Std_Error = std.error,
+    p_value = p.value
+  )
+
+#-------------------------------
+# 5. Extract VIF values
+#-------------------------------
+vif_table &lt;- tibble(
+  Variable = names(vif(step_mod)),
+  VIF = as.numeric(vif(step_mod))
+)
+
+#-------------------------------
+# 6. Calculate relative importance
+#-------------------------------
+rel_importance &lt;- calc.relimp(step_mod, type = &quot;lmg&quot;, rela = TRUE)
+
+importance_table &lt;- tibble(
+  Variable = names(rel_importance$lmg),
+  Relative_Importance = as.numeric(rel_importance$lmg)
+)
+
+#-------------------------------
+# 7. Combine final table
+#-------------------------------
+final_model_table &lt;- estimate_table %&gt;%
+  left_join(vif_table, by = &quot;Variable&quot;) %&gt;%
+  left_join(importance_table, by = &quot;Variable&quot;) %&gt;%
+  mutate(
+    across(
+      c(Estimate, Std_Error, p_value, VIF, Relative_Importance),
+      ~ round(.x, 4)
+    )
+  ) %&gt;%
+  arrange(desc(Relative_Importance))
+
+final_model_table</code></pre>
+<pre><code>## # A tibble: 8 × 6
+##   Variable   Estimate Std_Error p_value   VIF Relative_Importance
+##   &lt;chr&gt;         &lt;dbl&gt;     &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt;               &lt;dbl&gt;
+## 1 log_DIC_nM   0.708     0.0483  0       7.67              0.372 
+## 2 log_Ca_nM    0.128     0.0491  0.0098  9.19              0.291 
+## 3 pH          -0.297     0.0107  0       1.27              0.221 
+## 4 log_Na_nM    0.0496    0.0207  0.0171  3.81              0.0409
+## 5 log_Temp_C   0.288     0.0285  0       1.16              0.0372
+## 6 log_SO4_nM   0.0427    0.0182  0.0194  3.28              0.0243
+## 7 log_Zn_nM    0.029     0.017   0.0883  1.44              0.0076
+## 8 log_DOC_nM  -0.03      0.0149  0.0453  1.47              0.0062</code></pre>
+<pre class="r"><code>#-------------------------------
+# 8. Model fit statistics
+#-------------------------------
+model_summary &lt;- summary(step_mod)
+
+model_fit_table &lt;- tibble(
+  Metric = c(&quot;R_squared&quot;, &quot;Adjusted_R_squared&quot;),
+  Value  = c(
+    model_summary$r.squared,
+    model_summary$adj.r.squared
+  )
+) %&gt;%
+  mutate(Value = round(Value, 4))
+
+# Save
+library(openxlsx)
+
+file_path &lt;- file.path(out_dir, &quot;Acute_Zn_toxicity_threshold_MLR.xlsx&quot;)
+
+wb &lt;- createWorkbook()
+
+addWorksheet(wb, &quot;Stepwise selected model&quot;)
+writeData(wb, &quot;Stepwise selected model&quot;, final_model_table)
+
+addWorksheet(wb, &quot;Model fit&quot;)
+writeData(wb, &quot;Model fit&quot;, model_fit_table)
+
+saveWorkbook(wb, file_path, overwrite = TRUE)</code></pre>
+<p>Simple MLR</p>
+<pre class="r"><code>library(dplyr)
+library(tibble)
+library(car)
+library(relaimpo)
+
+#-------------------------------
+# 1. Define candidate predictors
+#-------------------------------
+vars_to_select &lt;- c(
+  &quot;log_DOC_nM&quot;, &quot;log_DIC_nM&quot;, &quot;log_Ca_nM&quot;
+)
+
+#-------------------------------
+# 2. Fit full model
+#-------------------------------
+full_formula &lt;- as.formula(
+  paste(&quot;log_Zn_acute_tox_nM ~&quot;, paste(vars_to_select, collapse = &quot; + &quot;))
+)
+
+full_mod &lt;- lm(full_formula, data = dat)
+
+#-------------------------------
+# 3. Stepwise model selection
+#-------------------------------
+step_mod &lt;- step(full_mod, direction = &quot;both&quot;, trace = TRUE)</code></pre>
+<pre><code>## Start:  AIC=-1471.7
+## log_Zn_acute_tox_nM ~ log_DOC_nM + log_DIC_nM + log_Ca_nM
+## 
+##              Df Sum of Sq     RSS     AIC
+## - log_Ca_nM   1   0.00023  8.3516 -1473.7
+## &lt;none&gt;                     8.3513 -1471.7
+## - log_DOC_nM  1   0.04884  8.4002 -1471.5
+## - log_DIC_nM  1   2.03872 10.3900 -1389.4
+## 
+## Step:  AIC=-1473.69
+## log_Zn_acute_tox_nM ~ log_DOC_nM + log_DIC_nM
+## 
+##              Df Sum of Sq     RSS     AIC
+## &lt;none&gt;                     8.3516 -1473.7
+## - log_DOC_nM  1    0.0602  8.4118 -1472.9
+## + log_Ca_nM   1    0.0002  8.3513 -1471.7
+## - log_DIC_nM  1   14.1814 22.5329 -1092.6</code></pre>
+<pre class="r"><code>#-------------------------------
+# 4. Extract retained estimates
+#-------------------------------
+estimate_table &lt;- broom::tidy(step_mod) %&gt;%
+  filter(term != &quot;(Intercept)&quot;) %&gt;%
+  dplyr::select(
+    Variable = term,
+    Estimate = estimate,
+    Std_Error = std.error,
+    p_value = p.value
+  )
+
+#-------------------------------
+# 5. Extract VIF values
+#-------------------------------
+vif_table &lt;- tibble(
+  Variable = names(vif(step_mod)),
+  VIF = as.numeric(vif(step_mod))
+)
+
+#-------------------------------
+# 6. Calculate relative importance
+#-------------------------------
+rel_importance &lt;- calc.relimp(step_mod, type = &quot;lmg&quot;, rela = TRUE)
+
+importance_table &lt;- tibble(
+  Variable = names(rel_importance$lmg),
+  Relative_Importance = as.numeric(rel_importance$lmg)
+)
+
+#-------------------------------
+# 7. Combine final table
+#-------------------------------
+final_model_table &lt;- estimate_table %&gt;%
+  left_join(vif_table, by = &quot;Variable&quot;) %&gt;%
+  left_join(importance_table, by = &quot;Variable&quot;) %&gt;%
+  mutate(
+    across(
+      c(Estimate, Std_Error, p_value, VIF, Relative_Importance),
+      ~ round(.x, 4)
+    )
+  ) %&gt;%
+  arrange(desc(Relative_Importance))
+
+final_model_table</code></pre>
+<pre><code>## # A tibble: 2 × 6
+##   Variable   Estimate Std_Error p_value   VIF Relative_Importance
+##   &lt;chr&gt;         &lt;dbl&gt;     &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt;               &lt;dbl&gt;
+## 1 log_DIC_nM   0.822     0.0322  0       1.01              0.997 
+## 2 log_DOC_nM   0.0379    0.0228  0.0974  1.01              0.0031</code></pre>
+<pre class="r"><code>#-------------------------------
+# 8. Model fit statistics
+#-------------------------------
+model_summary &lt;- summary(step_mod)
+
+model_fit_table &lt;- tibble(
+  Metric = c(&quot;R_squared&quot;, &quot;Adjusted_R_squared&quot;),
+  Value  = c(
+    model_summary$r.squared,
+    model_summary$adj.r.squared
+  )
+) %&gt;%
+  mutate(Value = round(Value, 4))
+
+# Save
+library(openxlsx)
+
+file_path &lt;- file.path(out_dir, &quot;Acute_Zn_toxicity_threshold_simple_MLR.xlsx&quot;)
+
+wb &lt;- createWorkbook()
+
+addWorksheet(wb, &quot;Stepwise selected model&quot;)
+writeData(wb, &quot;Stepwise selected model&quot;, final_model_table)
+
+addWorksheet(wb, &quot;Model fit&quot;)
+writeData(wb, &quot;Model fit&quot;, model_fit_table)
+
+saveWorkbook(wb, file_path, overwrite = TRUE)</code></pre>
+</div>
 </div>
 </div>
 <div id="interaction-effect-of-typology-and-developed-lulc" class="section level1">
