@@ -30,7 +30,7 @@ The first step in this workflow was to clean the WaDE Synoptic Survey Dataset by
 - EDA of variables stored in Excel files
 - log transformed variables stored in `Bioavailability_Master_Spreadsheet_Clean2.xlsx`
 
-#### 5. Cluster Analysis
+#### 5. Cluster Analysis (only in Zn folder)
 - Sample-level clustering → `Typology`  
 - Site-level clustering → `Typology2`  
 - Both stored in `Bioavailability_Master_Spreadsheet_Clean3.xlsx`
