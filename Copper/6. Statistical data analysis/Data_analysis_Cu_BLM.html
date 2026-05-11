@@ -359,11 +359,11 @@ display: none;
 analyses of the Bioavailability Master Spreadsheet Clean version 2
 assuming baseline BLM assumptions (HA 10% Closed System).</p>
 <p>First, set the working directory</p>
-<pre class="r"><code>setwd(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/6. Statistical data analysis&quot;)</code></pre>
+<pre class="r"><code>setwd(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Copper/6. Statistical data analysis&quot;)</code></pre>
 <p>Import dataset</p>
 <pre class="r"><code>library(readxl)
 
-dat &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/5. Cluster analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx&quot;, 
+dat &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Copper/5. Cluster analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx&quot;, 
     sheet = &quot;HA 10% Closed System&quot;)
 head(dat)</code></pre>
 <pre><code>## # A tibble: 6 × 304
@@ -945,7 +945,7 @@ library(ggpubr)</code></pre>
   stat_regline_equation(label.x = -0.9, label.y = -6.8) +
   
   # adjusted R2
-   stat_poly_eq(use_label(c(&quot;adj.R2&quot;))) +
+  stat_poly_eq(use_label(c(&quot;adj.R2&quot;))) +
   
   labs(
     y = expression(log[10] ~ &quot;Bioavailable Cu&quot; ~ (nmol ~ g^{-1} ~ &quot;wet&quot;)),

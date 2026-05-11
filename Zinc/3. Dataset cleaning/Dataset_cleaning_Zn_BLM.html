@@ -364,7 +364,7 @@ upload which becomes the object called “dat” and replace the tab name of
 the exported file to the Bioavailability Master Spreadsheet will be,
 then run the entire Rmd.</p>
 <p>Set working directory</p>
-<pre class="r"><code>setwd(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/3. Dataset cleaning&quot;)</code></pre>
+<pre class="r"><code>setwd(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Zinc/3. Dataset cleaning&quot;)</code></pre>
 <div id="ha-10-closed-system" class="section level1">
 <h1>HA 10% Closed System</h1>
 <div id="i.-import-dataset" class="section level2">
@@ -374,7 +374,7 @@ system</p>
 <pre class="r"><code>#load package (must be installed first)
 library(readxl) 
 
-dat &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/2. Dataset merging/Bioavailability_Master_Spreadsheet.xlsx&quot;, 
+dat &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Zinc/2. Dataset merging/Bioavailability_Master_Spreadsheet.xlsx&quot;, 
     sheet = &quot;HA 10% Closed System&quot;)
 
 str(dat)</code></pre>
@@ -600,11 +600,6 @@ table(dat$Type)</code></pre>
 <p>Categorizing developed land use and land cover (LULC) will be based
 on a modified version of the MRLC National Land Cover Database Class
 Legend and Description. Our categories will be as follows</p>
-<ul>
-<li><p>&lt;49% developed LULC = low intensity</p></li>
-<li><p>50-79% developed LULC = medium intensity</p></li>
-<li><p>&gt;80% developed LULC = high intensity</p></li>
-</ul>
 <pre class="r"><code>dat &lt;- dat %&gt;%
   mutate(
     Development = case_when(
@@ -620,8 +615,26 @@ table(dat$Development)</code></pre>
 <pre><code>## 
 ##    Low Medium   High 
 ##    110    145    131</code></pre>
+<pre class="r"><code># Consistent with synoptic survey manuscript
+dat &lt;- dat %&gt;%
+  mutate(
+    Development2 = case_when(
+      Developed_lulc &lt; 50 ~ &quot;Low&quot;,
+      Developed_lulc &gt;= 50 &amp; Developed_lulc &lt; 70 ~ &quot;Medium&quot;,
+      Developed_lulc &gt;= 70 ~ &quot;High&quot;
+    ) %&gt;% 
+      factor(levels = c(&quot;Low&quot;, &quot;Medium&quot;, &quot;High&quot;))
+  )
+
+# Check
+table(dat$Development2)</code></pre>
+<pre><code>## 
+##    Low Medium   High 
+##    110     95    181</code></pre>
 <p>Check for NAs</p>
 <pre class="r"><code>sum(is.na(dat$Development))</code></pre>
+<pre><code>## [1] 0</code></pre>
+<pre class="r"><code>sum(is.na(dat$Development2))</code></pre>
 <pre><code>## [1] 0</code></pre>
 </div>
 <div id="iii.-relative-elevation" class="section level3">
@@ -683,7 +696,7 @@ dat &lt;- dat %&gt;%
 
 # Check
 head(dat)</code></pre>
-<pre><code>## # A tibble: 6 × 151
+<pre><code>## # A tibble: 6 × 152
 ##   Sample_ID Site    Date                Regime    Flow_state Network Elevation_m
 ##   &lt;chr&gt;     &lt;chr&gt;   &lt;dttm&gt;              &lt;chr&gt;     &lt;chr&gt;      &lt;chr&gt;         &lt;dbl&gt;
 ## 1 WaDE_62   MTN1.1  2023-06-23 00:00:00 NonPeren… Flowing    MTN            248.
@@ -692,7 +705,7 @@ head(dat)</code></pre>
 ## 4 WaDE_65   MTN2    2023-06-23 00:00:00 NonPeren… Pooled     MTN            257.
 ## 5 WaDE_66   MCA3.3  2023-06-23 00:00:00 NonPeren… Flowing    MCA            280.
 ## 6 WaDE_67   MCA3.2  2023-06-23 00:00:00 NonPeren… Flowing    MCA            275.
-## # ℹ 144 more variables: Relative_elevation_m &lt;dbl&gt;,
+## # ℹ 145 more variables: Relative_elevation_m &lt;dbl&gt;,
 ## #   Upstream_from_main_stem_km &lt;dbl&gt;, Developed_lulc &lt;dbl&gt;, Type &lt;fct&gt;,
 ## #   Development &lt;fct&gt;, Relative_elevation &lt;fct&gt;, pH &lt;dbl&gt;, Temp_C &lt;dbl&gt;,
 ## #   DOC_uM &lt;dbl&gt;, Ca_uM &lt;dbl&gt;, Mg_uM &lt;dbl&gt;, Na_uM &lt;dbl&gt;, K_uM &lt;dbl&gt;,
@@ -701,7 +714,7 @@ head(dat)</code></pre>
 ## #   ZnHCO3_M &lt;dbl&gt;, ZnSO4_M &lt;dbl&gt;, ZnCl_M &lt;dbl&gt;, ZnS_M &lt;dbl&gt;, …</code></pre>
 <p>Check the structure one last time before saving</p>
 <pre class="r"><code>str(dat)</code></pre>
-<pre><code>## tibble [386 × 151] (S3: tbl_df/tbl/data.frame)
+<pre><code>## tibble [386 × 152] (S3: tbl_df/tbl/data.frame)
 ##  $ Sample_ID                 : chr [1:386] &quot;WaDE_62&quot; &quot;WaDE_63&quot; &quot;WaDE_64&quot; &quot;WaDE_65&quot; ...
 ##  $ Site                      : chr [1:386] &quot;MTN1.1&quot; &quot;EFK13.8&quot; &quot;MTN4&quot; &quot;MTN2&quot; ...
 ##  $ Date                      : POSIXct[1:386], format: &quot;2023-06-23&quot; &quot;2023-06-23&quot; ...
@@ -855,7 +868,7 @@ saveWorkbook(
 system</p>
 <pre class="r"><code>library(readxl) 
 
-dat &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/2. Dataset merging/Bioavailability_Master_Spreadsheet.xlsx&quot;, 
+dat &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Zinc/2. Dataset merging/Bioavailability_Master_Spreadsheet.xlsx&quot;, 
     sheet = &quot;HA 10% Open System&quot;)
 
 str(dat)</code></pre>
@@ -1054,23 +1067,22 @@ saveWorkbook(
 )</code></pre>
 </div>
 </div>
-<div id="humic-acid-10-80" class="section level1">
-<h1>Humic Acid 10-80%</h1>
+<div id="humic-acid-10-60" class="section level1">
+<h1>Humic Acid 10-60%</h1>
 <div id="i.-import-dataset-2" class="section level2">
 <h2>I. Import Dataset</h2>
 <p>Upload Bioavailability_Master_Spreadsheet.xlsx for ha 10% open
 system</p>
 <pre class="r"><code>library(readxl) 
 
-dat &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/2. Dataset merging/Bioavailability_Master_Spreadsheet.xlsx&quot;, 
-    sheet = &quot;HA 10-80%&quot;)
+dat &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Zinc/2. Dataset merging/Bioavailability_Master_Spreadsheet.xlsx&quot;, 
+    sheet = &quot;HA 10-60%&quot;)
 
 str(dat)</code></pre>
-<pre><code>## tibble [7,386 × 4] (S3: tbl_df/tbl/data.frame)
-##  $ HA_content   : chr [1:7386] &quot;ha10&quot; &quot;ha10&quot; &quot;ha10&quot; &quot;ha10&quot; ...
-##  $ Sample_ID    : chr [1:7386] &quot;WaDE_62&quot; &quot;WaDE_63&quot; &quot;WaDE_64&quot; &quot;WaDE_65&quot; ...
-##  $ Site         : chr [1:7386] &quot;\&quot;MTN1.1              \&quot;&quot; &quot;\&quot;EFK13.8             \&quot;&quot; &quot;\&quot;MTN4                \&quot;&quot; &quot;\&quot;MTN2                \&quot;&quot; ...
-##  $ TBL_Zn_mol_kg: num [1:7386] 1.68e-13 1.83e-13 3.17e-12 2.19e-13 4.31e-13 ...</code></pre>
+<pre><code>## tibble [2,316 × 3] (S3: tbl_df/tbl/data.frame)
+##  $ Sample_ID    : chr [1:2316] &quot;WaDE_62&quot; &quot;WaDE_63&quot; &quot;WaDE_64&quot; &quot;WaDE_65&quot; ...
+##  $ HA_content   : num [1:2316] 10 10 10 10 10 10 10 10 10 10 ...
+##  $ TBL_Zn_mol_kg: num [1:2316] 1.68e-13 1.83e-13 3.17e-12 2.19e-13 4.31e-13 ...</code></pre>
 </div>
 <div id="ii.-unit-conversions-2" class="section level2">
 <h2>II. Unit Conversions</h2>
@@ -1096,9 +1108,6 @@ convert_TBL_Zn_units &lt;- function(dat) {
     add_if_missing(&quot;TBL_Zn_nmol_g&quot;, 
                dat$TBL_Zn_mol_kg * 1e6) %&gt;%  # mol/kg → nmol/g
     
-    add_if_missing(&quot;TBL_Zn_nmol_g&quot;,  
-                   dat$TBL_Zn_mol_kg * 1e6) %&gt;%  # mol/kg → nmol/g
-    
     add_if_missing(&quot;TBL_Zn_umol_g&quot;,  
                    dat$TBL_Zn_mol_kg * 1e3)      # mol/kg → µmol/g
 }
@@ -1117,7 +1126,7 @@ Spreadsheet to a new tab</p>
 <pre class="r"><code>library(openxlsx)
 
 file_path  &lt;- &quot;Bioavailability_Master_Spreadsheet_Clean.xlsx&quot;
-sheet_name &lt;- &quot;HA 10-80%&quot;
+sheet_name &lt;- &quot;HA 10-60%&quot;
 
 # ---------------------------------------------------------
 # Create workbook if it doesn&#39;t exist, otherwise load it

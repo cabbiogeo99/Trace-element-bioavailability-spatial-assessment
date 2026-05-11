@@ -16,7 +16,7 @@ The objectives of this notebook will be to conduct exploratory data analyses on 
 Set the working directory
 
 ```{r}
-setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/4. Exploratory data analysis")
+setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Copper/4. Exploratory data analysis")
 ```
 
 Upload the Bioavailability Master Spreadsheet datasets
@@ -24,10 +24,10 @@ Upload the Bioavailability Master Spreadsheet datasets
 ```{r}
 library(readxl)
 
-ha10_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/3. Dataset cleaning/Bioavailability_Master_Spreadsheet_Clean.xlsx", 
+ha10_cs <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Copper/3. Dataset cleaning/Bioavailability_Master_Spreadsheet_Clean.xlsx", 
     sheet = "HA 10% Closed System")
 
-ha10_os <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/3. Dataset cleaning/Bioavailability_Master_Spreadsheet_Clean.xlsx", 
+ha10_os <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Copper/3. Dataset cleaning/Bioavailability_Master_Spreadsheet_Clean.xlsx", 
     sheet = "HA 10% Open System")
 ```
 

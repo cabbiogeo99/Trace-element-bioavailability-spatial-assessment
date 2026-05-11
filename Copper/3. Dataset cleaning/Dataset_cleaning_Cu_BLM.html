@@ -362,7 +362,7 @@ upload which becomes the object called “dat” and replace the tab name of
 the exported file to the Bioavailability Master Spreadsheet will be,
 then run the entire Rmd.</p>
 <p>Set the working directory to the repo</p>
-<pre class="r"><code>setwd(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/3. Dataset cleaning&quot;)</code></pre>
+<pre class="r"><code>setwd(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Copper/3. Dataset cleaning&quot;)</code></pre>
 <div id="ha-10-closed-system" class="section level1">
 <h1>HA 10% Closed System</h1>
 <div id="i.-import-dataset" class="section level2">
@@ -371,7 +371,7 @@ then run the entire Rmd.</p>
 <pre class="r"><code>#load package (must be installed first)
 library(readxl) 
 
-dat &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/2. Dataset merging/Bioavailability_Master_Spreadsheet.xlsx&quot;, 
+dat &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Copper/2. Dataset merging/Bioavailability_Master_Spreadsheet.xlsx&quot;, 
     sheet = &quot;HA 10% Closed System&quot;)
 
 str(dat)</code></pre>
@@ -854,7 +854,7 @@ saveWorkbook(
 <pre class="r"><code>#load package (must be installed first)
 library(readxl) 
 
-dat &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/2. Dataset merging/Bioavailability_Master_Spreadsheet.xlsx&quot;, 
+dat &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Copper/2. Dataset merging/Bioavailability_Master_Spreadsheet.xlsx&quot;, 
     sheet = &quot;HA 10% Open System&quot;)
 
 str(dat)</code></pre>
@@ -1056,23 +1056,22 @@ saveWorkbook(
 )</code></pre>
 </div>
 </div>
-<div id="humic-acid-10-80" class="section level1">
-<h1>Humic Acid 10-80%</h1>
+<div id="humic-acid-10-60" class="section level1">
+<h1>Humic Acid 10-60%</h1>
 <div id="i.-import-dataset-2" class="section level2">
 <h2>I. Import Dataset</h2>
 <p>Upload Bioavailability_Master_Spreadsheet.xlsx for ha 10% open
 system</p>
 <pre class="r"><code>library(readxl) 
 
-dat &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/2. Dataset merging/Bioavailability_Master_Spreadsheet.xlsx&quot;, 
-    sheet = &quot;HA 10-80%&quot;)
+dat &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Copper/2. Dataset merging/Bioavailability_Master_Spreadsheet.xlsx&quot;, 
+    sheet = &quot;HA 10-60%&quot;)
 
 str(dat)</code></pre>
-<pre><code>## tibble [5,772 × 4] (S3: tbl_df/tbl/data.frame)
-##  $ HA_content   : chr [1:5772] &quot;ha20&quot; &quot;ha20&quot; &quot;ha20&quot; &quot;ha20&quot; ...
-##  $ Sample_ID    : chr [1:5772] &quot;WaDE_62&quot; &quot;WaDE_63&quot; &quot;WaDE_64&quot; &quot;WaDE_65&quot; ...
-##  $ Site         : chr [1:5772] &quot;\&quot;MTN1.1              \&quot;&quot; &quot;\&quot;EFK13.8             \&quot;&quot; &quot;\&quot;MTN4                \&quot;&quot; &quot;\&quot;MTN2                \&quot;&quot; ...
-##  $ TBL_Cu_mol_kg: num [1:5772] 7.95e-15 7.66e-15 1.06e-15 4.98e-15 9.19e-16 ...</code></pre>
+<pre><code>## tibble [2,316 × 3] (S3: tbl_df/tbl/data.frame)
+##  $ Sample_ID    : chr [1:2316] &quot;WaDE_62&quot; &quot;WaDE_63&quot; &quot;WaDE_64&quot; &quot;WaDE_65&quot; ...
+##  $ HA_content   : num [1:2316] 10 10 10 10 10 10 10 10 10 10 ...
+##  $ TBL_Cu_mol_kg: num [1:2316] 1.15e-14 9.19e-15 1.40e-15 6.51e-15 1.46e-15 ...</code></pre>
 </div>
 <div id="ii.-unit-conversions-2" class="section level2">
 <h2>II. Unit Conversions</h2>
@@ -1116,7 +1115,7 @@ Spreadsheet to a new tab</p>
 <pre class="r"><code>library(openxlsx)
 
 file_path  &lt;- &quot;Bioavailability_Master_Spreadsheet_Clean.xlsx&quot;
-sheet_name &lt;- &quot;HA 10-80%&quot;
+sheet_name &lt;- &quot;HA 10-60%&quot;
 
 # ---------------------------------------------------------
 # Create workbook if it doesn&#39;t exist, otherwise load it

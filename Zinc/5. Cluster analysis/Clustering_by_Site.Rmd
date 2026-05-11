@@ -18,7 +18,7 @@ This will be conducted under the baseline BLM assumptions (HA 10% Closed System)
 First, set the working directory
 
 ```{r}
-setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/5. Cluster analysis")
+setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Zinc/5. Cluster analysis")
 ```
 
 # Identifying Stream Typologies
@@ -30,7 +30,7 @@ Import dataset
 ```{r}
 library(readxl)
 
-dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/4. Exploratory data analysis/Bioavailability_Master_Spreadsheet_Clean2.xlsx", 
+dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Zinc/4. Exploratory data analysis/Bioavailability_Master_Spreadsheet_Clean2.xlsx", 
     sheet = "HA 10% Closed System")
 
 head(dat)
@@ -341,9 +341,8 @@ writeData(wb, sheet = "Typology2", cluster_summary_table_pct)
 
 # 4. Save
 saveWorkbook(
-  out_dir,
   wb,
-  file = "Relative_freq_by_typology2.xlsx",
+  file = file.path(out_dir, "Relative_freq_by_typology2.xlsx"),
   overwrite = TRUE
 )
 ```
@@ -494,9 +493,8 @@ writeData(wb, sheet = "Typology2", sites_by_typology2)
 
 # 4. Save
 saveWorkbook(
-  out_dir,
   wb,
-  file = "sites_by_typology2.xlsx",
+  file = file.path(out_dir, "sites_by_typology2.xlsx"),
   overwrite = TRUE
 )
 ```
@@ -555,7 +553,7 @@ library(readxl)
 library(dplyr)
 library(openxlsx)
 
-file_path <- "C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/5. Cluster analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx"
+file_path <- "C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Zinc/5. Cluster analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx"
 
 sheet_name <- "HA 10% Closed System"
 
@@ -658,7 +656,6 @@ writeData(wb, "PD Tribs", pd_tribs)
 
 # Save workbook
 saveWorkbook(
-  out_dir,
   wb,
   file = file.path(out_dir, "Sites_by_typology.xlsx"),
   overwrite = TRUE

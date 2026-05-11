@@ -18,7 +18,7 @@ This will be conducted under the baseline BLM assumptions (HA 10% Closed System)
 First, set the working directory
 
 ```{r}
-setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/5. Cluster analysis")
+setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Zinc/5. Cluster analysis")
 ```
 
 # Identifying Stream Typologies
@@ -30,7 +30,7 @@ Import dataset
 ```{r}
 library(readxl)
 
-dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/4. Exploratory data analysis/Bioavailability_Master_Spreadsheet_Clean2.xlsx", 
+dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Zinc/4. Exploratory data analysis/Bioavailability_Master_Spreadsheet_Clean2.xlsx", 
     sheet = "HA 10% Closed System")
 
 head(dat)
@@ -660,7 +660,7 @@ library(readxl)
 library(dplyr)
 library(openxlsx)
 
-file_path <- "C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/4. Exploratory data analysis/Bioavailability_Master_Spreadsheet_Clean2.xlsx"
+file_path <- "C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Zinc/4. Exploratory data analysis/Bioavailability_Master_Spreadsheet_Clean2.xlsx"
 
 sheet_name <- "HA 10% Closed System"
 

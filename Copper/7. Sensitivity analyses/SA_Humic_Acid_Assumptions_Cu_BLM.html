@@ -365,12 +365,12 @@ HA % 10-60 by increments of 10.</p>
 <div id="setup" class="section level1">
 <h1>1. Setup</h1>
 <p>Set working directory</p>
-<pre class="r"><code>setwd(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/7. Sensitivity analyses&quot;)</code></pre>
+<pre class="r"><code>setwd(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Copper/7. Sensitivity analyses&quot;)</code></pre>
 <p>Import the dataset with BLM results under varying HA (%) and the
 Bioavailability Master Spreadsheet 3 which contains Typologies</p>
 <pre class="r"><code>library(readxl)
 
-ha_dat &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/3. Dataset cleaning/Bioavailability_Master_Spreadsheet_Clean.xlsx&quot;, 
+ha_dat &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Copper/3. Dataset cleaning/Bioavailability_Master_Spreadsheet_Clean.xlsx&quot;, 
     sheet = &quot;HA 10-60%&quot;)
 
 head(ha_dat)</code></pre>
@@ -383,7 +383,7 @@ head(ha_dat)</code></pre>
 ## 4 WaDE_65           10      6.51e-15 0.00000000651      6.51e-12
 ## 5 WaDE_66           10      1.46e-15 0.00000000146      1.46e-12
 ## 6 WaDE_67           10      8.03e-15 0.00000000803      8.03e-12</code></pre>
-<pre class="r"><code>bms &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/5. Cluster analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx&quot;)
+<pre class="r"><code>bms &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Copper/5. Cluster analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx&quot;)
 
 head(bms)</code></pre>
 <pre><code>## # A tibble: 6 × 304

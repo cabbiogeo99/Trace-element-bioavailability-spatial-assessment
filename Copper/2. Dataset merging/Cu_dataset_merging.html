@@ -11,7 +11,6 @@
 
 <meta name="author" content="Cecilia Albert-Black" />
 
-<meta name="date" content="2025-11-13" />
 
 <title>Cu dataset merging</title>
 
@@ -352,7 +351,6 @@ display: none;
 
 <h1 class="title toc-ignore">Cu dataset merging</h1>
 <h4 class="author">Cecilia Albert-Black</h4>
-<h4 class="date">2025-11-13</h4>
 
 </div>
 
@@ -397,7 +395,7 @@ promelas.det.xlsx)</li>
 toxicity to the given organism</p>
 <div id="set-the-working-directory" class="section level2">
 <h2>Set the working directory</h2>
-<pre class="r"><code>setwd(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data inputs&quot;)</code></pre>
+<pre class="r"><code>setwd(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Copper/1. Running BLM/Data inputs&quot;)</code></pre>
 </div>
 </div>
 <div id="ha-10-closed-system" class="section level1">
@@ -406,7 +404,7 @@ toxicity to the given organism</p>
 <h2>1. Clean WaDE Synoptic Survey</h2>
 <pre class="r"><code>library(readxl)
 
-WaDE_Synoptic_Summary_Clean &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/WaDE Dataset Cleaning/WaDE_Synoptic_Summary_Clean.xlsx&quot;)
+WaDE_Synoptic_Summary_Clean &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/WaDE Dataset Cleaning/WaDE_Synoptic_Summary_Clean.xlsx&quot;)
 
 head(WaDE_Synoptic_Summary_Clean)</code></pre>
 <pre><code>## # A tibble: 6 × 21
@@ -499,7 +497,7 @@ head(bio_ms)</code></pre>
 site.</p>
 <pre class="r"><code>library(readxl)
 
-WaDE_Site_Info &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/WaDE Dataset Cleaning/WaDE_Synoptic_Summary.xlsx&quot;, 
+WaDE_Site_Info &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/WaDE Dataset Cleaning/WaDE_Synoptic_Summary.xlsx&quot;, 
     sheet = &quot;SITE INFO&quot;)
 
 head(WaDE_Site_Info)</code></pre>
@@ -629,7 +627,7 @@ the newest Excel Workbook version before importing them.</p>
 <p>Import dataset</p>
 <pre class="r"><code>library(readxl)
 
-Cu_Speciation_ha10_cs &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Speciation Mode/Cu_speciation_ha10_cs.det.xlsx&quot;)</code></pre>
+Cu_Speciation_ha10_cs &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Copper/1. Running BLM/Data outputs/Speciation Mode/Cu_speciation_ha10_cs.det.xlsx&quot;)</code></pre>
 <pre><code>## New names:
 ## • `` -&gt; `...2`
 ## • `` -&gt; `...3`
@@ -956,7 +954,7 @@ promelas.det.xlsx)</li>
 </ul>
 <pre class="r"><code>library(readxl)
 
-Cu_acute_tox_daph &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha10_cs/Cu Acute Toxicity on C. dubia.det.xlsx&quot;)</code></pre>
+Cu_acute_tox_daph &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha10_cs/Cu Acute Toxicity on C. dubia.det.xlsx&quot;)</code></pre>
 <pre><code>## New names:
 ## • `` -&gt; `...2`
 ## • `` -&gt; `...3`
@@ -1018,7 +1016,7 @@ Cu_acute_tox_daph &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge Natio
 ## • `` -&gt; `...59`
 ## • `` -&gt; `...60`
 ## • `` -&gt; `...61`</code></pre>
-<pre class="r"><code>Cu_acute_tox_minn &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha10_cs/Cu Acute Toxicity on P. promelas.det.xlsx&quot;)</code></pre>
+<pre class="r"><code>Cu_acute_tox_minn &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha10_cs/Cu Acute Toxicity on P. promelas.det.xlsx&quot;)</code></pre>
 <pre><code>## New names:
 ## • `` -&gt; `...2`
 ## • `` -&gt; `...3`
@@ -1080,7 +1078,7 @@ Cu_acute_tox_daph &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge Natio
 ## • `` -&gt; `...59`
 ## • `` -&gt; `...60`
 ## • `` -&gt; `...61`</code></pre>
-<pre class="r"><code>Cu_chronic_tox_daph &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha10_cs/Cu Chronic Toxicity on C. dubia.det.xlsx&quot;)</code></pre>
+<pre class="r"><code>Cu_chronic_tox_daph &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha10_cs/Cu Chronic Toxicity on C. dubia.det.xlsx&quot;)</code></pre>
 <pre><code>## New names:
 ## • `` -&gt; `...2`
 ## • `` -&gt; `...3`
@@ -1142,7 +1140,7 @@ Cu_acute_tox_daph &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge Natio
 ## • `` -&gt; `...59`
 ## • `` -&gt; `...60`
 ## • `` -&gt; `...61`</code></pre>
-<pre class="r"><code>Cu_chronic_tox_minn &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha10_cs/Cu Chronic Toxicity on P. promelas.det.xlsx&quot;)</code></pre>
+<pre class="r"><code>Cu_chronic_tox_minn &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Copper/1. Running BLM/Data outputs/Toxicity Mode/ha10_cs/Cu Chronic Toxicity on P. promelas.det.xlsx&quot;)</code></pre>
 <pre><code>## New names:
 ## • `` -&gt; `...2`
 ## • `` -&gt; `...3`
@@ -1503,7 +1501,7 @@ the newest Excel Workbook version before importing them.</p>
 <p>Import dataset</p>
 <pre class="r"><code>library(readxl)
 
-Cu_Speciation_ha10_os &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Speciation Mode/Cu_speciation_ha10_os.det.xlsx&quot;)</code></pre>
+Cu_Speciation_ha10_os &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Copper/1. Running BLM/Data outputs/Speciation Mode/Cu_speciation_ha10_os.det.xlsx&quot;)</code></pre>
 <pre><code>## New names:
 ## • `` -&gt; `...2`
 ## • `` -&gt; `...3`
@@ -1864,7 +1862,7 @@ files) plus the baseline condition of 10% humic acid already
 uploaded</p>
 <pre class="r"><code>library(readxl)
 
-Cu_Speciation_ha20_cs &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Speciation Mode/Cu_speciation_ha20_cs.det.xlsx&quot;)</code></pre>
+Cu_Speciation_ha20_cs &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Copper/1. Running BLM/Data outputs/Speciation Mode/Cu_speciation_ha20_cs.det.xlsx&quot;)</code></pre>
 <pre><code>## New names:
 ## • `` -&gt; `...2`
 ## • `` -&gt; `...3`
@@ -1926,7 +1924,7 @@ Cu_Speciation_ha20_cs &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge N
 ## • `` -&gt; `...59`
 ## • `` -&gt; `...60`
 ## • `` -&gt; `...61`</code></pre>
-<pre class="r"><code>Cu_Speciation_ha30_cs &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Speciation Mode/Cu_speciation_ha30_cs.det.xlsx&quot;)</code></pre>
+<pre class="r"><code>Cu_Speciation_ha30_cs &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Copper/1. Running BLM/Data outputs/Speciation Mode/Cu_speciation_ha30_cs.det.xlsx&quot;)</code></pre>
 <pre><code>## New names:
 ## • `` -&gt; `...2`
 ## • `` -&gt; `...3`
@@ -1988,7 +1986,7 @@ Cu_Speciation_ha20_cs &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge N
 ## • `` -&gt; `...59`
 ## • `` -&gt; `...60`
 ## • `` -&gt; `...61`</code></pre>
-<pre class="r"><code>Cu_Speciation_ha40_cs &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Speciation Mode/Cu_speciation_ha40_cs.det.xlsx&quot;)</code></pre>
+<pre class="r"><code>Cu_Speciation_ha40_cs &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Copper/1. Running BLM/Data outputs/Speciation Mode/Cu_speciation_ha40_cs.det.xlsx&quot;)</code></pre>
 <pre><code>## New names:
 ## • `` -&gt; `...2`
 ## • `` -&gt; `...3`
@@ -2050,7 +2048,7 @@ Cu_Speciation_ha20_cs &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge N
 ## • `` -&gt; `...59`
 ## • `` -&gt; `...60`
 ## • `` -&gt; `...61`</code></pre>
-<pre class="r"><code>Cu_Speciation_ha50_cs &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Speciation Mode/Cu_speciation_ha50_cs.det.xlsx&quot;)</code></pre>
+<pre class="r"><code>Cu_Speciation_ha50_cs &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Copper/1. Running BLM/Data outputs/Speciation Mode/Cu_speciation_ha50_cs.det.xlsx&quot;)</code></pre>
 <pre><code>## New names:
 ## • `` -&gt; `...2`
 ## • `` -&gt; `...3`
@@ -2112,7 +2110,7 @@ Cu_Speciation_ha20_cs &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge N
 ## • `` -&gt; `...59`
 ## • `` -&gt; `...60`
 ## • `` -&gt; `...61`</code></pre>
-<pre class="r"><code>Cu_Speciation_ha60_cs &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/1. Running BLM/Data outputs/Speciation Mode/Cu_speciation_ha60_cs.det.xlsx&quot;)</code></pre>
+<pre class="r"><code>Cu_Speciation_ha60_cs &lt;- read_excel(&quot;C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Copper/1. Running BLM/Data outputs/Speciation Mode/Cu_speciation_ha60_cs.det.xlsx&quot;)</code></pre>
 <pre><code>## New names:
 ## • `` -&gt; `...2`
 ## • `` -&gt; `...3`

@@ -48,7 +48,7 @@ We will be obtaining these variables from the WaDE_Synoptic_Summary_Final.xlsx f
 # 1. Set working directory
 
 ```{r}
-setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/Copper/1. Running BLM/Data inputs")
+setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Copper/1. Running BLM/Data inputs")
 ```
 
 # 2. Import the clean WaDE Synoptic Summary dataset
@@ -56,7 +56,7 @@ setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailab
 ```{r}
 library(readxl)
 
-WaDE_Synoptic_Summary_Clean <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt_sep/WaDE Dataset Cleaning/WaDE_Synoptic_Summary_Clean.xlsx")
+WaDE_Synoptic_Summary_Clean <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/WaDE Dataset Cleaning/WaDE_Synoptic_Summary_Clean.xlsx")
 
 head(WaDE_Synoptic_Summary_Clean)
 ```

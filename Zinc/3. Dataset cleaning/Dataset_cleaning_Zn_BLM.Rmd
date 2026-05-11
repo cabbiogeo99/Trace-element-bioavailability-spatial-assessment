@@ -14,7 +14,7 @@ Here I will walk through cleaning and feature engineering the Bioavailability Ma
 Set working directory
 
 ```{r}
-setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/3. Dataset cleaning")
+setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Zinc/3. Dataset cleaning")
 ```
 
 # HA 10% Closed System
@@ -27,7 +27,7 @@ Upload Bioavailability_Master_Spreadsheet.xlsx for ha 10% closed system
 #load package (must be installed first)
 library(readxl) 
 
-dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/2. Dataset merging/Bioavailability_Master_Spreadsheet.xlsx", 
+dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Zinc/2. Dataset merging/Bioavailability_Master_Spreadsheet.xlsx", 
     sheet = "HA 10% Closed System")
 
 str(dat)
@@ -367,7 +367,7 @@ Upload Bioavailability_Master_Spreadsheet.xlsx for ha 10% open system
 ```{r}
 library(readxl) 
 
-dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/2. Dataset merging/Bioavailability_Master_Spreadsheet.xlsx", 
+dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Zinc/2. Dataset merging/Bioavailability_Master_Spreadsheet.xlsx", 
     sheet = "HA 10% Open System")
 
 str(dat)
@@ -527,7 +527,7 @@ Upload Bioavailability_Master_Spreadsheet.xlsx for ha 10% open system
 ```{r}
 library(readxl) 
 
-dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/2. Dataset merging/Bioavailability_Master_Spreadsheet.xlsx", 
+dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Zinc/2. Dataset merging/Bioavailability_Master_Spreadsheet.xlsx", 
     sheet = "HA 10-60%")
 
 str(dat)

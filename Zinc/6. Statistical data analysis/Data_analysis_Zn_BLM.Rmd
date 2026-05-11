@@ -16,7 +16,7 @@ The objectives of this notebook will be to conduct statistical analyses of the B
 First, set the working directory
 
 ```{r}
-setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/6. Statistical data analysis")
+setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Zinc/6. Statistical data analysis")
 ```
 
 Import dataset
@@ -24,7 +24,7 @@ Import dataset
 ```{r}
 library(readxl)
 
-dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/5. Cluster analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx")
+dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Zinc/5. Cluster analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx")
 
 head(dat)
 ```

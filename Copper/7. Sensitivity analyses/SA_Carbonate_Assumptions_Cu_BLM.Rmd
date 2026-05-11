@@ -19,7 +19,7 @@ Two scenarios will be compared to conduct a sensitivity analysis of BLM's carbon
 Set working directory
 
 ```{r}
-setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/7. Sensitivity analyses")
+setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Copper/7. Sensitivity analyses")
 ```
 
 Merge BLM output variables from the baseline conditions (closed system + HA 10%) and the perturbed scenario (open system + HA 10% ) from the clean Bioavailability Master Spreadsheet version 2 (pre-typology) and version 3 (with typological classification).
@@ -32,14 +32,14 @@ library(readxl)
 # -------------------------------------------------
 # 1) Set working directory
 # -------------------------------------------------
-setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/7. Sensitivity analyses")
+setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Copper/7. Sensitivity analyses")
 
 # -------------------------------------------------
 # 2) Store file paths once (so you don't repeat them)
 # -------------------------------------------------
-file_master3 <- "C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/5. Cluster analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx"
+file_master3 <- "C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Copper/5. Cluster analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx"
 
-file_master2 <- "C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Copper/4. Exploratory data analysis/Bioavailability_Master_Spreadsheet_Clean2.xlsx"
+file_master2 <- "C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Copper/4. Exploratory data analysis/Bioavailability_Master_Spreadsheet_Clean2.xlsx"
 
 library(dplyr)
 
