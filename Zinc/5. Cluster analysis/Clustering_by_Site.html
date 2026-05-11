@@ -582,7 +582,16 @@ library(ggplot2)</code></pre>
 <pre><code>## Warning: package &#39;ggplot2&#39; was built under R version 4.5.2</code></pre>
 <pre class="r"><code>library(factoextra)</code></pre>
 <pre><code>## Welcome! Want to learn more? See two factoextra-related books at https://goo.gl/ve3WBa</code></pre>
-<pre class="r"><code>#-------------------------------------------------
+<pre class="r"><code># Font sizes
+
+title_size  &lt;- 16
+axis_title  &lt;- 14
+axis_text   &lt;- 12
+legend_title &lt;- 14
+legend_text  &lt;- 12
+strip_text   &lt;- 12
+
+#-------------------------------------------------
 # 0) Build Site-level table with clusters
 #-------------------------------------------------
 site_pca_df &lt;- site_means_scaled %&gt;%
@@ -596,36 +605,55 @@ typology2_colors &lt;- c(
   &quot;2&quot; = &quot;#D55E00&quot;
 )
 
-site_pca_df$Typology2 &lt;- factor(site_pca_df$Typology2, levels = c(&quot;1&quot;, &quot;2&quot;, &quot;4&quot;, &quot;3&quot;))
+site_pca_df$Typology2 &lt;- 
+  factor(site_pca_df$Typology2, levels = c(&quot;1&quot;, &quot;2&quot;))
 
 #-------------------------------------------------
 # 2) Create numeric matrix for PCA
-#    (remove Site and Typology2 columns)
+#    (remove Site and Typology2 columns and rename variables)
 #-------------------------------------------------
 pca_input &lt;- site_pca_df %&gt;%
-  dplyr::select(-Site, -Typology2)
+  dplyr::select(-Site, -Typology2) %&gt;%
+  rename(
+    Temp = log_Temp_C,
+    DOC = log_DOC_uM,
+    DIC = log_DIC_uM,
+    `Cl-` = log_Cl_uM,
+    Ca = log_Ca_uM,
+    Mg = log_Mg_uM,
+    `SO4 2-` = log_SO4_uM,
+    Na = log_Na_uM,
+    K = log_K_uM,
+    Zn = log_Zn_uM,
+    Cu = log_Cu_uM
+  )
 
-#-------------------------------------------------
+str(pca_input)</code></pre>
+<pre><code>## tibble [43 × 12] (S3: tbl_df/tbl/data.frame)
+##  $ Temp  : num [1:43] -0.424 -0.065 -0.0884 -0.0209 0.2872 ...
+##  $ pH    : num [1:43] 0.6622 0.2365 0.0565 -0.0839 -0.0427 ...
+##  $ DOC   : num [1:43] 0.264 -0.173 0.37 -0.467 -0.609 ...
+##  $ DIC   : num [1:43] 0.173 0.597 0.732 0.555 0.537 ...
+##  $ Cl-   : num [1:43] -0.035 0.409 0.807 0.314 0.361 ...
+##  $ Ca    : num [1:43] 0.194 0.612 1.055 0.478 0.465 ...
+##  $ Mg    : num [1:43] 0.583 0.458 -0.27 0.661 0.674 ...
+##  $ SO4 2-: num [1:43] 1.078 -0.103 0.889 -0.457 -0.514 ...
+##  $ Na    : num [1:43] 0.0956 0.1619 0.836 -0.0997 -0.0976 ...
+##  $ K     : num [1:43] 0.161 -0.303 0.216 -0.454 -0.614 ...
+##  $ Zn    : num [1:43] -0.3256 -0.0275 0.2841 -0.2129 -0.0757 ...
+##  $ Cu    : num [1:43] -0.2583 0.00929 0.46403 -0.14912 -0.24026 ...</code></pre>
+<pre class="r"><code>#-------------------------------------------------
 # 3) Run PCA on Site-level chemistry
 #-------------------------------------------------
 pca_result &lt;- prcomp(pca_input, center = TRUE, scale. = TRUE)
-
 pca_summary &lt;- summary(pca_result)
 
-# Optional: view variance explained
-pca_summary</code></pre>
-<pre><code>## Importance of components:
-##                           PC1    PC2    PC3     PC4    PC5     PC6     PC7
-## Standard deviation     2.3496 1.6020 1.2217 1.03543 0.7653 0.53309 0.43743
-## Proportion of Variance 0.4601 0.2139 0.1244 0.08934 0.0488 0.02368 0.01595
-## Cumulative Proportion  0.4601 0.6739 0.7983 0.88765 0.9365 0.96014 0.97608
-##                            PC8     PC9    PC10    PC11    PC12
-## Standard deviation     0.41654 0.23853 0.19081 0.10535 0.09531
-## Proportion of Variance 0.01446 0.00474 0.00303 0.00092 0.00076
-## Cumulative Proportion  0.99054 0.99528 0.99832 0.99924 1.00000</code></pre>
-<pre class="r"><code>#-------------------------------------------------
-# 4) Make PCA biplot colored by Site-level cluster
 #-------------------------------------------------
+# 4) Percent variance explained for axis labels
+#-------------------------------------------------
+pc1_var &lt;- round(pca_summary$importance[2, 1] * 100, 1)
+pc2_var &lt;- round(pca_summary$importance[2, 2] * 100, 1)
+
 pca_typology2 &lt;- fviz_pca_biplot(
   pca_result,
   geom.ind     = &quot;point&quot;,
@@ -633,36 +661,31 @@ pca_typology2 &lt;- fviz_pca_biplot(
   habillage    = site_pca_df$Typology2,
   addEllipses  = TRUE,
   legend.title = &quot;Typology2&quot;,
-  palette      = typology2_colors
+  palette      = typology2_colors,
+  repel        = TRUE
 ) +
   labs(
-    title = &quot;PCA Biplot of Sites by Typology2&quot;
+    x = paste0(&quot;PC1 (&quot;, pc1_var, &quot;%)&quot;),
+    y = paste0(&quot;PC2 (&quot;, pc2_var, &quot;%)&quot;)
   ) +
-  theme_classic(base_size = 14) + 
+  theme_classic(base_size = axis_text) +
   theme(
-    plot.title  = element_text(size = 16),
-    axis.title.x = element_text(size = 14),
-    axis.title.y = element_text(size = 14),
-    axis.text.x  = element_text(size = 12),
-    axis.text.y  = element_text(size = 12),
-    legend.title = element_text(size = 14),
-    legend.text  = element_text(size = 12)
-  )</code></pre>
-<pre><code>## Warning: Using `size` aesthetic for lines was deprecated in ggplot2 3.4.0.
-## ℹ Please use `linewidth` instead.
-## ℹ The deprecated feature was likely used in the ggpubr package.
-##   Please report the issue at &lt;https://github.com/kassambara/ggpubr/issues&gt;.
-## This warning is displayed once every 8 hours.
-## Call `lifecycle::last_lifecycle_warnings()` to see where this warning was
-## generated.</code></pre>
-<pre class="r"><code># View plot
+    plot.title   = element_blank(),
+    axis.title.x = element_text(size = axis_title),
+    axis.title.y = element_text(size = axis_title),
+    axis.text.x  = element_text(size = axis_text),
+    axis.text.y  = element_text(size = axis_text),
+    legend.title = element_text(size = legend_title),
+    legend.text  = element_text(size = legend_text)
+  )
+
 pca_typology2</code></pre>
 <pre><code>## Ignoring unknown labels:
 ## • linetype : &quot;Typology2&quot;</code></pre>
 <pre class="r"><code>#-------------------------------------------------
 # 5) Save plot
 #-------------------------------------------------
-out_dir &lt;- &quot;Typology2 Plots&quot;
+out_dir &lt;- &quot;Clustering by site results&quot;
 
 if (!dir.exists(out_dir)) {
   dir.create(out_dir, recursive = TRUE)
@@ -685,20 +708,21 @@ library(tidyr)
 library(ggplot2)
 
 #-------------------------------------------------
-# 0) Define inherent site characteristics
+# 1) Define inherent site characteristics
 #-------------------------------------------------
 site_char &lt;- c(&quot;Type&quot;, &quot;Regime&quot;, &quot;Development&quot;)
 
 #-------------------------------------------------
-# 1) Make a SITE-LEVEL dataframe
+# 2) Make a SITE-LEVEL dataframe
 #    Keep one row per Site with its cluster
 #-------------------------------------------------
-site_level_chars &lt;- dat_clustered %&gt;%
+site_level_chars &lt;- 
+  flowing_dat %&gt;%
   dplyr::select(Site, all_of(site_char), Typology2) %&gt;%
   distinct()
 
 #-------------------------------------------------
-# 2) Count frequencies and compute relative frequency
+# 3) Count frequencies and compute relative frequency
 #    within each Variable x Cluster combination
 #-------------------------------------------------
 cluster_summary_table_pct &lt;- site_level_chars %&gt;%
@@ -748,13 +772,13 @@ saveWorkbook(
 )</code></pre>
 <p>Plot</p>
 <pre class="r"><code>#-------------------------------------------------
-# 3) Combine variable + value for fill labels
+# 1) Combine variable + value for fill labels
 #-------------------------------------------------
 cluster_summary_table_pct &lt;- cluster_summary_table_pct %&gt;%
   mutate(Value_labeled = paste0(Variable, &quot;: &quot;, Value))
 
 #-------------------------------------------------
-# 4) Set plotting order
+# 2) Set plotting order
 #-------------------------------------------------
 cluster_summary_table_pct$Value_labeled &lt;- factor(
   cluster_summary_table_pct$Value_labeled,
@@ -782,7 +806,7 @@ cluster_summary_table_pct$Typology2 &lt;- factor(
 )
 
 #-------------------------------------------------
-# 5) Define colors
+# 3) Define colors
 #-------------------------------------------------
 color_map &lt;- c(
   &quot;Type: Tributaries&quot; = &quot;#dadaeb&quot;,
@@ -800,7 +824,7 @@ color_map &lt;- c(
 legend_labels &lt;- gsub(&quot;^.*: &quot;, &quot;&quot;, levels(cluster_summary_table_pct$Value_labeled))
 
 #-------------------------------------------------
-# 6) Plot relative frequencies by cluster
+# 4) Plot relative frequencies by cluster
 #-------------------------------------------------
 rel_freq &lt;- ggplot(
   cluster_summary_table_pct,
@@ -823,14 +847,24 @@ rel_freq &lt;- ggplot(
     y = NULL,
     fill = &quot;Category&quot;
   ) +
-  theme_minimal(base_size = 12) +
+  theme_minimal(base_size = axis_text) +
   theme(
-    strip.placement = &quot;outside&quot;,
-    strip.text.y.left = element_text(angle = 0, face = &quot;bold&quot;),
-    panel.spacing = unit(0.6, &quot;lines&quot;),
-    legend.position = &quot;right&quot;,
-    legend.box = &quot;vertical&quot;,
-    legend.direction = &quot;vertical&quot;
+    axis.title.x      = element_text(size = axis_title),
+    axis.title.y      = element_text(size = axis_title),
+    axis.text.x       = element_text(size = axis_text),
+    axis.text.y       = element_text(size = axis_text),
+    legend.title      = element_text(size = legend_title),
+    legend.text       = element_text(size = legend_text),
+    strip.text.y.left = element_text(
+      angle = 0,
+      face = &quot;bold&quot;,
+      size = strip_text
+    ),
+    strip.placement   = &quot;outside&quot;,
+    panel.spacing     = unit(0.6, &quot;lines&quot;),
+    legend.position   = &quot;right&quot;,
+    legend.box        = &quot;vertical&quot;,
+    legend.direction  = &quot;vertical&quot;
   ) +
   guides(fill = guide_legend(ncol = 1))
 
@@ -981,8 +1015,39 @@ cat(&quot;File saved to:\n&quot;, output_path, &quot;\n&quot;)</code></pre>
 <pre><code>## File saved to:
 ##  C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/BLM_spatial_assessmt/Zinc/5. Cluster analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx</code></pre>
 </div>
+<div id="publication-plot" class="section level2">
+<h2>6. Publication plot</h2>
+<pre class="r"><code>library(patchwork)
+
+#-------------------------------------------------
+# Combine plots side by side
+#-------------------------------------------------
+
+combined_plot &lt;- pca_typology2 + rel_freq +
+  plot_layout(widths = c(1.3, 1))
+
+# View combined figure
+combined_plot</code></pre>
+<pre><code>## Ignoring unknown labels:
+## • linetype : &quot;Typology2&quot;</code></pre>
+<pre class="r"><code>#-------------------------------------------------
+# Save combined figure
+#-------------------------------------------------
+
+# define output directory
+
+ggsave(
+  filename = file.path(out_dir, &quot;Combined_PCA_RelFreq_2.png&quot;),
+  plot     = combined_plot,
+  width    = 14,
+  height   = 6,
+  dpi      = 300
+)</code></pre>
+<pre><code>## Ignoring unknown labels:
+## • linetype : &quot;Typology2&quot;</code></pre>
+</div>
 <div id="sites-within-typology2" class="section level2">
-<h2>6. Sites within Typology2</h2>
+<h2>7. Sites within Typology2</h2>
 <pre class="r"><code>library(dplyr)
 
 np_tribs &lt;- dat %&gt;%
@@ -1027,9 +1092,6 @@ np_tribs</code></pre>
 ## 10 BSL2.1   Perennial Developed
 ## # ℹ 21 more rows</code></pre>
 <pre class="r"><code># Save
-out_dir &lt;- &quot;Typology2 Plots&quot;
-if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
-
 library(openxlsx)
 
 # Create workbook

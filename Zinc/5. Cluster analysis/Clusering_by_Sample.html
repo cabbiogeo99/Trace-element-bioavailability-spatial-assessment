@@ -482,26 +482,39 @@ sil_df</code></pre>
 ## 8  9       0.1829836
 ## 9 10       0.1876170</code></pre>
 </div>
-<div id="ii.-clustering" class="section level3">
-<h3>ii. Clustering</h3>
-<p>Run k-means using 4 clusters</p>
+<div id="ii.-clustering-k4" class="section level3">
+<h3>ii. Clustering (k=4)</h3>
 <pre class="r"><code># Run k-means
 set.seed(123)
-kmeans_result &lt;- kmeans(scaled_blm_predict, centers = 4, nstart = 50)
+kmeans_result4 &lt;- kmeans(scaled_blm_predict, centers = 4, nstart = 50)
 
 # Add cluster labels to your data
 cluster_dat &lt;- cluster_dat %&gt;%
-  mutate(cluster = as.factor(kmeans_result$cluster))
+  mutate(cluster4 = as.factor(kmeans_result4$cluster))
 
 # Check
-str(dat$cluster)</code></pre>
-<pre><code>## Warning: Unknown or uninitialised column: `cluster`.</code></pre>
-<pre><code>##  NULL</code></pre>
+str(cluster_dat$cluster4)</code></pre>
+<pre><code>##  Factor w/ 4 levels &quot;1&quot;,&quot;2&quot;,&quot;3&quot;,&quot;4&quot;: 1 4 4 2 2 4 4 4 3 4 ...</code></pre>
+</div>
+<div id="iii.-clustering-k3" class="section level3">
+<h3>iii. Clustering (k=3)</h3>
+<pre class="r"><code># Run k-means
+set.seed(123)
+kmeans_result3 &lt;- kmeans(scaled_blm_predict, centers = 3, nstart = 50)
+
+# Add cluster labels to your data
+cluster_dat &lt;- cluster_dat %&gt;%
+  mutate(cluster3 = as.factor(kmeans_result3$cluster))
+
+# Check
+str(cluster_dat$cluster3)</code></pre>
+<pre><code>##  Factor w/ 3 levels &quot;1&quot;,&quot;2&quot;,&quot;3&quot;: 2 1 3 3 3 3 2 3 1 3 ...</code></pre>
 </div>
 </div>
 <div id="plot-of-clusters-on-pca" class="section level2">
 <h2>4. Plot of clusters on PCA</h2>
-<p>Overlay clusters on PCA</p>
+<div id="i.-4-clusters" class="section level3">
+<h3>i. 4 clusters</h3>
 <pre class="r"><code>library(factoextra)</code></pre>
 <pre><code>## Loading required package: ggplot2</code></pre>
 <pre><code>## Warning: package &#39;ggplot2&#39; was built under R version 4.5.2</code></pre>
@@ -525,6 +538,15 @@ scaled_blm_predict &lt;- scaled_blm_predict %&gt;%
     Cu = log_Cu_uM
   )
 
+# Font sizes
+
+title_size  &lt;- 16
+axis_title  &lt;- 14
+axis_text   &lt;- 12
+legend_title &lt;- 14
+legend_text  &lt;- 12
+strip_text   &lt;- 12
+
 #-------------------------------------------------
 # 0) Force cluster order + set cluster colors
 #-------------------------------------------------
@@ -536,7 +558,7 @@ cluster_colors &lt;- c(
 )
 
 # Force correct ordering
-cluster_for_plot &lt;- cluster_dat$cluster %&gt;%
+cluster_for_plot &lt;- cluster_dat$cluster4 %&gt;%
   factor(levels = c(&quot;1&quot;, &quot;2&quot;, &quot;3&quot;, &quot;4&quot;))
 
 #-------------------------------------------------
@@ -560,32 +582,26 @@ pca_cluster &lt;- fviz_pca_biplot(
   repel        = TRUE 
 ) +
   labs(
-    title = &quot;PCA Biplot of All Sites by Cluster&quot;,
     x = &quot;PC1 (46.5%)&quot;,
     y = &quot;PC2 (19.2%)&quot;
   ) +
+  theme_classic(base_size = axis_text) +
   theme(
-    plot.title  = element_text(size = 16),
-    axis.title.x = element_text(size = 14),
-    axis.title.y = element_text(size = 14),
-    axis.text.x  = element_text(size = 12),
-    axis.text.y  = element_text(size = 12),
-    legend.title = element_text(size = 14),
-    legend.text  = element_text(size = 12)
-  )</code></pre>
-<pre><code>## Warning: Using `size` aesthetic for lines was deprecated in ggplot2 3.4.0.
-## ℹ Please use `linewidth` instead.
-## ℹ The deprecated feature was likely used in the ggpubr package.
-##   Please report the issue at &lt;https://github.com/kassambara/ggpubr/issues&gt;.
-## This warning is displayed once every 8 hours.
-## Call `lifecycle::last_lifecycle_warnings()` to see where this warning was
-## generated.</code></pre>
-<pre class="r"><code># View
+    plot.title  = element_blank(),
+    axis.title.x = element_text(size = axis_title),
+    axis.title.y = element_text(size = axis_title),
+    axis.text.x  = element_text(size = axis_text),
+    axis.text.y  = element_text(size = axis_text),
+    legend.title = element_text(size = legend_title),
+    legend.text  = element_text(size = legend_text)
+  )
+
+# View
 pca_cluster</code></pre>
 <pre><code>## Ignoring unknown labels:
 ## • linetype : &quot;Cluster&quot;</code></pre>
 <pre class="r"><code># Define output directory
-out_dir &lt;- &quot;Typology Plots&quot;
+out_dir &lt;- &quot;Clustering by sample results&quot;
 # Create directory if it does not exist
 if (!dir.exists(out_dir)) {
   dir.create(out_dir, recursive = TRUE)
@@ -629,10 +645,82 @@ write.xlsx(
   overwrite = TRUE
 )</code></pre>
 </div>
+<div id="ii.-3-clusters" class="section level3">
+<h3>ii. 3 clusters</h3>
+<pre class="r"><code>library(factoextra)
+library(ggplot2)
+library(dplyr)
+
+#-------------------------------------------------
+# 0) Force cluster order + set cluster colors
+#-------------------------------------------------
+cluster_colors &lt;- c(
+  &quot;1&quot; = &quot;#D55E00&quot;,
+  &quot;3&quot; = &quot;#999999&quot;,
+  &quot;2&quot; = &quot;#009E73&quot;
+)
+
+# Force correct ordering
+cluster_for_plot &lt;- cluster_dat$cluster3 %&gt;%
+  factor(levels = c(&quot;1&quot;, &quot;2&quot;, &quot;3&quot;))
+
+#-------------------------------------------------
+# 1) PCA
+#-------------------------------------------------
+pca_result &lt;- prcomp(scaled_blm_predict, center = TRUE, scale. = TRUE)
+
+pca_summary &lt;- summary(pca_result)
+
+#-------------------------------------------------
+# 2) PCA biplot (same depiction as your original)
+#-------------------------------------------------
+pca_cluster3 &lt;- fviz_pca_biplot(
+  pca_result,
+  geom.ind     = &quot;point&quot;,
+  col.var      = &quot;black&quot;,
+  habillage    = cluster_for_plot,
+  addEllipses  = TRUE,
+  legend.title = &quot;Cluster&quot;,
+  palette      = cluster_colors,
+  repel        = TRUE 
+) +
+  labs(
+    x = &quot;PC1 (46.5%)&quot;,
+    y = &quot;PC2 (19.2%)&quot;
+  ) +
+  theme_classic(base_size = axis_text) +
+  theme(
+    plot.title   = element_blank(),
+    axis.title.x = element_text(size = axis_title),
+    axis.title.y = element_text(size = axis_title),
+    axis.text.x  = element_text(size = axis_text),
+    axis.text.y  = element_text(size = axis_text),
+    legend.title = element_text(size = legend_title),
+    legend.text  = element_text(size = legend_text)
+  )
+
+
+# View
+pca_cluster3</code></pre>
+<pre><code>## Ignoring unknown labels:
+## • linetype : &quot;Cluster&quot;</code></pre>
+<pre class="r"><code># Save
+ggsave(
+  filename = file.path(out_dir, &quot;PCA_Biplot_All_Sites_by_Cluster3.png&quot;),
+  plot     = pca_cluster3,
+  width    = 8,
+  height   = 6,
+  dpi      = 300
+)</code></pre>
+<pre><code>## Ignoring unknown labels:
+## • linetype : &quot;Cluster&quot;</code></pre>
+</div>
+</div>
 <div id="characterizing-clusters" class="section level2">
 <h2>5. Characterizing clusters</h2>
 <div id="i.-frequency-table" class="section level3">
 <h3>i. Frequency table</h3>
+<p>4 clusters</p>
 <pre class="r"><code>library(dplyr)
 library(tidyr)
 
@@ -640,45 +728,86 @@ library(tidyr)
 site_char &lt;- c(&quot;Type&quot;, &quot;Regime&quot;, &quot;Development&quot;)
 
 cluster_summary_table_pct &lt;- cluster_dat %&gt;%
-  dplyr::select(all_of(site_char), cluster) %&gt;%  
+  dplyr::select(all_of(site_char), cluster4) %&gt;%  
   pivot_longer(
-    cols = -cluster,        
+    cols = -cluster4,        
     names_to = &quot;Variable&quot;,  
     values_to = &quot;Value&quot;     
   ) %&gt;%
-  count(Variable, cluster, Value, name = &quot;Freq&quot;) %&gt;% 
-  group_by(Variable, cluster) %&gt;%          
+  count(Variable, cluster4, Value, name = &quot;Freq&quot;) %&gt;% 
+  group_by(Variable, cluster4) %&gt;%          
   mutate(RelFreq = prop.table(Freq) * 100)       
 
 cluster_summary_table_pct</code></pre>
 <pre><code>## # A tibble: 24 × 5
-## # Groups:   Variable, cluster [12]
-##    Variable    cluster Value   Freq RelFreq
-##    &lt;chr&gt;       &lt;fct&gt;   &lt;chr&gt;  &lt;int&gt;   &lt;dbl&gt;
-##  1 Development 1       High      69    56.6
-##  2 Development 1       Low       20    16.4
-##  3 Development 1       Medium    33    27.0
-##  4 Development 2       Low        5    35.7
-##  5 Development 2       Medium     9    64.3
-##  6 Development 3       High      40    31.5
-##  7 Development 3       Low       29    22.8
-##  8 Development 3       Medium    58    45.7
-##  9 Development 4       High      10    10.8
-## 10 Development 4       Low       54    58.1
+## # Groups:   Variable, cluster4 [12]
+##    Variable    cluster4 Value   Freq RelFreq
+##    &lt;chr&gt;       &lt;fct&gt;    &lt;chr&gt;  &lt;int&gt;   &lt;dbl&gt;
+##  1 Development 1        High      69    56.6
+##  2 Development 1        Low       20    16.4
+##  3 Development 1        Medium    33    27.0
+##  4 Development 2        Low        5    35.7
+##  5 Development 2        Medium     9    64.3
+##  6 Development 3        High      40    31.5
+##  7 Development 3        Low       29    22.8
+##  8 Development 3        Medium    58    45.7
+##  9 Development 4        High      10    10.8
+## 10 Development 4        Low       54    58.1
 ## # ℹ 14 more rows</code></pre>
 <p>Save table</p>
-<pre class="r"><code>out_dir &lt;- &quot;Typology Plots&quot;
-
-library(openxlsx)
+<pre class="r"><code>library(openxlsx)
 
 write.xlsx(
   cluster_summary_table_pct,
   file = file.path(out_dir, &quot;Relative_freq_percentages_by_cluster.xlsx&quot;),
   overwrite = TRUE
 )</code></pre>
+<p>3 clusters</p>
+<pre class="r"><code>cluster_summary_table_pct3 &lt;- cluster_dat %&gt;%
+  dplyr::select(all_of(site_char), cluster3) %&gt;%  
+  pivot_longer(
+    cols = -cluster3,        
+    names_to = &quot;Variable&quot;,  
+    values_to = &quot;Value&quot;     
+  ) %&gt;%
+  count(Variable, cluster3, Value, name = &quot;Freq&quot;) %&gt;% 
+  group_by(Variable, cluster3) %&gt;%          
+  mutate(RelFreq = prop.table(Freq) * 100)       
+
+cluster_summary_table_pct3</code></pre>
+<pre><code>## # A tibble: 20 × 5
+## # Groups:   Variable, cluster3 [9]
+##    Variable    cluster3 Value         Freq RelFreq
+##    &lt;chr&gt;       &lt;fct&gt;    &lt;chr&gt;        &lt;int&gt;   &lt;dbl&gt;
+##  1 Development 1        High            39  29.3  
+##  2 Development 1        Low             33  24.8  
+##  3 Development 1        Medium          61  45.9  
+##  4 Development 2        High            80  51.0  
+##  5 Development 2        Low             37  23.6  
+##  6 Development 2        Medium          40  25.5  
+##  7 Development 3        Low             38  57.6  
+##  8 Development 3        Medium          28  42.4  
+##  9 Regime      1        NonPerennial     1   0.752
+## 10 Regime      1        Perennial      132  99.2  
+## 11 Regime      2        NonPerennial     9   5.73 
+## 12 Regime      2        Perennial      148  94.3  
+## 13 Regime      3        NonPerennial    37  56.1  
+## 14 Regime      3        Perennial       29  43.9  
+## 15 Type        1        Main Stem      101  75.9  
+## 16 Type        1        Tributaries     32  24.1  
+## 17 Type        2        Main Stem        4   2.55 
+## 18 Type        2        Tributaries    153  97.5  
+## 19 Type        3        Main Stem        1   1.52 
+## 20 Type        3        Tributaries     65  98.5</code></pre>
+<pre class="r"><code>write.xlsx(
+  cluster_summary_table_pct3,
+  file = file.path(out_dir, &quot;Relative_freq_percentages_by_3cluster.xlsx&quot;),
+  overwrite = TRUE
+)</code></pre>
 </div>
 <div id="ii.-plot-of-relative-frequencies" class="section level3">
 <h3>ii. Plot of relative frequencies</h3>
+<p>4 clusters</p>
 <pre class="r"><code>library(dplyr)
 # Combine variable and value
 cluster_summary_table_pct &lt;- cluster_summary_table_pct %&gt;%
@@ -721,27 +850,49 @@ legend_labels &lt;- gsub(&quot;^.*: &quot;, &quot;&quot;, levels(cluster_summary
 library(ggplot2)
 library(dplyr)
 
-rel_freq &lt;- ggplot(cluster_summary_table_pct, 
-       aes(y = Variable, x = RelFreq, fill = Value_labeled)) +
-  geom_bar(stat = &quot;identity&quot;, position = &quot;fill&quot;, color = &quot;white&quot;, linewidth = 0.2) +
-  facet_wrap(~ cluster, ncol = 1, strip.position = &quot;left&quot;) +
-  scale_x_continuous(labels = scales::percent_format(scale = 1)) +
-  labs(x = &quot;Relative Frequency (%)&quot;, y = NULL, fill = &quot;Category&quot;) +
-  theme_minimal(base_size = 12) +
-  theme(
-  strip.placement = &quot;outside&quot;,
-  strip.text.y.left = element_text(angle = 0, face = &quot;bold&quot;),
-  panel.spacing = unit(0.6, &quot;lines&quot;),
-  legend.position = &quot;right&quot;,        # move to right
-  legend.box = &quot;vertical&quot;,          # keep vertical layout
-  legend.direction = &quot;vertical&quot;     # vertical legend
+rel_freq &lt;- ggplot(
+  cluster_summary_table_pct,
+  aes(y = Variable, x = RelFreq, fill = Value_labeled)
 ) +
-guides(fill = guide_legend(ncol = 1)) + # 1 column
+  geom_bar(
+    stat = &quot;identity&quot;,
+    position = &quot;fill&quot;,
+    color = &quot;white&quot;,
+    linewidth = 0.2
+  ) +
+  facet_wrap(~ cluster4, ncol = 1, strip.position = &quot;left&quot;) +
+  scale_x_continuous(
+    labels = scales::percent_format(scale = 1)
+  ) +
+  labs(
+    x = &quot;Relative Frequency (%)&quot;,
+    y = NULL,
+    fill = &quot;Category&quot;
+  ) +
+  theme_minimal(base_size = axis_text) +
+  theme(
+    axis.title.x     = element_text(size = axis_title),
+    axis.title.y     = element_text(size = axis_title),
+    axis.text.x      = element_text(size = axis_text),
+    axis.text.y      = element_text(size = axis_text),
+    legend.title     = element_text(size = legend_title),
+    legend.text      = element_text(size = legend_text),
+    strip.text.y.left = element_text(
+      angle = 0,
+      face = &quot;bold&quot;,
+      size = strip_text
+    ),
+    strip.placement  = &quot;outside&quot;,
+    panel.spacing    = unit(0.6, &quot;lines&quot;),
+    legend.position  = &quot;right&quot;,
+    legend.box       = &quot;vertical&quot;,
+    legend.direction = &quot;vertical&quot;
+  ) +
+  guides(fill = guide_legend(ncol = 1)) +
   scale_fill_manual(
     values = color_map,
-    labels = legend_labels)
-
-rel_freq
+    labels = legend_labels
+  )
 
 # Save
 ggsave(
@@ -757,6 +908,108 @@ ggsave(
 <li><p>Cluster 3: Mostly main stem sites</p></li>
 <li><p>Cluster 4: Perennial tributary sites</p></li>
 </ul>
+<p>3 clusters</p>
+<pre class="r"><code>library(dplyr)
+# Combine variable and value
+cluster_summary_table_pct3 &lt;- cluster_summary_table_pct3 %&gt;%
+  mutate(Value_labeled = paste0(Variable, &quot;: &quot;, Value))
+
+# Change the order of Variable Values
+cluster_summary_table_pct3$Value_labeled &lt;- factor(
+  cluster_summary_table_pct3$Value_labeled,
+  levels = c(
+    &quot;Type: Tributaries&quot;,
+    &quot;Type: Main Stem&quot;,
+    
+    &quot;Development: Low&quot;,
+    &quot;Development: Medium&quot;,
+    &quot;Development: High&quot;,
+    
+    &quot;Regime: NonPerennial&quot;,
+    &quot;Regime: Perennial&quot;
+  )
+)
+
+
+# Create a named color vector for all Value_labeled combinations
+color_map &lt;- c(
+  &quot;Type: Tributaries&quot; = &quot;#dadaeb&quot;,
+  &quot;Type: Main Stem&quot; = &quot;#756bb1&quot;,
+  
+  &quot;Development: Low&quot; = &quot;#fdd49e&quot;,
+  &quot;Development: Medium&quot; = &quot;orange2&quot;,
+  &quot;Development: High&quot; = &quot;red3&quot;,
+  
+  &quot;Regime: NonPerennial&quot; = &quot;lightblue&quot;,
+  &quot;Regime: Perennial&quot; = &quot;#1f78a4&quot;
+)
+
+# Modify the legend to only display the categorical value
+legend_labels &lt;- gsub(&quot;^.*: &quot;, &quot;&quot;, levels(cluster_summary_table_pct3$Value_labeled))
+
+# Plot
+library(ggplot2)
+library(dplyr)
+
+rel_freq3 &lt;- ggplot(
+  cluster_summary_table_pct3,
+  aes(y = Variable, x = RelFreq, fill = Value_labeled)
+) +
+  geom_bar(
+    stat = &quot;identity&quot;,
+    position = &quot;fill&quot;,
+    color = &quot;white&quot;,
+    linewidth = 0.2
+  ) +
+  facet_wrap(~ cluster3, ncol = 1, strip.position = &quot;left&quot;) +
+  scale_x_continuous(
+    labels = scales::percent_format(scale = 1)
+  ) +
+  labs(
+    x = &quot;Relative Frequency (%)&quot;,
+    y = NULL,
+    fill = &quot;Category&quot;
+  ) +
+  theme_minimal(base_size = axis_text) +
+  theme(
+    axis.title.x      = element_text(size = axis_title),
+    axis.title.y      = element_text(size = axis_title),
+    axis.text.x       = element_text(size = axis_text),
+    axis.text.y       = element_text(size = axis_text),
+    legend.title      = element_text(size = legend_title),
+    legend.text       = element_text(size = legend_text),
+    strip.text.y.left = element_text(
+      angle = 0,
+      face = &quot;bold&quot;,
+      size = strip_text
+    ),
+    strip.placement   = &quot;outside&quot;,
+    panel.spacing     = unit(0.6, &quot;lines&quot;),
+    legend.position   = &quot;right&quot;,
+    legend.box        = &quot;vertical&quot;,
+    legend.direction  = &quot;vertical&quot;
+  ) +
+  guides(fill = guide_legend(ncol = 1)) +
+  scale_fill_manual(
+    values = color_map,
+    labels = legend_labels
+  )
+
+rel_freq3
+
+# Save
+ggsave(
+  filename = file.path(out_dir, &quot;Relative_freq_plots_by_3clusters.png&quot;),
+  plot     = rel_freq3,
+  width    = 6,
+  height   = 4,
+  dpi      = 300
+)</code></pre>
+<ul>
+<li><p>Cluster 1: Main stem</p></li>
+<li><p>Cluster 2: developed perennial tributaries</p></li>
+<li><p>Cluster 3: all other tributaries</p></li>
+</ul>
 </div>
 <div id="iii.-rename-clusters-to-typologies" class="section level3">
 <h3>iii. Rename clusters to typologies</h3>
@@ -764,7 +1017,7 @@ ggsave(
 <pre class="r"><code>library(dplyr)
 
 cluster_dat &lt;- cluster_dat %&gt;%
-  mutate(cluster = as.character(cluster)) %&gt;%
+  mutate(cluster = as.character(cluster4)) %&gt;%
   mutate(cluster = dplyr::recode(
     cluster,
     `1` = &quot;Developed Perennial&quot;,
@@ -865,8 +1118,73 @@ write_xlsx(
 )</code></pre>
 </div>
 </div>
+<div id="publication-plots" class="section level2">
+<h2>6. Publication plots</h2>
+<div id="i.-4-clusters-1" class="section level3">
+<h3>i. 4 clusters</h3>
+<pre class="r"><code>library(patchwork)
+
+#-------------------------------------------------
+# Combine plots side by side
+#-------------------------------------------------
+
+combined_plot &lt;- pca_cluster + rel_freq +
+  plot_layout(widths = c(1.3, 1))
+
+# View combined figure
+combined_plot</code></pre>
+<pre><code>## Ignoring unknown labels:
+## • linetype : &quot;Cluster&quot;</code></pre>
+<pre class="r"><code>#-------------------------------------------------
+# Save combined figure
+#-------------------------------------------------
+
+# define output directory
+
+ggsave(
+  filename = file.path(out_dir, &quot;Combined_PCA_RelFreq_4.png&quot;),
+  plot     = combined_plot,
+  width    = 14,
+  height   = 6,
+  dpi      = 300
+)</code></pre>
+<pre><code>## Ignoring unknown labels:
+## • linetype : &quot;Cluster&quot;</code></pre>
+</div>
+<div id="ii.-3-clusters-1" class="section level3">
+<h3>ii. 3 clusters</h3>
+<pre class="r"><code>library(patchwork)
+
+#-------------------------------------------------
+# Combine plots side by side
+#-------------------------------------------------
+
+combined_plot &lt;- pca_cluster3 + rel_freq3 +
+  plot_layout(widths = c(1.3, 1))
+
+# View combined figure
+combined_plot</code></pre>
+<pre><code>## Ignoring unknown labels:
+## • linetype : &quot;Cluster&quot;</code></pre>
+<pre class="r"><code>#-------------------------------------------------
+# Save combined figure
+#-------------------------------------------------
+
+# define output directory
+
+ggsave(
+  filename = file.path(out_dir, &quot;Combined_PCA_RelFreq_3.png&quot;),
+  plot     = combined_plot,
+  width    = 14,
+  height   = 6,
+  dpi      = 300
+)</code></pre>
+<pre><code>## Ignoring unknown labels:
+## • linetype : &quot;Cluster&quot;</code></pre>
+</div>
+</div>
 <div id="sites-within-each-typology" class="section level2">
-<h2>6. Sites within Each Typology</h2>
+<h2>7. Sites within Each Typology</h2>
 <pre class="r"><code>library(dplyr)
 
 pw &lt;- dat %&gt;%
@@ -980,9 +1298,6 @@ pw</code></pre>
 ## 19 BSL2.2         Main Stem
 ## 20 Pinhook Branch Main Stem</code></pre>
 <pre class="r"><code># Save
-out_dir &lt;- &quot;Typology Plots&quot;
-if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
-
 library(openxlsx)
 
 # Create workbook

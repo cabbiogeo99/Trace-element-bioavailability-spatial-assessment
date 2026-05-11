@@ -450,6 +450,47 @@ write.xlsx(
 )
 ```
 
+## 6. Total measured Cu as sole predictor
+
+```{r}
+library(ggplot2)
+library(ggpubr)
+library(ggpmisc)
+
+bioavail_total_plot <- ggplot(dat, aes(x = log_Cu_nM, y = log_TBL_Cu_nmol_g)) +
+  
+  # points
+  geom_point(color = "black", size = 1, alpha = 0.7) +
+  
+  # regression line
+  geom_smooth(method="lm") +
+  
+  # add linear equation
+  stat_regline_equation(label.x = -0.9, label.y = -6.8) +
+  
+  # adjusted R2
+  stat_poly_eq(use_label(c("adj.R2"))) +
+  
+  labs(
+    y = expression(log[10] ~ "Bioavailable Cu" ~ (nmol ~ g^{-1} ~ "wet")),
+    x = expression(log[10]~"Measured Cu (nM)"),
+    title = "Relationship of measured vs bioavailable Cu"
+  ) +
+  
+  theme_classic(base_size = 12)
+
+bioavail_total_plot
+
+ggsave(
+  filename = file.path( "Total_measured_vs_bioavailable_Cu.png"),
+  plot = bioavail_total_plot,
+  width = 6,
+  height = 6,
+  units = "in",
+  dpi = 300
+)
+```
+
 # Assessing Variables by Typology
 
 Set order of Typologies
@@ -1726,8 +1767,8 @@ cu_combined_panel <- ggplot() +
     legend.position = "bottom",
     legend.justification = "left",
     legend.background = element_blank(),
-    legend.title = element_text(size = 9),
-    legend.text = element_text(size = 8),
+    legend.title = element_text(size = 10),
+    legend.text = element_text(size = 10),
     legend.box = "horizontal",
     axis.text.x = element_text(
       size = 10,
@@ -2426,18 +2467,65 @@ prop_chronic_tox_daph_summary <- dat %>%
   )
 
 prop_chronic_tox_daph_summary
+```
 
+```{r}
 # Identify sample IDs on or above toxicity threshold
 samples_above_chronic_tox_threshold_daph <- dat %>%
   filter(prop_chronic_tox_daph == "On-Above") %>%
   dplyr::select(
     Sample_ID,
     Typology,
-    log_Cu_M,
-    log_Cu_Chronic_Tox_Daphnia_M
+      log_Cu_nM,
+      log_DOC_nM,
+      pH,
+      log_BL_Cu_nmol_g 
   )
 
-samples_above_chronic_tox_threshold_daph
+# Calculate z-scores using summary_table
+
+samples_above_chronic_tox_threshold_daph_zscores <- 
+  samples_above_chronic_tox_threshold_daph %>%
+  
+  # Make data long so each variable can match summary_table
+  pivot_longer(
+    cols = c(
+      log_Cu_nM,
+      log_DOC_nM,
+      pH,
+      log_BL_Cu_nmol_g
+    ),
+    names_to = "Variable",
+    values_to = "Value"
+  ) %>%
+  
+  # Join mean and variance by Typology + Variable
+  left_join(
+    summary_table %>%
+      dplyr::select(Variable, Typology, Mean, Variance),
+    by = c("Variable", "Typology")
+  ) %>%
+  
+  # Calculate SD and z-score
+  mutate(
+    SD = sqrt(Variance),
+    z_score = (Value - Mean) / SD
+  ) %>%
+  
+  # Make wider again
+  dplyr::select(
+    Sample_ID,
+    Typology,
+    Variable,
+    Value,
+    z_score
+  ) %>%
+  pivot_wider(
+    names_from = Variable,
+    values_from = c(Value,  z_score)
+  )
+
+samples_above_chronic_tox_threshold_daph_zscores
 ```
 
 Plot
@@ -2445,7 +2533,7 @@ Plot
 ```{r}
 library(ggplot2)
 
-chronic_plot <- ggplot(dat, aes(x = log_Cu_Chronic_Tox_Daphnia_M , y = log_Cu_M)) +
+chronic_plot_daph <- ggplot(dat, aes(x = log_Cu_Chronic_Tox_Daphnia_M , y = log_Cu_M)) +
   
   # points
   geom_point(color = "black", size = 1, alpha = 0.7) +
@@ -2460,22 +2548,12 @@ chronic_plot <- ggplot(dat, aes(x = log_Cu_Chronic_Tox_Daphnia_M , y = log_Cu_M)
   labs(
     y = expression(log[10]~"Measured Cu (M)"),
     x = expression(log[10]~"Chronic Cu Toxicity (M)"),
-    title = "Chronic Cu Toxicity Threshold for Daphnia and Measured Zn"
+    title = "a. Chronic Cu Toxicity Threshold"
   ) +
   
   theme_classic(base_size = 12)
 
-chronic_plot
-
-# Save
-ggsave(
-  filename = file.path(out_dir, "Chronic_tox_vs_total_Cu_daphnia.png"),
-  plot = chronic_plot,
-  width = 8,
-  height = 6,
-  units = "in",
-  dpi = 300
-)
+chronic_plot_daph
 ```
 
 #### b. Acute toxicity
@@ -2507,7 +2585,7 @@ Plot
 ```{r}
 library(ggplot2)
 
-acute_plot <- ggplot(dat, aes(x = log_Cu_Acute_Tox_Daphnia_M , y = log_Cu_M)) +
+acute_plot_daph <- ggplot(dat, aes(x = log_Cu_Acute_Tox_Daphnia_M , y = log_Cu_M)) +
   
   # points
   geom_point(color = "black", size = 1, alpha = 0.7) +
@@ -2522,22 +2600,12 @@ acute_plot <- ggplot(dat, aes(x = log_Cu_Acute_Tox_Daphnia_M , y = log_Cu_M)) +
   labs(
     y = expression(log[10]~"Measured Cu (M)"),
     x = expression(log[10]~"Acute Cu Toxicity (M)"),
-    title = "Acute Cu Toxicity Threshold for Daphnia and Measured Zn"
+    title = "b. Acute Cu Toxicity Threshold"
   ) +
   
   theme_classic(base_size = 12)
 
-acute_plot
-
-# Save
-ggsave(
-  filename = file.path(out_dir, "Acute_tox_vs_total_Cu_daphnia.png"),
-  plot = acute_plot,
-  width = 8,
-  height = 6,
-  units = "in",
-  dpi = 300
-)
+acute_plot_daph
 ```
 
 ### b. Fathead minnow
@@ -2571,7 +2639,7 @@ Plot
 ```{r}
 library(ggplot2)
 
-chronic_plot <- ggplot(dat, aes(x = log_Cu_Chronic_Tox_Minnow_M , y = log_Cu_M)) +
+chronic_plot_min <- ggplot(dat, aes(x = log_Cu_Chronic_Tox_Minnow_M , y = log_Cu_M)) +
   
   # points
   geom_point(color = "black", size = 1, alpha = 0.7) +
@@ -2586,22 +2654,12 @@ chronic_plot <- ggplot(dat, aes(x = log_Cu_Chronic_Tox_Minnow_M , y = log_Cu_M))
   labs(
     y = expression(log[10]~"Measured Cu (M)"),
     x = expression(log[10]~"Chronic Cu Toxicity (M)"),
-    title = "Chronic Cu Toxicity Threshold for Minnow and Measured Zn"
+    title = "d. Chronic Cu Toxicity Threshold"
   ) +
   
   theme_classic(base_size = 12)
 
-chronic_plot
-
-# Save
-ggsave(
-  filename = file.path(out_dir, "Chronic_tox_vs_total_Cu_minnow.png"),
-  plot = chronic_plot,
-  width = 8,
-  height = 6,
-  units = "in",
-  dpi = 300
-)
+chronic_plot_min
 ```
 
 #### ii. Acute toxicity
@@ -2633,7 +2691,7 @@ Plot
 ```{r}
 library(ggplot2)
 
-acute_plot <- ggplot(dat, aes(x = log_Cu_Acute_Tox_Minnow_M , y = log_Cu_M)) +
+acute_plot_min <- ggplot(dat, aes(x = log_Cu_Acute_Tox_Minnow_M , y = log_Cu_M)) +
   
   # points
   geom_point(color = "black", size = 1, alpha = 0.7) +
@@ -2648,22 +2706,12 @@ acute_plot <- ggplot(dat, aes(x = log_Cu_Acute_Tox_Minnow_M , y = log_Cu_M)) +
   labs(
     y = expression(log[10]~"Measured Cu (M)"),
     x = expression(log[10]~"Acute Cu Toxicity (M)"),
-    title = "Acute Cu Toxicity Threshold for Minnow and Measured Zn"
+    title = "d. Acute Cu Toxicity Threshold"
   ) +
   
   theme_classic(base_size = 12)
 
-acute_plot
-
-# Save
-ggsave(
-  filename = file.path(out_dir, "Acute_tox_vs_total_Cu_minnow.png"),
-  plot = acute_plot,
-  width = 8,
-  height = 6,
-  units = "in",
-  dpi = 300
-)
+acute_plot_min
 ```
 
 Save results
@@ -2679,7 +2727,7 @@ addWorksheet(wb, "Chronic tox daphnia")
 writeData(wb, "Chronic tox daphnia", prop_chronic_tox_daph_summary)
 
 addWorksheet(wb, "Samples chronic tox daph")
-writeData(wb, "Samples chronic tox daph", samples_above_chronic_tox_threshold_daph)
+writeData(wb, "Samples chronic tox daph", samples_above_chronic_tox_threshold_daph_zscores)
 
 addWorksheet(wb, "Acute tox daphnia")
 writeData(wb, "Acute tox daphnia", prop_acute_tox_daph_summary)
@@ -2692,6 +2740,33 @@ writeData(wb, "Acute tox minnow", prop_acute_tox_min_summary)
 
 # 5. Save
 saveWorkbook(wb, file_path, overwrite = TRUE)
+```
+
+All plots
+
+```{r}
+library(patchwork)
+
+# Create the top row
+row1 <- (chronic_plot_daph + acute_plot_daph) + 
+  plot_annotation(title = 'Daphnia')
+
+# Create the bottom row
+row2 <- (chronic_plot_min + acute_plot_min) + 
+  plot_annotation(title = 'Fathead Minnow')
+
+# Combine them
+all_plots <- wrap_elements(row1) / wrap_elements(row2)
+all_plots
+
+ggsave(
+  filename = file.path(out_dir, "Cu_tox_thresholds.png"),
+  plot = all_plots,
+  width = 12,
+  height = 9,
+  units = "in",
+  dpi = 300
+)
 ```
 
 # Plots by Site within Typology

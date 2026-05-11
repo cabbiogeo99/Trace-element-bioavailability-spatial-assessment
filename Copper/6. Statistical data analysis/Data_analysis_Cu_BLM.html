@@ -912,6 +912,61 @@ write.xlsx(
   overwrite = TRUE
 )</code></pre>
 </div>
+<div id="total-measured-cu-as-sole-predictor" class="section level2">
+<h2>6. Total measured Cu as sole predictor</h2>
+<pre class="r"><code>library(ggplot2)
+library(ggpubr)</code></pre>
+<pre><code>## Warning: package &#39;ggpubr&#39; was built under R version 4.5.3</code></pre>
+<pre class="r"><code>library(ggpmisc)</code></pre>
+<pre><code>## Warning: package &#39;ggpmisc&#39; was built under R version 4.5.3</code></pre>
+<pre><code>## Loading required package: ggpp</code></pre>
+<pre><code>## Warning: package &#39;ggpp&#39; was built under R version 4.5.3</code></pre>
+<pre><code>## Registered S3 methods overwritten by &#39;ggpp&#39;:
+##   method                  from   
+##   heightDetails.titleGrob ggplot2
+##   widthDetails.titleGrob  ggplot2</code></pre>
+<pre><code>## 
+## Attaching package: &#39;ggpp&#39;</code></pre>
+<pre><code>## The following objects are masked from &#39;package:ggpubr&#39;:
+## 
+##     as_npc, as_npcx, as_npcy</code></pre>
+<pre><code>## The following object is masked from &#39;package:ggplot2&#39;:
+## 
+##     annotate</code></pre>
+<pre class="r"><code>bioavail_total_plot &lt;- ggplot(dat, aes(x = log_Cu_nM, y = log_TBL_Cu_nmol_g)) +
+  
+  # points
+  geom_point(color = &quot;black&quot;, size = 1, alpha = 0.7) +
+  
+  # regression line
+  geom_smooth(method=&quot;lm&quot;) +
+  
+  # add linear equation
+  stat_regline_equation(label.x = -0.9, label.y = -6.8) +
+  
+  # adjusted R2
+   stat_poly_eq(use_label(c(&quot;adj.R2&quot;))) +
+  
+  labs(
+    y = expression(log[10] ~ &quot;Bioavailable Cu&quot; ~ (nmol ~ g^{-1} ~ &quot;wet&quot;)),
+    x = expression(log[10]~&quot;Measured Cu (nM)&quot;),
+    title = &quot;Relationship of measured vs bioavailable Cu&quot;
+  ) +
+  
+  theme_classic(base_size = 12)
+
+bioavail_total_plot</code></pre>
+<pre><code>## `geom_smooth()` using formula = &#39;y ~ x&#39;</code></pre>
+<pre class="r"><code>ggsave(
+  filename = file.path( &quot;Total_measured_vs_bioavailable_Cu.png&quot;),
+  plot = bioavail_total_plot,
+  width = 6,
+  height = 6,
+  units = &quot;in&quot;,
+  dpi = 300
+)</code></pre>
+<pre><code>## `geom_smooth()` using formula = &#39;y ~ x&#39;</code></pre>
+</div>
 </div>
 <div id="assessing-variables-by-typology" class="section level1">
 <h1>Assessing Variables by Typology</h1>
@@ -5693,8 +5748,8 @@ cu_combined_panel &lt;- ggplot() +
     legend.position = &quot;bottom&quot;,
     legend.justification = &quot;left&quot;,
     legend.background = element_blank(),
-    legend.title = element_text(size = 9),
-    legend.text = element_text(size = 8),
+    legend.title = element_text(size = 10),
+    legend.text = element_text(size = 10),
     legend.box = &quot;horizontal&quot;,
     axis.text.x = element_text(
       size = 10,
@@ -6453,30 +6508,77 @@ samples_above_chronic_tox_threshold_daph &lt;- dat %&gt;%
   dplyr::select(
     Sample_ID,
     Typology,
-    log_Cu_M,
-    log_Cu_Chronic_Tox_Daphnia_M
+      log_Cu_nM,
+      log_DOC_nM,
+      pH,
+      log_BL_Cu_nmol_g 
   )
 
-samples_above_chronic_tox_threshold_daph</code></pre>
-<pre><code>## # A tibble: 12 × 4
-##    Sample_ID Typology  log_Cu_M log_Cu_Chronic_Tox_Daphnia_M
-##    &lt;chr&gt;     &lt;fct&gt;        &lt;dbl&gt;                        &lt;dbl&gt;
-##  1 WaDE_393  Perennial    -7.91                        -8.06
-##  2 WaDE_516  Main Stem    -6.79                        -6.87
-##  3 WaDE_518  Main Stem    -6.50                        -6.58
-##  4 WaDE_519  Main Stem    -6.77                        -7.01
-##  5 WaDE_520  Perennial    -6.54                        -7.00
-##  6 WaDE_524  Main Stem    -6.69                        -7.00
-##  7 WaDE_527  Main Stem    -6.84                        -6.89
-##  8 WaDE_623  Perennial    -6.86                        -6.91
-##  9 WaDE_626  Main Stem    -6.40                        -6.81
-## 10 WaDE_627  Perennial    -6.95                        -6.99
-## 11 WaDE_629  Main Stem    -6.62                        -6.89
-## 12 WaDE_630  Main Stem    -6.82                        -6.89</code></pre>
+# Calculate z-scores using summary_table
+
+samples_above_chronic_tox_threshold_daph_zscores &lt;- 
+  samples_above_chronic_tox_threshold_daph %&gt;%
+  
+  # Make data long so each variable can match summary_table
+  pivot_longer(
+    cols = c(
+      log_Cu_nM,
+      log_DOC_nM,
+      pH,
+      log_BL_Cu_nmol_g
+    ),
+    names_to = &quot;Variable&quot;,
+    values_to = &quot;Value&quot;
+  ) %&gt;%
+  
+  # Join mean and variance by Typology + Variable
+  left_join(
+    summary_table %&gt;%
+      dplyr::select(Variable, Typology, Mean, Variance),
+    by = c(&quot;Variable&quot;, &quot;Typology&quot;)
+  ) %&gt;%
+  
+  # Calculate SD and z-score
+  mutate(
+    SD = sqrt(Variance),
+    z_score = (Value - Mean) / SD
+  ) %&gt;%
+  
+  # Make wider again
+  dplyr::select(
+    Sample_ID,
+    Typology,
+    Variable,
+    Value,
+    z_score
+  ) %&gt;%
+  pivot_wider(
+    names_from = Variable,
+    values_from = c(Value,  z_score)
+  )
+
+samples_above_chronic_tox_threshold_daph_zscores</code></pre>
+<pre><code>## # A tibble: 12 × 10
+##    Sample_ID Typology  Value_log_Cu_nM Value_log_DOC_nM Value_pH
+##    &lt;chr&gt;     &lt;fct&gt;               &lt;dbl&gt;            &lt;dbl&gt;    &lt;dbl&gt;
+##  1 WaDE_393  Perennial            1.09             4.61     6.87
+##  2 WaDE_516  Main Stem            2.21             5.05     7.93
+##  3 WaDE_518  Main Stem            2.50             5.46     7.68
+##  4 WaDE_519  Main Stem            2.23             5.05     7.72
+##  5 WaDE_520  Perennial            2.46             5.11     7.66
+##  6 WaDE_524  Main Stem            2.31             5.13     7.55
+##  7 WaDE_527  Main Stem            2.16             5.10     7.77
+##  8 WaDE_623  Perennial            2.14             5.39     7.47
+##  9 WaDE_626  Main Stem            2.60             5.43     7.48
+## 10 WaDE_627  Perennial            2.05             5.35     7.39
+## 11 WaDE_629  Main Stem            2.38             5.28     7.59
+## 12 WaDE_630  Main Stem            2.18             5.33     7.54
+## # ℹ 5 more variables: Value_log_BL_Cu_nmol_g &lt;dbl&gt;, z_score_log_Cu_nM &lt;dbl&gt;,
+## #   z_score_log_DOC_nM &lt;dbl&gt;, z_score_pH &lt;dbl&gt;, z_score_log_BL_Cu_nmol_g &lt;dbl&gt;</code></pre>
 <p>Plot</p>
 <pre class="r"><code>library(ggplot2)
 
-chronic_plot &lt;- ggplot(dat, aes(x = log_Cu_Chronic_Tox_Daphnia_M , y = log_Cu_M)) +
+chronic_plot_daph &lt;- ggplot(dat, aes(x = log_Cu_Chronic_Tox_Daphnia_M , y = log_Cu_M)) +
   
   # points
   geom_point(color = &quot;black&quot;, size = 1, alpha = 0.7) +
@@ -6491,22 +6593,12 @@ chronic_plot &lt;- ggplot(dat, aes(x = log_Cu_Chronic_Tox_Daphnia_M , y = log_Cu
   labs(
     y = expression(log[10]~&quot;Measured Cu (M)&quot;),
     x = expression(log[10]~&quot;Chronic Cu Toxicity (M)&quot;),
-    title = &quot;Chronic Cu Toxicity Threshold for Daphnia and Measured Zn&quot;
+    title = &quot;a. Chronic Cu Toxicity Threshold&quot;
   ) +
   
   theme_classic(base_size = 12)
 
-chronic_plot
-
-# Save
-ggsave(
-  filename = file.path(out_dir, &quot;Chronic_tox_vs_total_Cu_daphnia.png&quot;),
-  plot = chronic_plot,
-  width = 8,
-  height = 6,
-  units = &quot;in&quot;,
-  dpi = 300
-)</code></pre>
+chronic_plot_daph</code></pre>
 </div>
 <div id="b.-acute-toxicity" class="section level4">
 <h4>b. Acute toxicity</h4>
@@ -6536,7 +6628,7 @@ prop_acute_tox_daph_summary</code></pre>
 <p>Plot</p>
 <pre class="r"><code>library(ggplot2)
 
-acute_plot &lt;- ggplot(dat, aes(x = log_Cu_Acute_Tox_Daphnia_M , y = log_Cu_M)) +
+acute_plot_daph &lt;- ggplot(dat, aes(x = log_Cu_Acute_Tox_Daphnia_M , y = log_Cu_M)) +
   
   # points
   geom_point(color = &quot;black&quot;, size = 1, alpha = 0.7) +
@@ -6551,22 +6643,12 @@ acute_plot &lt;- ggplot(dat, aes(x = log_Cu_Acute_Tox_Daphnia_M , y = log_Cu_M))
   labs(
     y = expression(log[10]~&quot;Measured Cu (M)&quot;),
     x = expression(log[10]~&quot;Acute Cu Toxicity (M)&quot;),
-    title = &quot;Acute Cu Toxicity Threshold for Daphnia and Measured Zn&quot;
+    title = &quot;b. Acute Cu Toxicity Threshold&quot;
   ) +
   
   theme_classic(base_size = 12)
 
-acute_plot
-
-# Save
-ggsave(
-  filename = file.path(out_dir, &quot;Acute_tox_vs_total_Cu_daphnia.png&quot;),
-  plot = acute_plot,
-  width = 8,
-  height = 6,
-  units = &quot;in&quot;,
-  dpi = 300
-)</code></pre>
+acute_plot_daph</code></pre>
 </div>
 </div>
 <div id="b.-fathead-minnow" class="section level3">
@@ -6599,7 +6681,7 @@ prop_chronic_tox_min_summary</code></pre>
 <p>Plot</p>
 <pre class="r"><code>library(ggplot2)
 
-chronic_plot &lt;- ggplot(dat, aes(x = log_Cu_Chronic_Tox_Minnow_M , y = log_Cu_M)) +
+chronic_plot_min &lt;- ggplot(dat, aes(x = log_Cu_Chronic_Tox_Minnow_M , y = log_Cu_M)) +
   
   # points
   geom_point(color = &quot;black&quot;, size = 1, alpha = 0.7) +
@@ -6614,22 +6696,12 @@ chronic_plot &lt;- ggplot(dat, aes(x = log_Cu_Chronic_Tox_Minnow_M , y = log_Cu_
   labs(
     y = expression(log[10]~&quot;Measured Cu (M)&quot;),
     x = expression(log[10]~&quot;Chronic Cu Toxicity (M)&quot;),
-    title = &quot;Chronic Cu Toxicity Threshold for Minnow and Measured Zn&quot;
+    title = &quot;d. Chronic Cu Toxicity Threshold&quot;
   ) +
   
   theme_classic(base_size = 12)
 
-chronic_plot
-
-# Save
-ggsave(
-  filename = file.path(out_dir, &quot;Chronic_tox_vs_total_Cu_minnow.png&quot;),
-  plot = chronic_plot,
-  width = 8,
-  height = 6,
-  units = &quot;in&quot;,
-  dpi = 300
-)</code></pre>
+chronic_plot_min</code></pre>
 </div>
 <div id="ii.-acute-toxicity" class="section level4">
 <h4>ii. Acute toxicity</h4>
@@ -6659,7 +6731,7 @@ prop_acute_tox_min_summary</code></pre>
 <p>Plot</p>
 <pre class="r"><code>library(ggplot2)
 
-acute_plot &lt;- ggplot(dat, aes(x = log_Cu_Acute_Tox_Minnow_M , y = log_Cu_M)) +
+acute_plot_min &lt;- ggplot(dat, aes(x = log_Cu_Acute_Tox_Minnow_M , y = log_Cu_M)) +
   
   # points
   geom_point(color = &quot;black&quot;, size = 1, alpha = 0.7) +
@@ -6674,22 +6746,12 @@ acute_plot &lt;- ggplot(dat, aes(x = log_Cu_Acute_Tox_Minnow_M , y = log_Cu_M)) 
   labs(
     y = expression(log[10]~&quot;Measured Cu (M)&quot;),
     x = expression(log[10]~&quot;Acute Cu Toxicity (M)&quot;),
-    title = &quot;Acute Cu Toxicity Threshold for Minnow and Measured Zn&quot;
+    title = &quot;d. Acute Cu Toxicity Threshold&quot;
   ) +
   
   theme_classic(base_size = 12)
 
-acute_plot
-
-# Save
-ggsave(
-  filename = file.path(out_dir, &quot;Acute_tox_vs_total_Cu_minnow.png&quot;),
-  plot = acute_plot,
-  width = 8,
-  height = 6,
-  units = &quot;in&quot;,
-  dpi = 300
-)</code></pre>
+acute_plot_min</code></pre>
 <p>Save results</p>
 <pre class="r"><code># 1. Define file path
 file_path &lt;- file.path(out_dir, &quot;Relative_prop_on_above_tox_threshold.xlsx&quot;)
@@ -6701,7 +6763,7 @@ addWorksheet(wb, &quot;Chronic tox daphnia&quot;)
 writeData(wb, &quot;Chronic tox daphnia&quot;, prop_chronic_tox_daph_summary)
 
 addWorksheet(wb, &quot;Samples chronic tox daph&quot;)
-writeData(wb, &quot;Samples chronic tox daph&quot;, samples_above_chronic_tox_threshold_daph)
+writeData(wb, &quot;Samples chronic tox daph&quot;, samples_above_chronic_tox_threshold_daph_zscores)
 
 addWorksheet(wb, &quot;Acute tox daphnia&quot;)
 writeData(wb, &quot;Acute tox daphnia&quot;, prop_acute_tox_daph_summary)
@@ -6714,6 +6776,33 @@ writeData(wb, &quot;Acute tox minnow&quot;, prop_acute_tox_min_summary)
 
 # 5. Save
 saveWorkbook(wb, file_path, overwrite = TRUE)</code></pre>
+<p>All plots</p>
+<pre class="r"><code>library(patchwork)</code></pre>
+<pre><code>## 
+## Attaching package: &#39;patchwork&#39;</code></pre>
+<pre><code>## The following object is masked from &#39;package:MASS&#39;:
+## 
+##     area</code></pre>
+<pre class="r"><code># Create the top row
+row1 &lt;- (chronic_plot_daph + acute_plot_daph) + 
+  plot_annotation(title = &#39;Daphnia&#39;)
+
+# Create the bottom row
+row2 &lt;- (chronic_plot_min + acute_plot_min) + 
+  plot_annotation(title = &#39;Fathead Minnow&#39;)
+
+# Combine them
+all_plots &lt;- wrap_elements(row1) / wrap_elements(row2)
+all_plots
+
+ggsave(
+  filename = file.path(out_dir, &quot;Cu_tox_thresholds.png&quot;),
+  plot = all_plots,
+  width = 12,
+  height = 9,
+  units = &quot;in&quot;,
+  dpi = 300
+)</code></pre>
 </div>
 </div>
 </div>

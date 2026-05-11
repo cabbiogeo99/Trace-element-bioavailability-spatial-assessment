@@ -592,6 +592,47 @@ write.xlsx(
 )
 ```
 
+## 6. Total measured as sole predictor
+
+```{r}
+library(ggplot2)
+library(ggpubr)
+library(ggpmisc)
+
+bioavail_total_plot <- ggplot(dat, aes(x = log_Zn_nM, y = log_TBL_Zn_nmol_g)) +
+  
+  # points
+  geom_point(color = "black", size = 1, alpha = 0.7) +
+  
+  # regression line
+  geom_smooth(method="lm") +
+  
+  # add linear equation
+  stat_regline_equation(label.x = -0.5, label.y = -5.6) +
+  
+  # adjusted R2
+   stat_poly_eq(use_label(c("adj.R2"))) +
+  
+  labs(
+    y = expression(log[10] ~ "Bioavailable Zn" ~ (nmol ~ g^{-1} ~ "wet")),
+    x = expression(log[10]~"Measured Zn (nM)"),
+    title = "Relationship of measured vs bioavailable Zn"
+  ) +
+  
+  theme_classic(base_size = 12)
+
+bioavail_total_plot
+
+ggsave(
+  filename = file.path( "Total_measured_vs_bioavailable_Zn.png"),
+  plot = bioavail_total_plot,
+  width = 6,
+  height = 6,
+  units = "in",
+  dpi = 300
+)
+```
+
 # Assessing Variables by Typology
 
 Set order of typologies
@@ -1964,8 +2005,8 @@ geom_jitter(
   legend.position = "bottom",
   legend.justification = "left",
   legend.background = element_blank(),
-  legend.title = element_text(size = 9),
-  legend.text = element_text(size = 8),
+  legend.title = element_text(size = 10),
+  legend.text = element_text(size = 10),
   legend.box = "horizontal",
   axis.text.x = element_text(
     size = 10,
@@ -2398,22 +2439,12 @@ chronic_plot <- ggplot(dat, aes(x = log_Zn_chronic_tox_M , y = log_Zn_M)) +
   labs(
     y = expression(log[10]~"Measured Zn (M)"),
     x = expression(log[10]~"Chronic Zn Toxicity (M)"),
-    title = "Relationship Between Chronic Zn Toxicity Threshold and Measured Zn"
+    title = "a. Chronic Zn Toxicity Threshold"
   ) +
   
   theme_classic(base_size = 12)
 
 chronic_plot
-
-# Save
-ggsave(
-  filename = file.path(out_dir, "Total_vs_chronic_Zn_tox.png"),
-  plot = chronic_plot,
-  width = 8,
-  height = 6,
-  units = "in",
-  dpi = 300
-)
 ```
 
 ### b. Acute toxicity
@@ -2460,22 +2491,12 @@ acute_plot <- ggplot(dat, aes(x = log_Zn_acute_tox_M , y = log_Zn_M)) +
   labs(
     y = expression(log[10]~"Measured Zn (M)"),
     x = expression(log[10]~"Acute Zn Toxicity (M)"),
-    title = "Relationship Between Acute Zn Toxicity Threshold and Measured Zn"
+    title = "b. Acute Zn Toxicity Threshold"
   ) +
   
   theme_classic(base_size = 12)
 
 acute_plot
-
-# Save
-ggsave(
-  filename = file.path(out_dir, "Total_vs_acute_Zn_tox.png"),
-  plot = acute_plot,
-  width = 8,
-  height = 6,
-  units = "in",
-  dpi = 300
-)
 ```
 
 Save results
@@ -2497,695 +2518,21 @@ writeData(wb, "Acute tox", prop_acute_tox_summary)
 saveWorkbook(wb, file_path, overwrite = TRUE)
 ```
 
-# Interaction effect of Typology and Developed LULC
-
-Interaction effect for each BLM predictor \~ Typology \* Developed_lulc
+Both plots
 
 ```{r}
-library(dplyr)
-library(tidyr)
-library(purrr)
-library(broom)
+library(patchwork)
 
-vars <- c(
-  "pH", "log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
-  "log_Ca_nM", "log_Mg_nM", "log_SO4_nM",
-  "log_Na_nM", "log_K_nM", "log_Zn_nM", "log_Cu_nM"
-)
+both_plots <- (chronic_plot + acute_plot) 
 
-dat_long <- dat %>%
-  dplyr::select(Typology, Developed_lulc, all_of(vars)) %>%
-  pivot_longer(
-    cols = all_of(vars),
-    names_to = "Variable",
-    values_to = "Value"
-  )
-
-model_results <- dat_long %>%
-  group_by(Variable) %>%
-  nest() %>%
-  mutate(
-    model = map(data, ~ lm(Value ~ Developed_lulc * Typology, data = .x)),
-    tidy  = map(model, tidy)
-  ) %>%
-  unnest(tidy)
-
-# Extract interaction terms
-interaction_results <- model_results %>%
-  filter(
-    term == "(Intercept)" |
-    term == "Developed_lulc" |
-    grepl("Developed_lulc:Typology", term)
-  ) %>%
-  dplyr::select(Variable, term, estimate, p.value) %>%
-  mutate(
-    significant = p.value < 0.05
-  )
-
-# Save
-out_dir <- "Typology_Developed_lulc Interaction"
-if (!dir.exists(out_dir)) {
-  dir.create(out_dir, recursive = TRUE)
-}
-
-library(openxlsx)
-
-wb <- createWorkbook()
-
-addWorksheet(wb, "Interaction_Results")
-
-writeData(wb, "Interaction_Results", interaction_results)
-
-saveWorkbook(
-  wb,
-  file = file.path(out_dir, "interaction_results.xlsx"),
-  overwrite = TRUE
-)
-```
-
-## 1. All sites
-
-```{r}
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-
-vars <- c(
-  "pH", "log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
-  "log_Ca_nM", "log_Mg_nM", "log_SO4_nM",
-  "log_Na_nM", "log_K_nM", "log_Zn_nM", "log_Cu_nM"
-)
-
-dat_long <- dat %>%   
-  dplyr::select(Developed_lulc, Typology, all_of(vars)) %>%        
-  pivot_longer(
-    cols = all_of(vars),
-    names_to = "Variable",
-    values_to = "Value"
-  )
-
-dat_long$Typology <- factor(
-  dat_long$Typology,
-  levels = c("Main Stem", "Developed Perennial", 
-             "Perennial", "Non-Perennial", "Pooled")
-)
-
-p <- ggplot(dat_long, aes(x = Developed_lulc, y = Value)) +
-  
-  geom_point(alpha = 0.35, color = "gray50") +
-  
-  geom_smooth(
-    aes(linetype = Typology, group = Typology),
-    method = "lm",
-    se = FALSE,
-    color = "black",
-    linewidth = 0.9
-  ) +
-  
-  facet_wrap(~ Variable, scales = "free_y") +
-  
-  scale_linetype_manual(
-    values = c(
-      "Main Stem" = "solid",
-      "Developed Perennial"  = "dashed",
-      "Perennial"   = "twodash",
-      "Non-Perennial"  = "dotted",
-      "Pooled" = "longdash"
-    )
-  ) +
-  
-  theme_classic(base_size = 14) +
-  
-  labs(
-    title = "Water Chemistry vs Developed Land Cover",
-    x = "Developed land cover (%)",
-    y = NULL,
-    linetype = "Typology"
-  )
-
-p
-
-# Save
-out_dir <- "Typology_Developed_lulc Interaction"
-if (!dir.exists(out_dir)) {
-  dir.create(out_dir, recursive = TRUE)
-}
+both_plots
 
 ggsave(
-  filename = file.path(out_dir, "Typology_developedlulc_all.png"),
-  plot     = p,
-  width    = 15,
-  height   = 8,
-  dpi      = 300
-)
-
-```
-
-## 2. Main Stem
-
-As a function of Developed LC
-
-```{r}
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-
-vars <- c(
-  "pH", "log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
-  "log_Ca_nM", "log_Mg_nM", "log_SO4_nM",
-  "log_Na_nM", "log_K_nM", "log_Zn_nM", "log_Cu_nM"
-)
-
-dat_long <- dat %>%
-  filter(Type == "Main Stem") %>%   
-  dplyr::select(Developed_lulc, all_of(vars)) %>%
-  pivot_longer(
-    cols = all_of(vars),
-    names_to = "Variable",
-    values_to = "Value"
-  )
-
-p1 <- ggplot(dat_long, aes(x = Developed_lulc, y = Value, color = Variable)) +
-  
-  geom_point(alpha = 0.5) +
-  
-  geom_smooth(method = "lm", se = FALSE, color = "steelblue") +
-  
-  facet_wrap(~ Variable, scales = "free_y") +
-  
-  theme_classic(base_size = 14) +
-  
-  theme(legend.position = "none") +
-  
-  labs(
-    title = "Water Chemistry vs Developed Land Cover (Main Stem)",
-    x = "Developed Land Cover (%)"
-  )
-
-# Save
-ggsave(
-  filename = file.path(out_dir, "Typology_development_ms.png"),
-  plot     = p1,
-  width    = 10,
-  height   = 5,
-  dpi      = 300
-)
-```
-
-## 3. Developed Tribs
-
-```{r}
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-
-vars <- c(
-  "pH", "log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
-  "log_Ca_nM", "log_Mg_nM", "log_SO4_nM",
-  "log_Na_nM", "log_K_nM", "log_Zn_nM", "log_Cu_nM"
-)
-
-dat_long <- dat %>%
-  filter(Typology == "Developed Perennial") %>%   
-  dplyr::select(Developed_lulc, all_of(vars)) %>%
-  pivot_longer(
-    cols = all_of(vars),
-    names_to = "Variable",
-    values_to = "Value"
-  )
-
-p2 <- ggplot(dat_long, aes(x = Developed_lulc, y = Value, color = Variable)) +
-  
-  geom_point(alpha = 0.5) +
-  
-  geom_smooth(method = "lm", se = FALSE, color = "steelblue") +
-  
-  facet_wrap(~ Variable, scales = "free_y") +
-  
-  theme_classic(base_size = 14) +
-  
-  theme(legend.position = "none") +
-  
-  labs(
-    title = "Water Chemistry vs Developed Land Cover (Developed Tributaries)",
-    x = "Developed Land Cover (%)"
-  )
-
-# Save
-ggsave(
-  filename = file.path(out_dir, "Typology_development_pdtribs.png"),
-  plot     = p2,
-  width    = 10,
-  height   = 5,
-  dpi      = 300
-)
-```
-
-## 4. Perennial Tribs
-
-```{r}
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-
-vars <- c(
-  "pH", "log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
-  "log_Ca_nM", "log_Mg_nM", "log_SO4_nM",
-  "log_Na_nM", "log_K_nM", "log_Zn_nM", "log_Cu_nM"
-)
-
-dat_long <- dat %>%
-  filter(Typology == "Perennial") %>%   
-  dplyr::select(Developed_lulc, all_of(vars)) %>%
-  pivot_longer(
-    cols = all_of(vars),
-    names_to = "Variable",
-    values_to = "Value"
-  )
-
-p3 <- ggplot(dat_long, aes(x = Developed_lulc, y = Value, color = Variable)) +
-  
-  geom_point(alpha = 0.5) +
-  
-  geom_smooth(method = "lm", se = FALSE, color = "steelblue") +
-  
-  facet_wrap(~ Variable, scales = "free_y") +
-  
-  theme_classic(base_size = 14) +
-  
-  theme(legend.position = "none") +
-  
-  labs(
-    title = "Water Chemistry vs Developed Land Cover (Perennial Tributaries)",
-    x = "Developed Land Cover (%)"
-  )
-
-# Save
-ggsave(
-  filename = file.path(out_dir, "Typology_development_ptribs.png"),
-  plot     = p3,
-  width    = 10,
-  height   = 5,
-  dpi      = 300
-)
-```
-
-## 5. Non-Perennial Tribs
-
-```{r}
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-
-vars <- c(
-  "pH", "log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
-  "log_Ca_nM", "log_Mg_nM", "log_SO4_nM",
-  "log_Na_nM", "log_K_nM", "log_Zn_nM", "log_Cu_nM"
-)
-
-dat_long <- dat %>%
-  filter(Typology == "Non-Perennial") %>%   
-  dplyr::select(Developed_lulc, all_of(vars)) %>%
-  pivot_longer(
-    cols = all_of(vars),
-    names_to = "Variable",
-    values_to = "Value"
-  )
-
-p4 <- ggplot(dat_long, aes(x = Developed_lulc, y = Value, color = Variable)) +
-  
-  geom_point(alpha = 0.5) +
-  
-  geom_smooth(method = "lm", se = FALSE, color = "steelblue") +
-  
-  facet_wrap(~ Variable, scales = "free_y") +
-  
-  theme_classic(base_size = 14) +
-  
-  theme(legend.position = "none") +
-  
-  labs(
-    title = "Water Chemistry vs Developed Land Cover (Non-Perennial Tributaries)",
-    x = "Developed Land Cover (%)"
-  )
-
-# Save
-ggsave(
-  filename = file.path(out_dir, "Typology_development_nptribs.png"),
-  plot     = p4,
-  width    = 10,
-  height   = 5,
-  dpi      = 300
-)
-```
-
-# Interaction of Typology and Time
-
-```{r}
-library(dplyr)
-library(tidyr)
-library(purrr)
-library(broom)
-
-vars <- c(
-  "pH", "log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
-  "log_Ca_nM", "log_Mg_nM", "log_SO4_nM",
-  "log_Na_nM", "log_K_nM", "log_Zn_nM", "log_Cu_nM"
-)
-
-dat_long <- dat %>%
-  dplyr::select(Date, Typology, all_of(vars)) %>%
-  pivot_longer(
-    cols = all_of(vars),
-    names_to = "Variable",
-    values_to = "Value"
-  ) %>%
-  filter(!is.na(Date), !is.na(Value))
-
-model_results <- dat_long %>%
-  group_by(Variable) %>%
-  nest() %>%
-  mutate(
-    model = map(data, ~ lm(Value ~ Date * Typology, data = .x)),
-    tidy  = map(model, tidy)
-  ) %>%
-  unnest(tidy)
-
-# Extract interaction terms
-interaction_results <- model_results %>%
-  filter(
-    term == "(Intercept)" |
-    term == "Date" |
-    grepl("Date:Typology", term)
-  ) %>%
-  dplyr::select(Variable, term, estimate, p.value) %>%
-  mutate(
-    significant = p.value < 0.05
-  )
-
-# Save
-out_dir <- "Typology_Date Interaction"
-if (!dir.exists(out_dir)) {
-  dir.create(out_dir, recursive = TRUE)
-}
-
-library(openxlsx)
-
-wb <- createWorkbook()
-
-addWorksheet(wb, "Interaction_Results")
-
-writeData(wb, "Interaction_Results", interaction_results)
-
-saveWorkbook(
-  wb,
-  file = file.path(out_dir, "interaction_results.xlsx"),
-  overwrite = TRUE
-)
-```
-
-## 1. All sites
-
-```{r}
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-
-vars <- c(
-  "pH", "log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
-  "log_Ca_nM", "log_Mg_nM", "log_SO4_nM",
-  "log_Na_nM", "log_K_nM", "log_Zn_nM", "log_Cu_nM"
-)
-
-dat_long <- dat %>%   
-  dplyr::select(Date, Typology, all_of(vars)) %>%        
-  pivot_longer(
-    cols = all_of(vars),
-    names_to = "Variable",
-    values_to = "Value"
-  )
-
-dat_long$Typology <- factor(
-  dat_long$Typology,
-  levels = c("Main Stem", "Developed Perennial", 
-             "Perennial", "Non-Perennial", "Pooled")
-)
-
-a <- ggplot(dat_long, aes(x = Date, y = Value)) +
-  
-  # points in neutral color
-  geom_point(alpha = 0.35, color = "gray50") +
-  
-  # one loess trendline per typology
-  geom_smooth(
-    aes(linetype = Typology, group = Typology),
-    method = "loess",
-    se = FALSE,
-    color = "black",
-    linewidth = 0.9
-  ) +
-  
-  facet_wrap(~ Variable, scales = "free_y") +
-  
-  scale_linetype_manual(
-    values = c(
-      "Main Stem" = "solid",
-      "Developed Perennial" = "dashed",
-      "Perennial" = "twodash",
-      "Non-Perennial" = "dotted",
-      "Pooled" = "longdash"
-    )
-  ) +
-  
-  theme_classic(base_size = 14) +
-  
-  labs(
-    title = "Water Chemistry Over Time",
-    x = "Date",
-    y = NULL,
-    linetype = "Typology"
-  )
-
-a
-
-# Save
-ggsave(
-  filename = file.path(out_dir, "Typology_date_all.png"),
-  plot     = a,
-  width    = 15,
-  height   = 8,
-  dpi      = 300
-)
-```
-
-## 2. Main Stem
-
-```{r}
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-
-vars <- c(
-  "pH","log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
-  "log_Ca_nM", "log_Mg_nM", "log_SO4_nM",
-  "log_Na_nM", "log_K_nM", "log_Zn_nM", "log_Cu_nM"
-)
-
-dat_long <- dat %>%
-  filter(Typology == "Main Stem") %>%   
-  dplyr::select(Date, all_of(vars)) %>%        
-  pivot_longer(
-    cols = all_of(vars),
-    names_to = "Variable",
-    values_to = "Value"
-  )
-
-a1 <- ggplot(dat_long, aes(x = Date, y = Value, color = Variable)) +
-  
-  geom_point(alpha = 0.4) +
-  
-  geom_smooth(
-    method = "loess",   
-    se = FALSE,
-    color = "steelblue"
-  ) +
-  
-  facet_wrap(~ Variable, scales = "free_y") +
-  
-  theme_classic(base_size = 14) +
-  
-  theme(legend.position = "none") +
-  
-  labs(
-    title = "Water Chemistry Over Time (Main Stem)",
-    x = "Date"
-  )
-
-# Save
-ggsave(
-  filename = file.path(out_dir, "Typology_date_ms.png"),
-  plot     = a1,
-  width    = 15,
-  height   = 8,
-  dpi      = 300
-)
-```
-
-## 3. Developed Tribs
-
-```{r}
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-
-vars <- c(
-  "pH","log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
-  "log_Ca_nM", "log_Mg_nM", "log_SO4_nM",
-  "log_Na_nM", "log_K_nM", "log_Zn_nM", "log_Cu_nM"
-)
-
-dat_long <- dat %>%
-  filter(Typology == "Developed Perennial") %>%   
-  dplyr::select(Date, all_of(vars)) %>%        
-  pivot_longer(
-    cols = all_of(vars),
-    names_to = "Variable",
-    values_to = "Value"
-  )
-
-a2 <- ggplot(dat_long, aes(x = Date, y = Value, color = Variable)) +
-  
-  geom_point(alpha = 0.4) +
-  
-  geom_smooth(
-    method = "loess",   
-    se = FALSE,
-    color = "steelblue"
-  ) +
-  
-  facet_wrap(~ Variable, scales = "free_y") +
-  
-  theme_classic(base_size = 14) +
-  
-  theme(legend.position = "none") +
-  
-  labs(
-    title = "Water Chemistry Over Time (Developed Tributaries)",
-    x = "Date"
-  )
-
-# Save
-ggsave(
-  filename = file.path(out_dir, "Typology_date_pdtribs.png"),
-  plot     = a2,
-  width    = 15,
-  height   = 8,
-  dpi      = 300
-)
-```
-
-## 4. Perennial Tribs
-
-```{r}
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-
-vars <- c(
-  "pH","log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
-  "log_Ca_nM", "log_Mg_nM", "log_SO4_nM",
-  "log_Na_nM", "log_K_nM", "log_Zn_nM", "log_Cu_nM"
-)
-
-dat_long <- dat %>%
-  filter(Typology == "Perennial") %>%   
-  dplyr::select(Date, all_of(vars)) %>%        
-  pivot_longer(
-    cols = all_of(vars),
-    names_to = "Variable",
-    values_to = "Value"
-  )
-
-a3 <- ggplot(dat_long, aes(x = Date, y = Value, color = Variable)) +
-  
-  geom_point(alpha = 0.4) +
-  
-  geom_smooth(
-    method = "loess",   
-    se = FALSE,
-    color = "steelblue"
-  ) +
-  
-  facet_wrap(~ Variable, scales = "free_y") +
-  
-  theme_classic(base_size = 14) +
-  
-  theme(legend.position = "none") +
-  
-  labs(
-    title = "Water Chemistry Over Time (Perennial Tributaries)",
-    x = "Date"
-  )
-
-# Save
-ggsave(
-  filename = file.path(out_dir, "Typology_date_ptribs.png"),
-  plot     = a3,
-  width    = 15,
-  height   = 8,
-  dpi      = 300
-)
-```
-
-## 5. Non-Perennial Tribs
-
-```{r}
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-
-vars <- c(
-  "pH","log_DOC_nM", "log_DIC_nM", "log_Cl_nM",
-  "log_Ca_nM", "log_Mg_nM", "log_SO4_nM",
-  "log_Na_nM", "log_K_nM", "log_Zn_nM", "log_Cu_nM"
-)
-
-dat_long <- dat %>%
-  filter(Typology == "Non-Perennial") %>%   
-  dplyr::select(Date, all_of(vars)) %>%        
-  pivot_longer(
-    cols = all_of(vars),
-    names_to = "Variable",
-    values_to = "Value"
-  )
-
-a4 <- ggplot(dat_long, aes(x = Date, y = Value, color = Variable)) +
-  
-  geom_point(alpha = 0.4) +
-  
-  geom_smooth(
-    method = "loess",   
-    se = FALSE,
-    color = "steelblue"
-  ) +
-  
-  facet_wrap(~ Variable, scales = "free_y") +
-  
-  theme_classic(base_size = 14) +
-  
-  theme(legend.position = "none") +
-  
-  labs(
-    title = "Water Chemistry Over Time (Non-Perennial Tributaries)",
-    x = "Date"
-  )
-
-# Save
-ggsave(
-  filename = file.path(out_dir, "Typology_date_nptribs.png"),
-  plot     = a4,
-  width    = 15,
-  height   = 8,
-  dpi      = 300
+  filename = file.path(out_dir, "Zn_tox_thresholds.png"),
+  plot = both_plots,
+  width = 10,
+  height = 5,
+  units = "in",
+  dpi = 300
 )
 ```
