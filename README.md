@@ -1,6 +1,6 @@
-# Spatial Assessment of Trace Element Bioavailability in Headwater Streams
+# Trace Element Bioavailability Varies with Flow Regime and Land Cover in a Headwater Stream Network
 
-**Last updated:** 4/22/2026  
+**Last updated:** 5/11/2026  
 **Developed by:** Cecilia Albert-Black  
 **Project:** Watershed Dynamics Evolution (WaDE) Science Focus Area at Oak Ridge National Lab (ORNL), in collaboration with a Powell Center Working Group funded by the United States Geological Survey (USGS)  
 **Dataset:** WaDE Synoptic Survey Dataset collected bi-monthly (Jun. 2023 – Feb. 2025) from sites in the East Fork Poplar Creek Watershed (Oak Ridge, TN)
@@ -30,7 +30,7 @@ The first step in this workflow was to clean the WaDE Synoptic Survey Dataset by
 - EDA of variables stored in Excel files
 - log transformed variables stored in `Bioavailability_Master_Spreadsheet_Clean2.xlsx`
 
-#### 5. Cluster Analysis
+#### 5. Cluster Analysis (only in Zn folder)
 - Sample-level clustering → `Typology`  
 - Site-level clustering → `Typology2`  
 - Both stored in `Bioavailability_Master_Spreadsheet_Clean3.xlsx`
