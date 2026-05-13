@@ -1327,7 +1327,7 @@ saveWorkbook(
   overwrite = TRUE
 )</code></pre>
 <div id="a.-identify-sites-with-1-typology-assignment" class="section level3">
-<h3>a. Identify Sites with &gt;1 Typology Assignment</h3>
+<h3>a. Identify sites with &gt;1 typology assignment</h3>
 <pre class="r"><code># Determine which sites fall into more than 1 typology
 sites_multiple_typology &lt;- dat %&gt;%
   distinct(Site, Typology) %&gt;%        
@@ -1370,8 +1370,8 @@ saveWorkbook(
   overwrite = TRUE)</code></pre>
 </div>
 <div id="b.-number-of-samples-per-typology-within-sites-with-1-typology" class="section level3">
-<h3>b. Number of Samples per Typology within Sites with &gt;1
-Typology</h3>
+<h3>b. Number of samples per typology within sites with &gt;1
+typology</h3>
 <pre class="r"><code>site_typology_sample_counts &lt;- dat %&gt;%
   filter(Site %in% sites_multiple_typology$Site) %&gt;% 
   count(Site, Typology, name = &quot;n_samples&quot;) %&gt;%
@@ -1409,7 +1409,7 @@ saveWorkbook(
   overwrite = TRUE)</code></pre>
 </div>
 <div id="c.-dominant-typology-for-each-site" class="section level3">
-<h3>c. Dominant Typology for each Site</h3>
+<h3>c. Dominant typology for each site</h3>
 <pre class="r"><code>library(dplyr)
 library(tidyr)
 
@@ -1468,6 +1468,145 @@ write.xlsx(
   nested_table,
   file = file.path(out_dir, &quot;Sites_by_network_typology.xlsx&quot;),
   overwrite = TRUE
+)</code></pre>
+</div>
+<div id="d.-relative-frequency-of-clusters-by-site" class="section level3">
+<h3>d. Relative frequency of clusters by site</h3>
+<pre class="r"><code>library(dplyr)
+
+# Create Actual_typology variable
+dat &lt;- dat %&gt;%
+  mutate(
+    Actual_typology = case_when(
+      
+      # Main stem sites
+      Type == &quot;Main Stem&quot; ~ &quot;Main Stem Sites (n=106)&quot;,
+      
+      # Non-perennial tributaries
+      Type == &quot;Tributaries&quot; &amp;
+        Regime == &quot;NonPerennial&quot; &amp;
+        Flow_state == &quot;Flowing&quot; ~ &quot;Flowing Non-Perennial Tributary Sites (n=47)&quot;,
+      
+      # Pooled
+      Type == &quot;Tributaries&quot; &amp;
+        Regime == &quot;NonPerennial&quot; &amp;
+        Flow_state == &quot;Pooled&quot; ~ &quot;Pooled Non-Perennial Tributary Sites (n=30)&quot;,
+      
+      # Developed perennial tributaries
+      Type == &quot;Tributaries&quot; &amp;
+        Regime == &quot;Perennial&quot; &amp;
+        Developed_lulc &gt;= 80 ~ &quot;Developed Perennial Tributary Sites (n=94)&quot;,
+      
+      # Perennial tributaries (&lt;80% developed)
+      Type == &quot;Tributaries&quot; &amp;
+        Regime == &quot;Perennial&quot; &amp;
+        Developed_lulc &lt; 80 ~ &quot;Perennial Tributary Sites (n=109)&quot;
+  )
+  )
+
+# Should be no missing
+sum(is.na(dat$Actual_typology))</code></pre>
+<pre><code>## [1] 0</code></pre>
+<pre class="r"><code># Change order
+dat$Actual_typology &lt;- factor(dat$Actual_typology, levels = c(
+  &quot;Pooled Non-Perennial Tributary Sites (n=30)&quot;,
+  &quot;Flowing Non-Perennial Tributary Sites (n=47)&quot;,
+  &quot;Perennial Tributary Sites (n=109)&quot;,
+  &quot;Developed Perennial Tributary Sites (n=94)&quot;,
+  &quot;Main Stem Sites (n=106)&quot;
+))
+
+# Check
+str(dat$Actual_typology)</code></pre>
+<pre><code>##  Factor w/ 5 levels &quot;Pooled Non-Perennial Tributary Sites (n=30)&quot;,..: 2 5 3 1 2 2 3 3 2 5 ...</code></pre>
+<pre class="r"><code># Number of samples in each
+summary(dat$Actual_typology)</code></pre>
+<pre><code>##  Pooled Non-Perennial Tributary Sites (n=30) 
+##                                           30 
+## Flowing Non-Perennial Tributary Sites (n=47) 
+##                                           47 
+##            Perennial Tributary Sites (n=109) 
+##                                          109 
+##   Developed Perennial Tributary Sites (n=94) 
+##                                           94 
+##                      Main Stem Sites (n=106) 
+##                                          106</code></pre>
+<p>Create a relative frequency plot of typology assignments by
+Actual_typology</p>
+<pre class="r"><code>library(dplyr)
+library(ggplot2)
+library(scales)
+
+# 1. Summarize relative frequency of Typology within each site
+cluster_freq_site &lt;- dat %&gt;%
+  count(Actual_typology, Site, Typology, name = &quot;n&quot;) %&gt;%
+  group_by(Actual_typology, Site) %&gt;%
+  mutate(relative_freq = n / sum(n)) %&gt;%
+  ungroup()
+
+# Assign cluster colors
+typology_colors &lt;- c(
+  &quot;Pooled&quot; = &quot;yellow3&quot;,
+  &quot;Non-Perennial&quot; = &quot;#009E73&quot;,
+  &quot;Perennial&quot; = &quot;#56B4E9&quot;,
+  &quot;Developed Perennial&quot; = &quot;#D55E00&quot;,
+  &quot;Main Stem&quot; = &quot;#999999&quot;
+  )
+
+# 2. Plot horizontal stacked relative frequency bars
+site_rel_freq &lt;- ggplot(
+  cluster_freq_site,
+  aes(
+    x = relative_freq,
+    y = Site,
+    fill = Typology
+  )
+) +
+  geom_col(width = 0.8) +
+
+  # Add sample counts within each bar segment
+  geom_text(
+    aes(label = n),
+    position = position_stack(vjust = 0.5),
+    size = 4,
+    color = &quot;black&quot;
+  ) +
+
+  facet_wrap(
+    ~ Actual_typology,
+    scales = &quot;free_y&quot;,
+    ncol = 2
+  ) +
+  scale_fill_manual(values = typology_colors) +
+  scale_x_continuous(
+    labels = percent_format(accuracy = 1),
+    limits = c(0, 1)
+  ) +
+  labs(
+    x = &quot;Relative Frequency&quot;,
+    y = &quot;Site&quot;,
+    fill = &quot;Typology&quot;
+  ) +
+  theme_classic() +
+  theme(
+    axis.title.y = element_text(size = 14),
+    strip.text = element_text(face = &quot;bold&quot;, size = 14),
+    axis.text.y = element_text(size = 12),
+    axis.text.x = element_text(size = 12),
+    legend.text = element_text(size = 12),
+    legend.position = &quot;bottom&quot;,
+    legend.direction = &quot;horizontal&quot;
+  )
+
+site_rel_freq
+
+# Save
+ggsave(
+  filename = file.path(out_dir, &quot;Relative_freq_by_site.png&quot;),
+  plot     = site_rel_freq,
+  width    = 12,
+  height   = 10,
+  dpi      = 300
 )</code></pre>
 </div>
 </div>

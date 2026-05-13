@@ -830,7 +830,7 @@ saveWorkbook(
 )
 ```
 
-### a. Identify Sites with \>1 Typology Assignment
+### a. Identify sites with \>1 typology assignment
 
 ```{r}
 # Determine which sites fall into more than 1 typology
@@ -862,7 +862,7 @@ saveWorkbook(
   overwrite = TRUE)
 ```
 
-### b. Number of Samples per Typology within Sites with \>1 Typology
+### b. Number of samples per typology within sites with \>1 typology
 
 ```{r}
 site_typology_sample_counts <- dat %>%
@@ -889,7 +889,7 @@ saveWorkbook(
   overwrite = TRUE)
 ```
 
-### c. Dominant Typology for each Site
+### c. Dominant typology for each site
 
 ```{r}
 library(dplyr)
@@ -937,5 +937,141 @@ write.xlsx(
   nested_table,
   file = file.path(out_dir, "Sites_by_network_typology.xlsx"),
   overwrite = TRUE
+)
+```
+
+### d. Relative frequency of clusters by site
+
+```{r}
+library(dplyr)
+
+# Create Actual_typology variable
+dat <- dat %>%
+  mutate(
+    Actual_typology = case_when(
+      
+      # Main stem sites
+      Type == "Main Stem" ~ "Main Stem Sites (n=106)",
+      
+      # Non-perennial tributaries
+      Type == "Tributaries" &
+        Regime == "NonPerennial" &
+        Flow_state == "Flowing" ~ "Flowing Non-Perennial Tributary Sites (n=47)",
+      
+      # Pooled
+      Type == "Tributaries" &
+        Regime == "NonPerennial" &
+        Flow_state == "Pooled" ~ "Pooled Non-Perennial Tributary Sites (n=30)",
+      
+      # Developed perennial tributaries
+      Type == "Tributaries" &
+        Regime == "Perennial" &
+        Developed_lulc >= 80 ~ "Developed Perennial Tributary Sites (n=94)",
+      
+      # Perennial tributaries (<80% developed)
+      Type == "Tributaries" &
+        Regime == "Perennial" &
+        Developed_lulc < 80 ~ "Perennial Tributary Sites (n=109)"
+  )
+  )
+
+# Should be no missing
+sum(is.na(dat$Actual_typology))
+
+# Change order
+dat$Actual_typology <- factor(dat$Actual_typology, levels = c(
+  "Pooled Non-Perennial Tributary Sites (n=30)",
+  "Flowing Non-Perennial Tributary Sites (n=47)",
+  "Perennial Tributary Sites (n=109)",
+  "Developed Perennial Tributary Sites (n=94)",
+  "Main Stem Sites (n=106)"
+))
+
+# Check
+str(dat$Actual_typology)
+
+# Number of samples in each
+summary(dat$Actual_typology)
+```
+
+Create a relative frequency plot of typology assignments by Actual_typology
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(scales)
+
+# 1. Summarize relative frequency of Typology within each site
+cluster_freq_site <- dat %>%
+  count(Actual_typology, Site, Typology, name = "n") %>%
+  group_by(Actual_typology, Site) %>%
+  mutate(relative_freq = n / sum(n)) %>%
+  ungroup()
+
+# Assign cluster colors
+typology_colors <- c(
+  "Pooled" = "yellow3",
+  "Non-Perennial" = "#009E73",
+  "Perennial" = "#56B4E9",
+  "Developed Perennial" = "#D55E00",
+  "Main Stem" = "#999999"
+  )
+
+# 2. Plot horizontal stacked relative frequency bars
+site_rel_freq <- ggplot(
+  cluster_freq_site,
+  aes(
+    x = relative_freq,
+    y = Site,
+    fill = Typology
+  )
+) +
+  geom_col(width = 0.8) +
+
+  # Add sample counts within each bar segment
+  geom_text(
+    aes(label = n),
+    position = position_stack(vjust = 0.5),
+    size = 4,
+    color = "black"
+  ) +
+
+  facet_wrap(
+    ~ Actual_typology,
+    scales = "free_y",
+    ncol = 2
+  ) +
+  scale_fill_manual(values = typology_colors) +
+  scale_x_continuous(
+    labels = percent_format(accuracy = 1),
+    limits = c(0, 1)
+  ) +
+  labs(
+    x = "Relative Frequency",
+    y = "Site",
+    fill = "Typology"
+  ) +
+  theme_classic() +
+  theme(
+    axis.title.y = element_text(size = 14),
+    axis.title.x = element_text(size = 14),
+    strip.text = element_text(face = "bold", size = 14),
+    axis.text.y = element_text(size = 12),
+    axis.text.x = element_text(size = 12),
+    legend.title = element_text(size = 14),
+    legend.text = element_text(size = 14),
+    legend.position = "bottom",
+    legend.direction = "horizontal"
+  )
+
+site_rel_freq
+
+# Save
+ggsave(
+  filename = file.path(out_dir, "Relative_freq_by_site.png"),
+  plot     = site_rel_freq,
+  width    = 12,
+  height   = 10,
+  dpi      = 300
 )
 ```
