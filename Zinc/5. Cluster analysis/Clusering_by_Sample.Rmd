@@ -18,7 +18,7 @@ This will be conducted under the baseline BLM assumptions (HA 10% Closed System)
 First, set the working directory
 
 ```{r}
-setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Zinc/5. Cluster analysis")
+setwd("C:/Users/calbert/Desktop/Trace-element-bioavailability-spatial-assessment/Zinc/5. Cluster analysis")
 ```
 
 # Identifying Stream Typologies
@@ -30,7 +30,7 @@ Import dataset
 ```{r}
 library(readxl)
 
-dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Zinc/4. Exploratory data analysis/Bioavailability_Master_Spreadsheet_Clean2.xlsx", 
+dat <- read_excel("C:/Users/calbert/Desktop/Trace-element-bioavailability-spatial-assessment/Zinc/4. Exploratory data analysis/Bioavailability_Master_Spreadsheet_Clean2.xlsx", 
     sheet = "HA 10% Closed System")
 
 head(dat)
@@ -170,10 +170,10 @@ strip_text   <- 12
 # 0) Force cluster order + set cluster colors
 #-------------------------------------------------
 cluster_colors <- c(
-  "4" = "#56B4E9",
   "1" = "#D55E00",
+  "2" = "#009E73",
   "3" = "#999999",
-  "2" = "#009E73"
+  "4" = "#56B4E9"
 )
 
 # Force correct ordering
@@ -414,6 +414,18 @@ cluster_summary_table_pct$Value_labeled <- factor(
   )
 )
 
+# Add cluster name as a variable for plotting purposes only
+cluster_sizes <- cluster_dat %>%
+  count(cluster4, name = "n_cluster")
+
+cluster_summary_table_pct <- cluster_summary_table_pct %>%
+  left_join(cluster_sizes, by = "cluster4") %>%
+  mutate(
+    cluster_name = paste0(
+      "Cluster ", cluster4,
+      " (n=", n_cluster, ")"
+    )
+  )
 
 # Create a named color vector for all Value_labeled combinations
 color_map <- c(
@@ -445,7 +457,7 @@ rel_freq <- ggplot(
     color = "white",
     linewidth = 0.2
   ) +
-  facet_wrap(~ cluster4, ncol = 1, strip.position = "left") +
+  facet_wrap(~ cluster_name, ncol = 1, strip.position = "top") +
   scale_x_continuous(
     labels = scales::percent_format(scale = 1)
   ) +
@@ -477,7 +489,15 @@ rel_freq <- ggplot(
   scale_fill_manual(
     values = color_map,
     labels = legend_labels
-  )
+    ) +
+      theme(
+    strip.text.x = element_text(
+      size = 14
+    )
+      )
+  
+
+rel_freq
 
 # Save
 ggsave(
@@ -489,13 +509,13 @@ ggsave(
 )
 ```
 
--   Cluster 1: Highly developed perennial tributary sites
+- Cluster 1: Highly developed perennial tributary sites
 
--   Cluster 2: Non-perennial tributary sites
+- Cluster 2: Non-perennial tributary sites
 
--   Cluster 3: Mostly main stem sites
+- Cluster 3: Mostly main stem sites
 
--   Cluster 4: Perennial tributary sites
+- Cluster 4: Perennial tributary sites
 
 3 clusters
 
@@ -521,6 +541,18 @@ cluster_summary_table_pct3$Value_labeled <- factor(
   )
 )
 
+# Add cluster name as a variable for plotting purposes only
+cluster_sizes3 <- cluster_dat %>%
+  count(cluster3, name = "n_cluster3")
+
+cluster_summary_table_pct3 <- cluster_summary_table_pct3 %>%
+  left_join(cluster_sizes3, by = "cluster3") %>%
+  mutate(
+    cluster_name3 = paste0(
+      "Cluster ", cluster3,
+      " (n=", n_cluster3, ")"
+    )
+  )
 
 # Create a named color vector for all Value_labeled combinations
 color_map <- c(
@@ -552,7 +584,7 @@ rel_freq3 <- ggplot(
     color = "white",
     linewidth = 0.2
   ) +
-  facet_wrap(~ cluster3, ncol = 1, strip.position = "left") +
+  facet_wrap(~ cluster_name3, ncol = 1, strip.position = "top") +
   scale_x_continuous(
     labels = scales::percent_format(scale = 1)
   ) +
@@ -584,6 +616,12 @@ rel_freq3 <- ggplot(
   scale_fill_manual(
     values = color_map,
     labels = legend_labels
+    +
+      theme(
+        strip.text.x = element_text(
+          size = 14
+        )
+  )
   )
 
 rel_freq3
@@ -598,11 +636,11 @@ ggsave(
 )
 ```
 
--   Cluster 1: Main stem
+- Cluster 1: Main stem
 
--   Cluster 2: developed perennial tributaries
+- Cluster 2: developed perennial tributaries
 
--   Cluster 3: all other tributaries
+- Cluster 3: all other tributaries
 
 ### iii. Rename clusters to typologies
 
@@ -622,24 +660,20 @@ cluster_dat <- cluster_dat %>%
   )) %>%
   rename(Typology = cluster)
 
-# Keep only the columns you need and remove duplicates
+# Keep Sample_ID, cluster4, and Typology
 typology_lookup <- cluster_dat %>%
-  dplyr::select(Sample_ID, Typology) %>%
+  dplyr::select(Sample_ID, cluster4, Typology) %>%
   distinct()
 
-# Join Typology back to dat, and assign unmatched Sample_IDs as Pooled Water
+# Join back to dat
 dat <- dat %>%
   left_join(typology_lookup, by = "Sample_ID") %>%
-  mutate(
-    Typology = if_else(is.na(Typology), "Pooled", Typology),
-    Typology = factor(
-      Typology,
-      levels = c("Non-Perennial",
-                 "Perennial",
-                 "Developed Perennial",
-                 "Main Stem",
-                 "Pooled")
-    )
+  dplyr::mutate(
+    cluster4 = factor(
+      coalesce(as.character(cluster4), "Pooled"),
+      levels = c("1", "2", "3", "4", "Pooled")
+    ),
+    Typology = if_else(is.na(Typology), "Pooled", Typology)
   )
 
 # Quick check
@@ -650,7 +684,7 @@ dat %>%
   count(Typology)
 ```
 
-Save Typology column to Bioavailability_Master_Spreadsheet_Clean3.xlsx and save in current working directory
+Save cluster_name4 and Typology by 4 clusters columns to Bioavailability_Master_Spreadsheet_Clean3.xlsx and save in current working directory
 
 ```{r}
 #-------------------------------------------
@@ -660,18 +694,22 @@ library(readxl)
 library(dplyr)
 library(openxlsx)
 
-file_path <- "C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Zinc/4. Exploratory data analysis/Bioavailability_Master_Spreadsheet_Clean2.xlsx"
+file_path <- "C:/Users/calbert/Desktop/Trace-element-bioavailability-spatial-assessment/Zinc/4. Exploratory data analysis/Bioavailability_Master_Spreadsheet_Clean2.xlsx"
 
 sheet_name <- "HA 10% Closed System"
 
 ha10_dat <- read_excel(file_path, sheet = sheet_name)
 
 #-------------------------------------------
-# 2. Build Typology lookup
+# 2. Build lookup table
 #-------------------------------------------
 
 typology_lookup <- dat %>%
-  dplyr::select(Sample_ID, Typology) %>%
+  dplyr::select(
+    Sample_ID,
+    Typology,
+    cluster4
+  ) %>%
   distinct()
 
 #-------------------------------------------
@@ -714,9 +752,11 @@ library(patchwork)
 #-------------------------------------------------
 
 combined_plot <- pca_cluster + rel_freq +
-  plot_layout(widths = c(1.3, 1))
+  plot_layout(widths = c(1.3, 1)) +
+  plot_annotation(
+    tag_levels = "A"
+  )
 
-# View combined figure
 combined_plot
 
 #-------------------------------------------------
@@ -743,11 +783,13 @@ library(patchwork)
 # Combine plots side by side
 #-------------------------------------------------
 
-combined_plot <- pca_cluster3 + rel_freq3 +
-  plot_layout(widths = c(1.3, 1))
+combined_plot3 <- pca_cluster + rel_freq +
+  plot_layout(widths = c(1.3, 1)) +
+  plot_annotation(
+    tag_levels = "A"
+  )
 
-# View combined figure
-combined_plot
+combined_plot3
 
 #-------------------------------------------------
 # Save combined figure
@@ -757,7 +799,7 @@ combined_plot
 
 ggsave(
   filename = file.path(out_dir, "Combined_PCA_RelFreq_3.png"),
-  plot     = combined_plot,
+  plot     = combined_plot3,
   width    = 14,
   height   = 6,
   dpi      = 300

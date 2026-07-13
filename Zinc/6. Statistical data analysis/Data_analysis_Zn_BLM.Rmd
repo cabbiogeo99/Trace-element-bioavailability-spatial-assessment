@@ -16,7 +16,7 @@ The objectives of this notebook will be to conduct statistical analyses of the B
 First, set the working directory
 
 ```{r}
-setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Zinc/6. Statistical data analysis")
+setwd("C:/Users/calbert/Desktop/Trace-element-bioavailability-spatial-assessment/Zinc/6. Statistical data analysis")
 ```
 
 Import dataset
@@ -24,7 +24,7 @@ Import dataset
 ```{r}
 library(readxl)
 
-dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Zinc/5. Cluster analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx")
+dat <- read_excel("C:/Users/calbert/Desktop/Trace-element-bioavailability-spatial-assessment/Zinc/5. Cluster analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx")
 
 head(dat)
 ```
@@ -1059,13 +1059,23 @@ dat$Typology <- factor(dat$Typology, levels = c("Pooled",
                                      "Developed Perennial",
                                      "Main Stem"))
 
-# 3. Colors for each Typology
+# 3. Colors for each Typology or cluster4
 typology_colors <- c(
   "Pooled"    = "yellow3",
   "Perennial" = "#56B4E9",
   "Developed Perennial" = "#D55E00",
   "Non-Perennial" = "#009E73",
   "Main Stem"       = "#999999"
+)
+
+dat$cluster4[dat$cluster4 == "Pooled"] <- "Not Clustered"
+
+cluster4_colors <- c(
+  "1"      = "#D55E00",
+  "2"      = "#009E73",
+  "3"      = "#999999",
+  "4"      = "#56B4E9",
+  "Not Clustered" = "yellow3"
 )
 ```
 
@@ -1078,17 +1088,16 @@ library(ggplot2)
 
 # 1. Titles for each variable's plot (panel title)
 title_lookup <- c(
-  "pH"         = "pH",
-  "log_DOC_uM" = "Dissolved Organic Carbon",
-  "log_DIC_uM" = "Dissolved Inorganic Carbon",
-  "log_Ca_uM"  = "Calcium",
-  "log_Mg_uM"  = "Magnesium",
-  "log_Na_uM"  = "Sodium",
-  "log_K_uM"   = "Potassium",
-  "log_SO4_uM" = "Sulfate",
-  "log_Cl_uM"  = "Chloride"
+  "pH"         = "A. pH",
+  "log_DOC_uM" = "B. Dissolved Organic Carbon",
+  "log_DIC_uM" = "C. Dissolved Inorganic Carbon",
+  "log_Ca_uM"  = "D. Calcium",
+  "log_Mg_uM"  = "E. Magnesium",
+  "log_Na_uM"  = "F. Sodium",
+  "log_K_uM"   = "G. Potassium",
+  "log_SO4_uM" = "H. Sulfate",
+  "log_Cl_uM"  = "I. Chloride"
 )
-
 
 # 2. Make sure output folder exists
 out_dir <- "Plots by typology"
@@ -1096,15 +1105,17 @@ if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
 
 # 2. Long format (DO NOT re-factor Typology)
 dat_long <- dat %>%
-  dplyr::select(Typology, all_of(names(title_lookup))) %>%
+  dplyr::select(
+    Typology, cluster4, all_of(names(title_lookup))) %>%
   pivot_longer(
-    cols      = -Typology,
+    cols      = -c(Typology, cluster4),
     names_to  = "Variable",
     values_to = "Value"
   ) %>%
   filter(!is.na(Value)) %>%
   mutate(
-    Variable = factor(Variable, levels = names(title_lookup))
+    Variable = factor(Variable, levels = names(title_lookup)),
+    cluster4 = factor(cluster4, levels = c("1", "2", "3", "4", "Not Clustered"))
   )
 
 # 3a. Get max y per Variable x Typology
@@ -1132,17 +1143,20 @@ all_vars_panel <- ggplot(
   aes(
     x     = Typology,
     y     = Value,
-    color = Typology,
-    fill  = Typology
+    color = cluster4,
+    fill  = cluster4
   )
 ) +
   geom_boxplot(
-    width = 0.6,
-    alpha = 0.35,
+    aes(group = interaction(Typology, cluster4)),
+    position      = position_dodge(width = 0.8),
+    width         = 0.6,
+    alpha         = 0.35,
     outlier.shape = NA
   ) +
   geom_jitter(
-    width = 0.15,
+    position = position_jitterdodge(
+      dodge.width = 0.8, jitter.width = 0.15),
     size  = 1,
     alpha = 0.7
   ) +
@@ -1152,8 +1166,10 @@ all_vars_panel <- ggplot(
     inherit.aes = FALSE,
     size = 3
   ) +
-  scale_color_manual(values = typology_colors, drop = FALSE) +
-  scale_fill_manual(values = typology_colors, drop = FALSE) +
+  scale_color_manual(
+    values = cluster4_colors, name = "Cluster", drop = FALSE) +
+  scale_fill_manual(
+    values  = cluster4_colors, name = "Cluster", drop = FALSE) +
   facet_wrap(
     ~ Variable,
     scales   = "free_y",
@@ -1161,16 +1177,16 @@ all_vars_panel <- ggplot(
     labeller = facet_labels
   ) +
   labs(
-  title = "BLM Predictors by Stream Typology",
-  x     = "Stream Typology",
-  y = expression(paste("Concentration (µM) [", log[10], "]"))
-  ) + 
+    x     = "Stream Typology",
+    y     = expression(paste("Concentration (µM) [", log[10], "]"))
+  ) +
   theme_minimal(base_size = 12) +
   theme(
-  legend.position = "none",
-  axis.text.x  = element_text(size = 9, angle = 30, hjust = 1, color = "black"),
-  strip.text   = element_text(size = 11),
-  plot.title   = element_text(size = 14)
+    legend.position = "bottom",
+    axis.text.x  = element_text(
+      size = 9, angle = 30, hjust = 1, color = "black"),
+    strip.text   = element_text(size = 11, face = "bold"),
+    plot.title   = element_text(size = 14)
   )
 
 all_vars_panel
