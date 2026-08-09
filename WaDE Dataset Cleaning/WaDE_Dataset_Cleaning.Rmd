@@ -10,55 +10,47 @@ The objective of this file is to clean the WaDE Synoptic Survey Dataset by remov
 
 We will only be applying these steps to variables which will be using to run BLM, which are
 
--   Site Name
+- Site Name
 
--   Sample Name
+- Sample Name
 
--   Temperature (C)
+- Temperature (C)
 
--   pH
+- pH
 
--   Metal concentration (ug/L)
+- Metal concentration (ug/L)
 
--   Dissolved organic carbon concentration (DOC mg C/L)
+- Dissolved organic carbon concentration (DOC mg C/L)
 
--   Humic acid (HA %)
+- Humic acid (HA %)
 
--   Calcium concentration (Ca mg/L)
+- Calcium concentration (Ca mg/L)
 
--   Magnesium concentration (Mg mg/L)
+- Magnesium concentration (Mg mg/L)
 
--   Sodium concentration (Na mg/L)
+- Sodium concentration (Na mg/L)
 
--   Potassium concentration (K mg/L)
+- Potassium concentration (K mg/L)
 
--   Sulfate concentration (SO4 mg/L)
+- Sulfate concentration (SO4 mg/L)
 
--   Chloride concentration (Cl mg/L)
+- Chloride concentration (Cl mg/L)
 
--   Alkalinity as dissolved inorganic carbon concentration (DIC mg/L)
+- Alkalinity as dissolved inorganic carbon concentration (DIC mg/L)
 
--   Sulfur concentration (S mg/L): under development, but must enter an arbitrary small quantity
+- Sulfur concentration (S mg/L): under development, but must enter an arbitrary small quantity
 
 At the end, we will have created the WaDE_Synoptic_Summary_Clean.xlsx file.
 
 # 1. Import the WaDE Synoptic Survey Dataset
-
-Set working directory
-
-```{r}
-setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/WaDE Dataset Cleaning")
-```
 
 Import data from the tab called WaDE_SYNOPTIC_SUMMARY in the WaDE_Synoptic_Summary.xlsx file
 
 ```{r}
 library(readxl)
 
-WaDE_Synoptic_Summary <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/WaDE Dataset Cleaning/WaDE_Synoptic_Summary.xlsx", 
-    sheet = "WaDE_SYNOPTIC_SUMMARY")
-
-head(WaDE_Synoptic_Summary)
+WaDE_Synoptic_Summary <- read_excel("WaDE_Synoptic_Summary.xlsx", 
+                                    sheet = "WaDE_SYNOPTIC_SUMMARY")
 ```
 
 Inspect the structure
@@ -115,7 +107,7 @@ WaDE_Synoptic_Summary <-
 head(WaDE_Synoptic_Summary)
 ```
 
-Count the number of total samples in raw WaDE_Synoptic_Summary
+Count the number of total observations in raw WaDE_Synoptic_Summary
 
 ```{r}
 n_total <- length(unique(WaDE_Synoptic_Summary$Sample_ID))
@@ -138,7 +130,7 @@ vars <- c(
 
 missing_dat <- WaDE_Synoptic_Summary %>%
   filter(if_any(all_of(vars), ~ .x == -9999)) %>%
-  dplyr::select(Sample_ID, Site, all_of(vars))
+  dplyr::select(Sample_ID, Site, Flow_state, all_of(vars))
 
 missing_dat
 ```
@@ -154,6 +146,22 @@ variable_counts <- colSums(missing_dat[vars] == -9999, na.rm = TRUE)
 
 n_missing # total numer of samples with at least 1 missing variable measurement
 variable_counts # number of missing values by variable
+```
+
+Determine why they´re missing
+
+```{r}
+# Dry events
+dry_missing <- missing_dat[missing_dat$Flow_state == "Dry", ]
+nrow(dry_missing)
+
+# Flowing events
+non_dry_missing <- missing_dat[missing_dat$Flow_state != "Dry", ]
+
+nrow(non_dry_missing)
+
+non_flowing_missing_counts <- colSums(non_dry_missing[vars] == -9999, na.rm = TRUE)
+non_flowing_missing_counts
 ```
 
 Remove these from the WaDE_Synoptic_Summary and create a clean version of the dataset
@@ -172,6 +180,15 @@ Build a summary table and export to Excel
 ```{r}
 library(openxlsx)
 
+# Dry events
+dry_missing <- missing_dat[missing_dat$Flow_state == "Dry", ]
+n_dry_missing <- nrow(dry_missing)
+
+# Non-Dry events
+non_dry_missing <- missing_dat[missing_dat$Flow_state != "Dry", ]
+n_non_dry_missing <- nrow(non_dry_missing)
+non_dry_missing_counts <- colSums(non_dry_missing[vars] == -9999, na.rm = TRUE)
+
 # 1. Create a new Excel workbook
 wb <- createWorkbook()
 
@@ -183,18 +200,14 @@ summary_table <- data.frame(
   Metric = c(
     "Total unique samples before filtering",
     "Samples with missing values of BLM vars",
-    "Samples remaining after filtering"
+    "Samples remaining after filtering",
+    "Missing samples - Dry events",
+    "Missing samples - Non-Dry events"
   ),
-  Value = c(n_total, n_missing, n_samples)
+  Value = c(n_total, n_missing, n_samples, n_dry_missing, n_non_dry_missing)
 )
 
-# 4. Make a table for the number of -9999 values per variable
-variable_counts_table <- data.frame(
-  Variable = names(variable_counts),
-  N_missing_9999 = as.integer(variable_counts)
-)
-
-# 5. Write the summary table at the top of the sheet (row 1)
+# 4. Write the summary table at the top of the sheet (row 1)
 writeData(
   wb,
   sheet = "Filtered Samples",
@@ -203,18 +216,9 @@ writeData(
   startCol = 1
 )
 
-# 6. Write the variable_counts table a bit lower (row 6)
-writeData(
-  wb,
-  sheet = "Filtered Samples",
-  x = variable_counts_table,
-  startRow = 6,
-  startCol = 1
-)
 
-# 7. Write the full missing_dat table further down
-start_row_missing_dat <- 6 + nrow(variable_counts_table) + 3
-
+# 5. Write the full missing_dat table further down
+start_row_missing_dat <- 1 + nrow(summary_table) + 3
 writeData(
   wb,
   sheet = "Filtered Samples",
@@ -223,7 +227,7 @@ writeData(
   startCol = 1
 )
 
-# 8. Save the workbook as an .xlsx file
+# 6. Save the workbook as an .xlsx file
 saveWorkbook(wb, "Omitted_Samples.xlsx", overwrite = TRUE)
 ```
 
@@ -232,15 +236,15 @@ saveWorkbook(wb, "Omitted_Samples.xlsx", overwrite = TRUE)
 Values below detection limits (DL) were handled based on two scenarios:
 
 1.  **Field DL**: calculated as 3 standard deviations above field blank mean value, excluding outlier values
-    -   **If concentration \> field DL**: flagged above detection limit (ADL) and retained as-is
-    -   **If 0 \< concentrations \< field DL**: flagged below detection limit (BDL) and retained as-is
-    -   **If concentration = 0**: flag as ZV and replaced by the lowest reported value of that element
-    -   **If concentration \< 0**: flagged as negative (NV) and replaced by the lowest reported value of that element
+    - **If concentration \> field DL**: flagged above detection limit (ADL) and retained as-is
+    - **If 0 \< concentrations \< field DL**: flagged below detection limit (BDL) and retained as-is
+    - **If concentration = 0**: flag as ZV and replaced by the lowest reported value of that element
+    - **If concentration \< 0**: flagged as negative (NV) and replaced by the lowest reported value of that element
 2.  **Instrument DL**: used for ions that did not have a field DL (i.e. Cl and SO4)
-    -   **If concentration \> instrument DL**: flagged above detection limit (ADL) and retained as-is
-    -   **If 0 \< concentration \< instrument DL**: flag as BDL and left as-is
-    -   **If concentration = 0**: flag as ZV and replace with ½ the instrument DL
-    -   **If concentration \< 0**: flagged as negative (NV) and replaced with ½ the instrument DL
+    - **If concentration \> instrument DL**: flagged above detection limit (ADL) and retained as-is
+    - **If 0 \< concentration \< instrument DL**: flag as BDL and left as-is
+    - **If concentration = 0**: flag as ZV and replace with ½ the instrument DL
+    - **If concentration \< 0**: flagged as negative (NV) and replaced with ½ the instrument DL
 
 The reasoning for omitting 0 and negative values is because
 
