@@ -13,21 +13,14 @@ knitr::opts_chunk$set(fig.show = "hide", fig.keep = "none")
 
 The objectives of this notebook will be to conduct statistical analyses of the Bioavailability Master Spreadsheet Clean version 2 assuming baseline BLM assumptions (HA 10% Closed System).
 
-First, set the working directory
-
-```{r}
-setwd("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Copper/6. Statistical data analysis")
-```
-
 Import dataset
 
 ```{r}
 library(readxl)
 
-dat <- read_excel("C:/Users/q4q/OneDrive - Oak Ridge National Laboratory/Research/Bioavailability Project/Trace-element-bioavailability-spatial-assessment/Copper/5. Cluster analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx", 
-    sheet = "HA 10% Closed System")
+dat <- read_excel("C:/Users/calbert/OneDrive - IRTA/Escriptori/Trace-element-bioavailability-spatial-assessment/Copper/5. Cluster analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx", 
+                  sheet = "HA 10% Closed System")
 head(dat)
-unique(dat$Typology)
 ```
 
 # Identifying Important Predictors of Bioavailability
@@ -1907,9 +1900,19 @@ ggsave(
 
 # Toxicity by Typology
 
+```{r}
+# Define output directory
+out_dir <- "Plots of Cu Toxicity"
+
+# Create folder if it doesn't exist
+if (!dir.exists(out_dir)) {
+  dir.create(out_dir, recursive = TRUE)
+}
+```
+
 ## 1. Density plots
 
-### i. C. dubia
+### i. Daphnia
 
 ```{r}
 library(dplyr)
@@ -1974,7 +1977,7 @@ p_cu_daph_density <- ggplot(
     linewidth = 0.6,
     color = "black"
   ) +
-  facet_wrap(~ Typology, ncol = 2) +
+  facet_wrap(~ Typology, ncol = 1) +
   scale_fill_manual(
     values = c(
       "Measured"           = "chocolate4",
@@ -2015,14 +2018,14 @@ if (!dir.exists(out_dir)) {
 ggsave(
   filename = file.path(out_dir, "Cu_toxicity_daphnia.png"),
   plot = p_cu_daph_density,
-  width = 10,
-  height = 6,
+  width = 6,
+  height = 10,
   units = "in",
   dpi = 300
 )
 ```
 
-### ii. P. promelas
+### ii. Fathead minnow
 
 ```{r}
 library(dplyr)
@@ -2087,7 +2090,7 @@ p_cu_daph_density_minn <- ggplot(
     linewidth = 0.6,
     color = "black"
   ) +
-  facet_wrap(~ Typology, ncol = 2) +
+  facet_wrap(~ Typology, ncol = 1) +
   scale_fill_manual(
     values = c(
       "Measured"           = "chocolate4",
@@ -2122,8 +2125,8 @@ p_cu_daph_density_minn
 ggsave(
   filename = file.path(out_dir, "Cu_toxicity_minnow.png"),
   plot = p_cu_daph_density_minn,
-  width = 10,
-  height = 6,
+  width = 6,
+  height = 10,
   units = "in",
   dpi = 300
 )
@@ -2175,8 +2178,8 @@ dat_cu_tox <- dat %>%
     
     Organism = case_when(
       Copper_Concentrations == "log_Cu_nM" ~ "Measured",
-      grepl("Daphnia", Copper_Concentrations) ~ "C. dubia",
-      grepl("Minnow", Copper_Concentrations) ~ "P. promelas"
+      grepl("Daphnia", Copper_Concentrations) ~ "Daphnia",
+      grepl("Minnow", Copper_Concentrations) ~ "Fathead Minnow"
     ),
     
     Copper = factor(
@@ -2186,12 +2189,12 @@ dat_cu_tox <- dat %>%
     
     Organism = factor(
       Organism,
-      levels = c("Measured", "C. dubia", "P. promelas")
+      levels = c("Measured", "Daphnia", "Fathead Minnow")
     )
   ) %>%
   filter(!is.na(Value))
 
-# 2. Density plot faceted by Typology
+# 2. Plot
 p_cu_tox_density <- ggplot(
   dat_cu_tox,
   aes(
@@ -2210,73 +2213,67 @@ p_cu_tox_density <- ggplot(
     pattern_spacing = 0.04,
     pattern_alpha = 0.5
   ) +
-  facet_wrap(~ Typology, ncol = 2) +
-
+  facet_wrap(~ Typology, ncol = 1) +
   # ---- Copper legend ----
-  scale_fill_manual(
-    values = c(
-      "Measured"   = "slategray",
-      "Chronically Toxic" = "maroon",
-      "Acutely Toxic"     = "red"
-    ),
-    guide = guide_legend(
-      override.aes = list(pattern = "none")  
-    )
-  ) +
-
-  # ----Organism legend ----
-  scale_pattern_manual(
+scale_fill_manual(
   values = c(
-    "Measured"    = "none",
-    "C. dubia"    = "none",
-    "P. promelas" = "stripe"
-  ),
-  breaks = c("C. dubia", "P. promelas"),
-  labels = c(
-    expression(italic(C.~dubia)),
-    expression(italic(P.~promelas))
+    "Measured"            = "slategray",
+    "Chronically Toxic"   = "maroon",
+    "Acutely Toxic"       = "red"
   ),
   guide = guide_legend(
-    override.aes = list(
-      fill = "white",
-      pattern = c("none", "stripe"),
-      pattern_fill = "black",
-      pattern_color = "black",
-      pattern_density = 0.4,
-      pattern_spacing = 0.03,
-      alpha = 1
-    )
+    override.aes  = list(pattern = "none"),
+    nrow          = 2,
+    byrow         = TRUE,
+    title.position = "top"
   )
 ) +
-  labs(title = "Copper Toxicity Thresholds",
-  x     = expression(log[10]~Cu~(nM)),
-  y     = "Density") +
-
-  theme_minimal(base_size = 12) +
+  # ---- Organism legend ----
+scale_pattern_manual(
+  values = c(
+    "Measured"       = "none",
+    "Daphnia"        = "none",
+    "Fathead Minnow" = "stripe"
+  ),
+  breaks = c("Daphnia", "Fathead Minnow"),
+  guide = guide_legend(
+    override.aes = list(
+      fill            = "white",
+      pattern         = c("none", "stripe"),
+      pattern_fill    = "black",
+      pattern_color   = "black",
+      pattern_density = 0.4,
+      pattern_spacing = 0.03,
+      alpha           = 1
+    ),
+    nrow          = 2,
+    byrow         = TRUE,
+    title.position = "top"
+  )
+) +
+  labs(
+    x     = expression(log[10]~Cu~(nM)),
+    y     = "Density"
+  ) +
+  theme_light(base_size = 12) +
   theme(
     legend.position = "bottom",
-    strip.text = element_text(size = 14)
+    strip.text      = element_text(size = 12, color = "black"),  
+    legend.title    = element_text(size = 14),
+    legend.text     = element_text(size = 12),
+    axis.text.x     = element_text(size = 12),
+    axis.text.y     = element_text(size = 12),
+    plot.title      = element_text(size = 14)
   )
-
-p_cu_tox_density
-
-# Define output directory
-out_dir <- "Plots of Cu Toxicity"
-
-# Create folder if it doesn't exist
-if (!dir.exists(out_dir)) {
-  dir.create(out_dir, recursive = TRUE)
-}
 
 # Save plot
 ggsave(
   filename = file.path(out_dir, "Cu_toxicity.png"),
   plot = p_cu_tox_density,
-  width = 10,
-  height = 6,
+  width = 8,
+  height = 10,
   units = "in",
-  dpi = "print"
-)
+  dpi = 300)
 ```
 
 ## 2. Overlap of measured vs toxic concentrations
@@ -2453,8 +2450,8 @@ library(dplyr)
 dat <- dat %>%
   dplyr::mutate(
     prop_chronic_tox_daph = case_when(
-      log_Cu_M >= log_Cu_Chronic_Tox_Daphnia_M ~ "On-Above",
-      log_Cu_M < log_Cu_Chronic_Tox_Daphnia_M ~ "Below"
+      log_Cu_nM >= log_Cu_Chronic_Tox_Daphnia_nM ~ "On-Above",
+      log_Cu_nM < log_Cu_Chronic_Tox_Daphnia_nM ~ "Below"
     )
   )
 
@@ -2530,34 +2527,6 @@ samples_above_chronic_tox_threshold_daph_zscores <-
 samples_above_chronic_tox_threshold_daph_zscores
 ```
 
-Plot
-
-```{r}
-library(ggplot2)
-
-chronic_plot_daph <- ggplot(dat, aes(x = log_Cu_Chronic_Tox_Daphnia_M , y = log_Cu_M)) +
-  
-  # points
-  geom_point(color = "black", size = 1, alpha = 0.7) +
-  
-  # 1:1 line
-  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +
-  
-  # X and Y axis range
-  xlim(-10, -5) +
-  ylim(-10, -5) +
-  
-  labs(
-    y = expression(log[10]~"Measured Cu (M)"),
-    x = expression(log[10]~"Chronic Cu Toxicity (M)"),
-    title = "a. Chronic Cu Toxicity Threshold"
-  ) +
-  
-  theme_classic(base_size = 12)
-
-chronic_plot_daph
-```
-
 #### b. Acute toxicity
 
 ```{r}
@@ -2582,32 +2551,118 @@ prop_acute_tox_daph_summary <- dat %>%
 prop_acute_tox_daph_summary
 ```
 
-Plot
+Plot of both
 
 ```{r}
+library(dplyr)
+library(tidyr)
 library(ggplot2)
 
-acute_plot_daph <- ggplot(dat, aes(x = log_Cu_Acute_Tox_Daphnia_M , y = log_Cu_M)) +
+# Reshape Cu chronic/acute columns into long format
+dat_cu_long <- dat %>%
+  pivot_longer(
+    cols = c(log_Cu_Chronic_Tox_Daphnia_nM, log_Cu_Acute_Tox_Daphnia_nM),
+    names_to = "tox_type",
+    values_to = "log_tox_nM"
+  ) %>%
+  mutate(
+    tox_type = case_when(
+      tox_type == "log_Cu_Chronic_Tox_Daphnia_nM" ~ "Chronic",
+      tox_type == "log_Cu_Acute_Tox_Daphnia_nM"   ~ "Acute"
+    )
+  )
+
+# Plot, mirroring the Zn plot
+combined_plot_cu_daph <- ggplot(
+  dat_cu_long,
+  aes(y = log_tox_nM, x = log_Cu_nM, color = Typology, shape = tox_type)) +
   
-  # points
-  geom_point(color = "black", size = 1, alpha = 0.7) +
+  geom_point(size = 2, alpha = 0.7) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "black") +
   
-  # 1:1 line
-  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +
+  scale_x_continuous(limits = c(-1, 3), breaks = c(0, 1, 2, 3, 4)) +
+  scale_y_continuous(limits = c(-1, 4), breaks = c(0, 1, 2, 3, 4)) +
   
-  # X and Y axis range
-  xlim(-10, -5) +
-  ylim(-10, -5) +
+  scale_color_manual(values = typology_colors) +
+  scale_shape_manual(values = c("Chronic" = 16, "Acute" = 17)) +
   
   labs(
-    y = expression(log[10]~"Measured Cu (M)"),
-    x = expression(log[10]~"Acute Cu Toxicity (M)"),
-    title = "b. Acute Cu Toxicity Threshold"
+    x = expression(log[10]~"Measured Cu (nM)"),
+    y = expression(log[10]~"Cu Toxicity (nM)"),
+    title = "b. Cu Toxicity Thresholds - Daphnia",
+    color = "Typology",
+    shape = "Toxicity Type"
   ) +
   
-  theme_classic(base_size = 12)
+  theme_light(base_size = 12) +
+  theme(legend.position = "none")
 
-acute_plot_daph
+combined_plot_cu_daph
+
+
+
+# Reshape Cu chronic/acute columns into long format
+dat_cu_long <- dat %>%
+  pivot_longer(
+    cols = c(log_Cu_Chronic_Tox_Minnow_nM, log_Cu_Acute_Tox_Minnow_nM),
+    names_to = "tox_type",
+    values_to = "log_tox_nM"
+  ) %>%
+  mutate(
+    tox_type = case_when(
+      tox_type == "log_Cu_Chronic_Tox_Minnow_nM" ~ "Chronic",
+      tox_type == "log_Cu_Acute_Tox_Minnow_nM"   ~ "Acute"
+    )
+  )
+
+# Plot, mirroring the Zn plot
+combined_plot_cu_minn <- ggplot(
+  dat_cu_long,
+  aes(y = log_tox_nM, x = log_Cu_nM, color = Typology, shape = tox_type)) +
+  
+  geom_point(size = 2, alpha = 0.7) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "black") +
+  
+  scale_x_continuous(limits = c(-1, 3), breaks = c(0, 1, 2, 3, 4)) +
+  scale_y_continuous(limits = c(-1, 4), breaks = c(0, 1, 2, 3, 4)) +
+  
+  scale_color_manual(values = typology_colors) +
+  scale_shape_manual(values = c("Chronic" = 16, "Acute" = 17)) +
+  
+  labs(
+    x = expression(log[10]~"Measured Cu (nM)"),
+    y = expression(log[10]~"Cu Toxicity (nM)"),
+    title = "c. Cu Toxicity Thresholds - Fathead Minnow",
+    color = "Typology",
+    shape = "Toxicity Type"
+  ) +
+  
+  guides(
+    color = guide_legend(nrow = 2, byrow = TRUE, title.position = "top"),
+    shape = guide_legend(nrow = 2, byrow = TRUE, title.position = "top")
+  ) +
+  
+  theme_light(base_size = 12) +
+  theme(
+    legend.position = "bottom",
+    legend.text = element_text(size = 12),   
+    legend.title = element_text(size = 12)
+  )
+
+combined_plot_cu_minn
+
+# Combine with the Zn plot (when in your working environment)
+# library(patchwork)
+# combined_all <- (combined_plot_zn) / (combined_plot_cu_daph) / (combined_plot_cu_minn)
+
+# ggsave(
+#  filename = file.path(out_dir, "Toxicity_thresholds_Zn_Cu.png"),
+#  plot = combined_all,
+#  width = 6,
+#  height = 10,
+#  units = "in",
+#  dpi = 300
+#)
 ```
 
 ### b. Fathead minnow

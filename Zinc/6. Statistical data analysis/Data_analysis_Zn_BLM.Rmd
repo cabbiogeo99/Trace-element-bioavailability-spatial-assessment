@@ -13,18 +13,13 @@ knitr::opts_chunk$set(fig.show = "hide", fig.keep = "none")
 
 The objectives of this notebook will be to conduct statistical analyses of the Bioavailability Master Spreadsheet Clean version 2 assuming baseline BLM assumptions (HA 10% Closed System).
 
-First, set the working directory
-
-```{r}
-setwd("C:/Users/calbert/Desktop/Trace-element-bioavailability-spatial-assessment/Zinc/6. Statistical data analysis")
-```
-
-Import dataset
+Import dataset from folder **5. Cluster analysis** and name it dat
 
 ```{r}
 library(readxl)
 
-dat <- read_excel("C:/Users/calbert/Desktop/Trace-element-bioavailability-spatial-assessment/Zinc/5. Cluster analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx")
+dat <- read_excel("C:/Users/calbert/OneDrive - IRTA/Escriptori/Trace-element-bioavailability-spatial-assessment/Zinc/5. Cluster analysis/Bioavailability_Master_Spreadsheet_Clean3.xlsx", 
+  sheet = "HA 10% Closed System")
 
 head(dat)
 ```
@@ -2162,6 +2157,13 @@ ggsave(
 
 # Toxicity
 
+```{r}
+out_dir <- "Toxicity plots"
+if (!dir.exists(out_dir)) {
+  dir.create(out_dir, recursive = TRUE)
+}
+```
+
 ## 1. Density plots
 
 ```{r}
@@ -2171,12 +2173,11 @@ library(ggplot2)
 library(ggpattern)
 
 dat$Typology <- as.factor(dat$Typology)
-
 dat$Typology <- factor(dat$Typology, levels = c("Pooled",
-                                     "Non-Perennial",
-                                     "Perennial",
-                                     "Developed Perennial",
-                                     "Main Stem"))
+                                                "Non-Perennial",
+                                                "Perennial",
+                                                "Developed Perennial",
+                                                "Main Stem"))
 
 # 1. Pivot Zn data to long format
 dat_zn_tox <- dat %>%
@@ -2197,19 +2198,19 @@ dat_zn_tox <- dat %>%
   ) %>%
   mutate(
     Zinc_Concentrations = dplyr::recode(
-  Zinc_Concentrations,
-  "log_Zn_nM"             = "Measured",
-  "log_Zn_chronic_tox_nM" = "Chronically Toxic",
-  "log_Zn_acute_tox_nM"   = "Acutely Toxic"
-),
-Zinc_Concentrations = factor(
-  Zinc_Concentrations,
-  levels = c(
-    "Measured",
-    "Chronically Toxic",
-    "Acutely Toxic"
-  )
-)
+      Zinc_Concentrations,
+      "log_Zn_nM"             = "Measured",
+      "log_Zn_chronic_tox_nM" = "Chronically Toxic",
+      "log_Zn_acute_tox_nM"   = "Acutely Toxic"
+    ),
+    Zinc_Concentrations = factor(
+      Zinc_Concentrations,
+      levels = c(
+        "Measured",
+        "Chronically Toxic",
+        "Acutely Toxic"
+      )
+    )
   ) %>%
   filter(!is.na(Value))
 
@@ -2223,35 +2224,34 @@ p_zn_tox_density <- ggplot(
     linewidth = 0.6,
     color = "black"
   ) +
-  facet_wrap(~ Typology, ncol = 2) +
-
-  # ---- Match Cu legend behavior ----
-  scale_fill_manual(
-    values = c(
-      "Measured"           = "slategray",
-      "Chronically Toxic"  = "maroon",
-      "Acutely Toxic"      = "red"
-    ),
-    guide = guide_legend(
-      override.aes = list(pattern = "none")  
-    )
-  ) +
-
+  facet_wrap(~ Typology, ncol = 1) +
+  # ---- Zinc legend ----
+scale_fill_manual(
+  values = c(
+    "Measured"           = "slategray",
+    "Chronically Toxic"  = "maroon",
+    "Acutely Toxic"      = "red"
+  ),
+  guide = guide_legend(
+    override.aes   = list(pattern = "none"),
+    nrow           = 2,
+    byrow          = TRUE,
+    title.position = "top"
+  )
+) +
   labs(
-    title = "Zinc Toxicity Thresholds",
     x     = expression(log[10]~Zn~(nM)),
     y     = "Density",
     fill  = "Zinc"
   ) +
-
-  theme_minimal(base_size = 12) +
+  theme_light(base_size = 12) +
   theme(
     legend.position = "bottom",
-    strip.text      = element_text(size = 14),  
-    legend.title    = element_text(size = 11),
-    legend.text     = element_text(size = 10),
-    axis.text.x     = element_text(size = 10),
-    axis.text.y     = element_text(size = 10),
+    strip.text      = element_text(size = 14, color = "black"),
+    legend.title    = element_text(size = 14),
+    legend.text     = element_text(size = 12),
+    axis.text.x     = element_text(size = 12),
+    axis.text.y     = element_text(size = 12),
     plot.title      = element_text(size = 14)
   )
 
@@ -2259,16 +2259,12 @@ p_zn_tox_density <- ggplot(
 p_zn_tox_density
 
 # 3. Save plot
-out_dir <- "Toxicity plots"
-if (!dir.exists(out_dir)) {
-  dir.create(out_dir, recursive = TRUE)
-}
 
 ggsave(
   filename = file.path(out_dir, "Zn_toxicity_thresholds.png"),
   plot = p_zn_tox_density,
-  width = 10,
-  height = 6,
+  width = 8,
+  height = 10,
   units = "in",
   dpi = 300
 )
@@ -2419,8 +2415,8 @@ library(dplyr)
 dat <- dat %>%
   dplyr::mutate(
     prop_chronic_tox = case_when(
-      log_Zn_M >= log_Zn_chronic_tox_M ~ "On-Above",
-      log_Zn_M < log_Zn_chronic_tox_M ~ "Below"
+      log_Zn_nM >= log_Zn_chronic_tox_nM ~ "On-Above",
+      log_Zn_nM < log_Zn_chronic_tox_nM ~ "Below"
     )
   )
 
@@ -2431,7 +2427,6 @@ prop_chronic_tox_summary <- dat %>%
     proportion = n / sum(n),
     percent = proportion * 100
   )
-
 prop_chronic_tox_summary
 ```
 
@@ -2440,25 +2435,30 @@ Plot
 ```{r}
 library(ggplot2)
 
-chronic_plot <- ggplot(dat, aes(x = log_Zn_chronic_tox_M , y = log_Zn_M)) +
+chronic_plot <- ggplot(dat, aes(x = log_Zn_chronic_tox_nM, y = log_Zn_nM, color = Typology)) +
   
   # points
-  geom_point(color = "black", size = 1, alpha = 0.7) +
+  geom_point(size = 2, alpha = 0.7) +
   
   # 1:1 line
-  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "black") +
   
   # X and Y axis range
-  xlim(-10, 0) +
-  ylim(-10, 0) +
+  xlim(-1, 10) +
+  ylim(-1, 10) +
+  
+  # apply your custom color scale
+  scale_color_manual(values = typology_colors) +
   
   labs(
-    y = expression(log[10]~"Measured Zn (M)"),
-    x = expression(log[10]~"Chronic Zn Toxicity (M)"),
-    title = "a. Chronic Zn Toxicity Threshold"
+    y = expression(log[10]~"Measured Zn (nM)"),
+    x = expression(log[10]~"Chronic Zn Toxicity (nM)"),
+    title = "a. Chronic Zn Toxicity Threshold",
+    color = "Typology"
   ) +
   
-  theme_classic(base_size = 12)
+  theme_classic(base_size = 12) +
+  theme(legend.position = "none")
 
 chronic_plot
 ```
@@ -2471,8 +2471,8 @@ library(dplyr)
 dat <- dat %>%
   dplyr::mutate(
     prop_acute_tox = case_when(
-      log_Zn_M >= log_Zn_acute_tox_M ~ "On-Above",
-      log_Zn_M < log_Zn_acute_tox_M ~ "Below"
+      log_Zn_nM >= log_Zn_acute_tox_nM ~ "On-Above",
+      log_Zn_nM < log_Zn_acute_tox_nM ~ "Below"
     )
   )
 
@@ -2492,27 +2492,97 @@ Plot
 ```{r}
 library(ggplot2)
 
-acute_plot <- ggplot(dat, aes(x = log_Zn_acute_tox_M , y = log_Zn_M)) +
+acute_plot <- ggplot(dat, aes(x = log_Zn_acute_tox_nM, y = log_Zn_nM, color = Typology)) +
   
   # points
-  geom_point(color = "black", size = 1, alpha = 0.7) +
+  geom_point(size = 2, alpha = 0.7) +
   
   # 1:1 line
-  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "black") +
   
   # X and Y axis range
-  xlim(-10, 0) +
-  ylim(-10, 0) +
+  xlim(-1, 10) +
+  ylim(-1, 10) +
+  
+  # apply your custom color scale
+  scale_color_manual(values = typology_colors) +
   
   labs(
-    y = expression(log[10]~"Measured Zn (M)"),
-    x = expression(log[10]~"Acute Zn Toxicity (M)"),
-    title = "b. Acute Zn Toxicity Threshold"
+    y = expression(log[10]~"Measured Zn (nM)"),
+    x = expression(log[10]~"Chronic Zn Toxicity (nM)"),
+    title = "b. Acute Zn Toxicity Threshold",
+    color = "Typology"
   ) +
   
-  theme_classic(base_size = 12)
+  theme_classic(base_size = 12) +
+  theme(legend.position = "none")
 
 acute_plot
+```
+
+One plot
+
+```{r}
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+
+# Reshape to long format: one row per sample per toxicity type
+dat_long <- dat %>%
+  dplyr::select(Sample_ID, Typology, log_Zn_nM, log_Zn_chronic_tox_nM, log_Zn_acute_tox_nM) %>%
+  tidyr::pivot_longer(
+    cols = c(log_Zn_chronic_tox_nM, log_Zn_acute_tox_nM),
+    names_to = "tox_type",
+    values_to = "log_tox_nM"
+  ) %>%
+  dplyr::mutate(
+    tox_type = case_when(
+      tox_type == "log_Zn_chronic_tox_nM" ~ "Chronic",
+      tox_type == "log_Zn_acute_tox_nM" ~ "Acute"
+    )
+  )
+
+combined_plot_zn <- ggplot(
+  dat_long, 
+  aes(y = log_tox_nM, x = log_Zn_nM, color = Typology, shape = tox_type)) +
+  
+  # points
+  geom_point(size = 2, alpha = 0.7) +
+  
+  # 1:1 line
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "black") +
+  
+  # X and Y axis range
+  scale_x_continuous(limits = c(-1, 5), breaks = c(0, 2, 4)) +
+  scale_y_continuous(limits = c(-1, 9), breaks = c(0, 2, 4, 6, 8)) +
+  
+  # custom color scale
+  scale_color_manual(values = typology_colors) +
+  
+  # shapes: circle for chronic, triangle for acute
+  scale_shape_manual(values = c("Chronic" = 16, "Acute" = 17)) +
+  
+  labs(
+    x = expression(log[10]~"Measured Zn (nM)"),
+    y = expression(log[10]~"Zn Toxicity (nM)"),
+    title = "a. Zinc Toxicity Thresholds",
+    color = "Typology",
+    shape = "Toxicity Type"
+  ) +
+  
+  theme_light(base_size = 12) +
+  theme(legend.position = "none")
+
+combined_plot_zn
+
+ggsave(
+  filename = file.path(out_dir, "Zn_tox_thresholds.png"),
+  plot = combined_plot_zn,
+  width = 4,
+  height = 4,
+  units = "in",
+  dpi = 300
+)
 ```
 
 Save results
@@ -2532,23 +2602,4 @@ writeData(wb, "Acute tox", prop_acute_tox_summary)
 
 # 5. Save
 saveWorkbook(wb, file_path, overwrite = TRUE)
-```
-
-Both plots
-
-```{r}
-library(patchwork)
-
-both_plots <- (chronic_plot + acute_plot) 
-
-both_plots
-
-ggsave(
-  filename = file.path(out_dir, "Zn_tox_thresholds.png"),
-  plot = both_plots,
-  width = 10,
-  height = 5,
-  units = "in",
-  dpi = 300
-)
 ```
