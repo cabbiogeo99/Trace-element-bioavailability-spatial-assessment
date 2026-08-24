@@ -1488,11 +1488,30 @@ write.xlsx(
 ### e. Publication plot
 
 ```{r}
+# Create letters_df from combined_kruskal
+letters_df <- combined_kruskal %>%
+  dplyr::select(Variable, Typology, groups) %>%
+  dplyr::distinct() %>%
+  dplyr::rename(Letters = groups)
+
+dat$Typology <- as.factor(dat$Typology)
+
+dat$Typology <- factor(dat$Typology, levels = c("Pooled",
+                                                "Non-Perennial",
+                                                "Perennial",
+                                                "Developed Perennial",
+                                                "Main Stem"))
+
 library(dplyr)
 library(tidyr)
 library(ggplot2)
 library(scales)
 library(ggnewscale)
+library(patchwork)   # r
+
+panel_A_label <- "bold('A')"
+panel_B_label <- "bold('B')"
+panel_C_label <- "bold('C')"
 
 #-------------------------------------------------
 # 1. Typology order
@@ -1512,7 +1531,7 @@ dat <- dat %>%
   )
 
 #-------------------------------------------------
-# 2. Stacked barplot data: Cu species
+# 2. Stacked barplot data: Zn species
 #-------------------------------------------------
 species_vars <- c(
   "Free_Cu_nM",
@@ -1539,19 +1558,19 @@ species_dat <- dat %>%
     .groups = "drop"
   ) %>%
   mutate(
-    Panel = "a.~Cu~speciation~(nM)",
-    Species = dplyr::recode(
-      Species,
-      "Free_Cu_nM"    = "Cu²⁺",
-      "CuOH_nM"       = "CuOH",
-      "Cu_OH_2_nM"    = "Cu(OH)₂",
-      "CuCO3_nM"      = "CuCO₃",
-      "Cu_CO3_2_nM"   = "Cu(CO₃)₂",
-      "CuHCO3_nM"     = "CuHCO₃",
-      "CuSO4_nM"      = "CuSO₄",
-      "CuCl_nM"       = "CuCl",
-      "TOrg_Cu_nM"    = "Organic-Cu"
-    )
+    Panel = panel_A_label,
+    Species = 
+      dplyr::recode(
+        Species,
+        "Free_Cu_nM" = "Free Cu²⁺",
+        "CuOH_nM" = "CuOH",
+        "Cu_OH_2_nM" = "Cu(OH)₂",
+        "CuCO3_nM" = "CuCO₃",
+        "Cu_CO3_2_nM" = "Cu(CO₃)₂",
+        "CuHCO3_nM" = "CuHCO₃",
+        "CuSO4_nM" = "CuSO₄",
+        "CuCl_nM" = "CuCl",
+        "TOrg_Cu_nM" = "Organic-Cu")
   )
 
 species_levels <- species_dat %>%
@@ -1563,31 +1582,21 @@ species_levels <- species_dat %>%
 species_dat <- species_dat %>%
   mutate(Species = factor(Species, levels = species_levels))
 
-species_colors <- c(
-  "Cu²⁺"       = "orange3",
-  "CuOH"       = "orange1",
-  "Cu(OH)₂"    = "yellow",
-  "CuCO₃"      = "royalblue",
-  "Cu(CO₃)₂"   = "skyblue",
-  "CuHCO₃"     = "darkblue",
-  "CuSO₄"      = "gold",
-  "CuCl"       = "lightgreen",
-  "Organic-Cu" = "brown"
-)
-
-species_colors <- species_colors[species_levels]
+species_colors <- colorRampPalette(
+  c("brown", "yellow", "skyblue", "darkblue")
+)(length(species_levels))
 
 #-------------------------------------------------
-# 3. Boxplot data: free/total Cu and bioavailable Cu
+# 3. Boxplot data: free/total Zn and bioavailable Zn
 #-------------------------------------------------
 box_lookup <- c(
-  "rel_prop_Cu"       = "b.~Free~Cu^{2*'+'}/Total~Cu~('%')",
-  "log_TBL_Cu_nmol_g" = "c.~Bioavailable~Cu~(nmol~g^{-1}~wet)~'['~log[10]~']'"
+  "rel_prop_Cu"       = panel_B_label,
+  "log_TBL_Cu_nmol_g" = panel_C_label
 )
 
-box_colors <- c(
-  "b.~Free~Cu^{2*'+'}/Total~Cu~('%')" = "darkgray",
-  "c.~Bioavailable~Cu~(nmol~g^{-1}~wet)~'['~log[10]~']'" = "darkslategray"
+box_colors <- setNames(
+  c("darkgoldenrod", "darkslategray"),
+  c(panel_B_label, panel_C_label)
 )
 
 box_dat <- dat %>%
@@ -1602,11 +1611,7 @@ box_dat <- dat %>%
     Panel = box_lookup[Variable],
     Panel = factor(
       Panel,
-      levels = c(
-        "a.~Cu~speciation~(nM)",
-        "b.~Free~Cu^{2*'+'}/Total~Cu~('%')",
-        "c.~Bioavailable~Cu~(nmol~g^{-1}~wet)~'['~log[10]~']'"
-      )
+      levels = c(panel_A_label, panel_B_label, panel_C_label)
     )
   )
 
@@ -1621,10 +1626,7 @@ species_dat <- species_dat %>%
 #-------------------------------------------------
 # 4. Letters for boxplot panels only
 #-------------------------------------------------
-letter_nudge <- c(
-  "b.~Free~Cu^{2*'+'}/Total~Cu~('%')" = 0.005,
-  "c.~Bioavailable~Cu~(nmol~g^{-1}~wet)~'['~log[10]~']'" = 0.7
-)
+letter_nudge <- setNames(c(0.008, 0.7), c(panel_B_label, panel_C_label))
 
 letters_box <- letters_df %>%
   filter(Variable %in% names(box_lookup)) %>%
@@ -1645,10 +1647,7 @@ letters_box <- letters_df %>%
 letters_species <- letters_df %>%
   filter(Variable == "Cu_nM") %>%
   mutate(
-    Panel = factor(
-      "a.~Cu~speciation~(nM)",
-      levels = levels(box_dat$Panel)
-    )
+    Panel = factor(panel_A_label, levels = levels(box_dat$Panel))
   ) %>%
   left_join(
     species_dat %>%
@@ -1657,10 +1656,10 @@ letters_species <- letters_df %>%
     by = "Typology"
   ) %>%
   mutate(
-    y_pos = y_max + 20
+    y_pos = y_max + 10    # letters lie 10 units above the bar's max value
   )
 
-# Cu error bars
+# Zn error bars
 cu_error <- dat %>%
   group_by(Typology) %>%
   summarise(
@@ -1677,16 +1676,15 @@ cu_error <- dat %>%
     by = "Typology"
   ) %>%
   mutate(
-    Panel = factor("a.~Cu~speciation~(nM)", levels = levels(species_dat$Panel)),
+    Panel = factor(panel_A_label, levels = levels(species_dat$Panel)),
     ymin = bar_height - se_Cu,
     ymax = bar_height + se_Cu
   )
 
 #-------------------------------------------------
-# 5. Combined faceted plot
+# 5a. Plot A — Zn speciation stacked barplot
 #-------------------------------------------------
-cu_combined_panel <- ggplot() +
-  
+plot_A <- ggplot() +
   geom_col(
     data = species_dat,
     aes(x = Typology, y = mean_conc, fill = Species),
@@ -1696,9 +1694,8 @@ cu_combined_panel <- ggplot() +
   scale_fill_manual(
     values = species_colors,
     name = "Cu species",
-    guide = guide_legend(nrow = 2, byrow = TRUE)
+    guide = guide_legend(nrow = 3, byrow = TRUE)
   ) +
-  
   geom_errorbar(
     data = cu_error,
     aes(x = Typology, ymin = ymin, ymax = ymax),
@@ -1707,80 +1704,144 @@ cu_combined_panel <- ggplot() +
     linewidth = 0.5,
     color = "black"
   ) +
-  
-  ggnewscale::new_scale_fill() +
-  
-  geom_boxplot(
-    data = box_dat,
-    aes(x = Typology, y = Value, fill = Panel, color = Panel),
-    width = 0.7,
-    alpha = 0.4,
-    linewidth = 0.3
-  ) +
-  geom_jitter(
-    data = box_dat,
-    aes(x = Typology, y = Value, color = Panel),
-    width = 0.15,
-    size = 0.7,
-    alpha = 0.7
-  ) +
-  
   geom_text(
     data = letters_species,
     aes(x = Typology, y = y_pos, label = Letters),
     inherit.aes = FALSE,
-    size = 3.5
+    size = 18 / .pt
   ) +
-  
-  geom_text(
-    data = letters_box,
-    aes(x = Typology, y = y_pos, label = Letters),
-    inherit.aes = FALSE,
-    size = 3.5
-  ) +
-  
-  scale_fill_manual(values = box_colors, guide = "none") +
-  scale_color_manual(values = box_colors, guide = "none") +
-  
-  facet_wrap(
-    ~ Panel,
-    scales = "free_y",
-    ncol = 3,
-    labeller = labeller(Panel = label_parsed)
-  ) +
-  
-  labs(
-    title = "Copper Speciation and Bioavailability by Stream Typology",
-    x = NULL,
-    y = "Value"
-  ) +
-  
-  theme_minimal(base_size = 12) +
+  facet_wrap(~ Panel, labeller = labeller(Panel = label_parsed)) +
+  labs(x = NULL, y = "Concentration (nM)") +
+  theme_classic(base_size = 14) +
   theme(
-    legend.position = "bottom",
-    legend.justification = "left",
-    legend.background = element_blank(),
-    legend.title = element_text(size = 10),
-    legend.text = element_text(size = 10),
-    legend.box = "horizontal",
-    axis.text.x = element_text(
-      size = 10,
-      angle = 30,
-      hjust = 1,
-      color = "black"
-    ),
-    axis.text.y = element_text(color = "black"),
-    strip.text = element_text(size = 12),
-    plot.title = element_text(size = 14)
+    panel.border = element_rect(
+      colour = "black",
+      fill = NA,
+      linewidth = 0.8),
+    legend.position = "inside",
+    legend.position.inside = c(0.02, 0.98), # adjust position
+    legend.justification = c(0, 1),
+    legend.text     = element_text(size = 16),
+    legend.title    = element_text(size = 16),
+    legend.key.size = unit(0.9, "lines"),
+    axis.text.x  = element_text(
+      size = 16, angle = 30, hjust = 1, color = "black"),
+    axis.title.x = element_text(size = 16),
+    axis.title.y = element_text(size = 16),
+    axis.text.y  = element_text(size = 14, color = "black"),
+    strip.background = element_blank(),
+    strip.text   = element_text(hjust = 0, size = 18, face = "bold")
   )
 
-cu_combined_panel
+#-------------------------------------------------
+# 5b. Plot B — Free/Total Cu ratio
+#-------------------------------------------------
+plot_B <- ggplot() +
+  geom_boxplot(
+    data = box_dat %>% filter(Panel == panel_B_label),
+    aes(x = Typology, y = Value, fill = Panel, color = Panel),
+    width = 0.7, alpha = 0.4, linewidth = 0.3
+  ) +
+  geom_jitter(
+    data = box_dat %>% filter(Panel == panel_B_label),
+    aes(x = Typology, y = Value, color = Panel),
+    width = 0.15, size = 0.7, alpha = 0.7
+  ) +
+  geom_text(
+    data = letters_box %>% filter(Panel == panel_B_label),
+    aes(x = Typology, y = y_pos, label = Letters),
+    inherit.aes = FALSE,
+    size = 16 / .pt
+  ) +
+  scale_fill_manual(values = box_colors, guide = "none") +
+  scale_color_manual(values = box_colors, guide = "none") +
+  scale_y_continuous(labels = scales::scientific) +
+  facet_wrap(~ Panel, labeller = labeller(Panel = label_parsed)) +
+  labs(x = NULL, y = expression(Free~Cu^{2*'+'}/Total~Cu)) +
+  theme_classic(base_size = 14) +
+  theme(
+    panel.border = element_rect(
+      colour = "black",
+      fill = NA,
+      linewidth = 0.8),
+    axis.text.x  = element_blank(),
+    axis.title.y = element_text(size = 16),
+    axis.text.y  = element_text(size = 14, color = "black"),
+    strip.background = element_blank(),
+    strip.text  = element_text(hjust = 0, size = 18, face = "bold")
+  )
 
+#-------------------------------------------------
+# 5c. Plot C — Bioavailable Cu
+#-------------------------------------------------
+plot_C <- ggplot() +
+  geom_boxplot(
+    data = box_dat %>% filter(Panel == panel_C_label),
+    aes(x = Typology, y = Value, fill = Panel, color = Panel),
+    width = 0.7, alpha = 0.4, linewidth = 0.3
+  ) +
+  geom_jitter(
+    data = box_dat %>% filter(Panel == panel_C_label),
+    aes(x = Typology, y = Value, color = Panel),
+    width = 0.15, size = 0.7, alpha = 0.7
+  ) +
+  geom_text(
+    data = letters_box %>% filter(Panel == panel_C_label),
+    aes(x = Typology, y = y_pos, label = Letters),
+    inherit.aes = FALSE,
+    size = 16 / .pt
+  ) +
+  scale_fill_manual(values = box_colors, guide = "none") +
+  scale_color_manual(values = box_colors, guide = "none") +
+  facet_wrap(~ Panel, labeller = labeller(Panel = label_parsed)) +
+  labs(
+    x = NULL, 
+    y = expression('TBL-Cu'~(nmol~g^{-1}~wet)~ '['~log[10]~']')) +
+  theme_classic(base_size = 14) +
+  theme(
+    panel.border = element_rect(
+      colour = "black",
+      fill = NA,
+      linewidth = 0.8),
+    strip.background = element_blank(),
+    axis.title.x = element_text(size = 16),
+    axis.text.x  = element_text(
+      size = 16, angle = 30, hjust = 1, color = "black"),
+    axis.title.y = element_text(size = 16),
+    axis.text.y  = element_text(size = 14, color = "black"),
+    strip.text   = element_text(hjust = 0, size = 18, face = "bold")
+  )
+
+#-------------------------------------------------
+# Combined version 2: A big on left, B/C stacked smaller on right
+#-------------------------------------------------
+cu_combined_panel2 <- (plot_A | (plot_B / plot_C)) +
+  plot_layout(widths = c(3, 2)) +
+  plot_annotation(
+    caption = "Stream Typology",
+    theme = theme(
+      plot.caption = element_text(
+        size = 18,
+        face = "bold",
+        hjust = 0.5,   # center under the whole figure
+        color = "black"
+      )
+    )
+  )
+
+
+cu_combined_panel2
+
+# Save
+out_dir <- "Plots by typology"
+if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+
+# Save
 ggsave(
-  filename = file.path(out_dir, "Cu_pub_plot.png"),
-  plot     = cu_combined_panel,
-  width    = 12,
-  height   = 6,
+  filename = file.path(out_dir, "Cu_pub_plot2.png"),
+  plot     = cu_combined_panel2,
+  width    =12,
+  height   = 8,
   dpi      = 300
 )
 ```
@@ -1994,15 +2055,45 @@ p_cu_daph_density <- ggplot(
     y     = "Density",
     fill  = "Copper"
   ) +
-  theme_minimal(base_size = 12) +
+  theme_classic(base_size = 12) +
   theme(
+    panel.border = element_rect(
+      colour = "black",
+      fill = NA,
+      linewidth = 0.8),
     legend.position = "bottom",
-    strip.text      = element_text(size = 14),
-    legend.title    = element_text(size = 11),
-    legend.text     = element_text(size = 10),
-    axis.text.x     = element_text(size = 10),
-    axis.text.y     = element_text(size = 10),
-    plot.title      = element_text(size = 14)
+    legend.title    = element_text(size = 14),
+    legend.text     = element_text(size = 12),
+    axis.title.x    = element_text(size = 14),
+    axis.text.x     = element_text(size = 12),
+    axis.title.y    = element_text(size = 14),
+    axis.text.y     = element_text(size = 12),
+    strip.background = element_blank(),
+    strip.text   = element_text(hjust = 0, size = 14, face = "bold"))
+
+facet_labels <- data.frame(
+  Typology = factor(
+    c("Pooled",
+      "Non-Perennial",
+      "Perennial",
+      "Developed Perennial",
+      "Main Stem"),
+    levels = levels(dat_cu_daph$Typology)
+  ),
+  label = c("A", "B", "C", "D", "E"),
+  x = -Inf,
+  y = Inf
+)
+
+p_cu_daph_density <- p_cu_daph_density +
+  geom_text(
+    data = facet_labels,
+    aes(x = x, y = y, label = label),
+    inherit.aes = FALSE,
+    hjust = -0.3,
+    vjust = 1.5,
+    size = 6,
+    fontface = "bold"
   )
 
 # Print plot
@@ -2016,7 +2107,7 @@ if (!dir.exists(out_dir)) {
 }
 
 ggsave(
-  filename = file.path(out_dir, "Cu_toxicity_daphnia.png"),
+  filename = file.path(out_dir, "Cu_toxicity_daphnia_density.png"),
   plot = p_cu_daph_density,
   width = 6,
   height = 10,
@@ -2107,18 +2198,48 @@ p_cu_daph_density_minn <- ggplot(
     y     = "Density",
     fill  = "Copper"
   ) +
-  theme_minimal(base_size = 12) +
+  theme_classic(base_size = 12) +
   theme(
+    panel.border = element_rect(
+      colour = "black",
+      fill = NA,
+      linewidth = 0.8),
     legend.position = "bottom",
-    strip.text      = element_text(size = 14),
-    legend.title    = element_text(size = 11),
-    legend.text     = element_text(size = 10),
-    axis.text.x     = element_text(size = 10),
-    axis.text.y     = element_text(size = 10),
-    plot.title      = element_text(size = 14)
+    legend.title    = element_text(size = 14),
+    legend.text     = element_text(size = 12),
+    axis.title.x    = element_text(size = 14),
+    axis.text.x     = element_text(size = 12),
+    axis.title.y    = element_text(size = 14),
+    axis.text.y     = element_text(size = 12),
+    strip.background = element_blank(),
+    strip.text   = element_text(hjust = 0, size = 14, face = "bold"))
+
+facet_labels <- data.frame(
+  Typology = factor(
+    c("Pooled",
+      "Non-Perennial",
+      "Perennial",
+      "Developed Perennial",
+      "Main Stem"),
+    levels = levels(dat_cu_minn$Typology)
+  ),
+  label = c("A", "B", "C", "D", "E"),
+  x = -Inf,
+  y = Inf
+)
+
+p_cu_daph_density_minn <- p_cu_daph_density_minn +
+  geom_text(
+    data = facet_labels,
+    aes(x = x, y = y, label = label),
+    inherit.aes = FALSE,
+    hjust = -0.3,
+    vjust = 1.5,
+    size = 6,
+    fontface = "bold"
   )
 
-# Print
+# Print plot
 p_cu_daph_density_minn
 
 # Save plot
@@ -2551,7 +2672,7 @@ prop_acute_tox_daph_summary <- dat %>%
 prop_acute_tox_daph_summary
 ```
 
-Plot of both
+### c. Combined plot
 
 ```{r}
 library(dplyr)
@@ -2572,6 +2693,113 @@ dat_cu_long <- dat %>%
     )
   )
 
+# Not colored
+combined_plot_cu_daph <- ggplot(
+  dat_cu_long,
+  aes(y = log_tox_nM, x = log_Cu_nM, shape = tox_type)) +
+  
+  geom_point(size = 2, alpha = 0.7) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "black") +
+  
+  scale_x_continuous(limits = c(-1, 3), breaks = c(0, 1, 2, 3, 4)) +
+  scale_y_continuous(limits = c(-1, 4), breaks = c(0, 1, 2, 3, 4)) +
+
+  scale_shape_manual(values = c("Chronic" = 16, "Acute" = 17)) +
+  
+  labs(
+    x = expression(log[10]~"Measured Cu (nM)"),
+    y = expression(log[10]~"Toxic Cu (nM)"),
+    title = "B. Cu Toxicity Thresholds - Daphnia",
+    shape = "Toxicity Type"
+  ) +
+  
+  theme_classic(base_size = 12) +
+  theme(
+    legend.position = "none",
+    title = element_text(face = "bold"),
+    panel.border = element_rect(
+      colour = "black",
+      fill = NA,
+      linewidth = 0.8),
+    )
+
+# Reshape Cu chronic/acute columns into long format
+dat_cu_long <- dat %>%
+  pivot_longer(
+    cols = c(log_Cu_Chronic_Tox_Minnow_nM, log_Cu_Acute_Tox_Minnow_nM),
+    names_to = "tox_type",
+    values_to = "log_tox_nM"
+  ) %>%
+  mutate(
+    tox_type = case_when(
+      tox_type == "log_Cu_Chronic_Tox_Minnow_nM" ~ "Chronic",
+      tox_type == "log_Cu_Acute_Tox_Minnow_nM"   ~ "Acute"
+    )
+  )
+
+combined_plot_cu_minn <- ggplot(
+  dat_cu_long,
+  aes(y = log_tox_nM, x = log_Cu_nM, shape = tox_type)) +
+  
+  geom_point(size = 2, alpha = 0.7) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "black") +
+  
+  scale_x_continuous(limits = c(-1, 3), breaks = c(0, 1, 2, 3, 4)) +
+  scale_y_continuous(limits = c(-1, 4), breaks = c(0, 1, 2, 3, 4)) +
+  
+  scale_shape_manual(values = c("Chronic" = 16, "Acute" = 17)) +
+  
+  labs(
+    x = expression(log[10]~"Measured Cu (nM)"),
+    y = expression(log[10]~"Toxic Cu (nM)"),
+    title = "C. Cu Toxicity Thresholds - Fathead Minnow",
+    shape = "Toxicity Type"
+  ) +
+  
+  guides(
+    color = guide_legend(nrow = 1, byrow = TRUE, title.position = "top"),
+    shape = guide_legend(nrow = 1, byrow = TRUE, title.position = "top")
+  ) +
+  
+  theme_classic(base_size = 12) +
+  theme(
+    panel.border = element_rect(
+      colour = "black",
+      fill = NA,
+      linewidth = 0.8),
+    title = element_text(face = "bold"),
+    legend.position = "none",
+    legend.text = element_text(size = 12),   
+    legend.title = element_text(size = 12)
+  )
+
+
+# Combine with the Zn plot (when in your working environment)
+library(patchwork)
+combined_all <- (combined_plot_zn) / (combined_plot_cu_daph) / (combined_plot_cu_minn)
+
+# 1. Define output folder (relative to working directory)
+out_dir <- "Plots of Cu Toxicity"
+
+# 2. Create folder if it doesn't exist
+if (!dir.exists(out_dir)) {
+  dir.create(out_dir, recursive = TRUE)
+}
+
+ggsave(
+  filename = file.path(out_dir,  
+                       "Toxicity_thresholds_Zn_Cu_no_color.png"),
+  plot = combined_all,
+  width = 5,
+  height = 10,
+  units = "in",
+  dpi = 300
+)
+```
+
+Colored
+
+```{r}
 # Plot, mirroring the Zn plot
 
 # Colored by typology
@@ -2600,48 +2828,6 @@ combined_plot_cu_daph_colored <- ggplot(
   theme(legend.position = "none")
 
 combined_plot_cu_daph_colored
-
-# Not colored
-combined_plot_cu_daph <- ggplot(
-  dat_cu_long,
-  aes(y = log_tox_nM, x = log_Cu_nM, shape = tox_type)) +
-  
-  geom_point(size = 2, alpha = 0.7) +
-  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "black") +
-  
-  scale_x_continuous(limits = c(-1, 3), breaks = c(0, 1, 2, 3, 4)) +
-  scale_y_continuous(limits = c(-1, 4), breaks = c(0, 1, 2, 3, 4)) +
-
-  scale_shape_manual(values = c("Chronic" = 16, "Acute" = 17)) +
-  
-  labs(
-    x = expression(log[10]~"Measured Cu (nM)"),
-    y = expression(log[10]~"Toxic Cu (nM)"),
-    title = "B. Cu Toxicity Thresholds - Daphnia",
-    shape = "Toxicity Type"
-  ) +
-  
-  theme_light(base_size = 12) +
-  theme(legend.position = "none")
-
-combined_plot_cu_daph
-
-
-# Reshape Cu chronic/acute columns into long format
-dat_cu_long <- dat %>%
-  pivot_longer(
-    cols = c(log_Cu_Chronic_Tox_Minnow_nM, log_Cu_Acute_Tox_Minnow_nM),
-    names_to = "tox_type",
-    values_to = "log_tox_nM"
-  ) %>%
-  mutate(
-    tox_type = case_when(
-      tox_type == "log_Cu_Chronic_Tox_Minnow_nM" ~ "Chronic",
-      tox_type == "log_Cu_Acute_Tox_Minnow_nM"   ~ "Acute"
-    )
-  )
-
-# Plots, mirroring the Zn plot
 
 # Colored by typology
 
@@ -2679,54 +2865,6 @@ combined_plot_cu_minn_colored <- ggplot(
   )
 
 combined_plot_cu_minn_colored
-
-# Not colored
-
-combined_plot_cu_minn <- ggplot(
-  dat_cu_long,
-  aes(y = log_tox_nM, x = log_Cu_nM, shape = tox_type)) +
-  
-  geom_point(size = 2, alpha = 0.7) +
-  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "black") +
-  
-  scale_x_continuous(limits = c(-1, 3), breaks = c(0, 1, 2, 3, 4)) +
-  scale_y_continuous(limits = c(-1, 4), breaks = c(0, 1, 2, 3, 4)) +
-  
-  scale_shape_manual(values = c("Chronic" = 16, "Acute" = 17)) +
-  
-  labs(
-    x = expression(log[10]~"Measured Cu (nM)"),
-    y = expression(log[10]~"Toxic Cu (nM)"),
-    title = "C. Cu Toxicity Thresholds - Fathead Minnow",
-    shape = "Toxicity Type"
-  ) +
-  
-  guides(
-    color = guide_legend(nrow = 1, byrow = TRUE, title.position = "top"),
-    shape = guide_legend(nrow = 1, byrow = TRUE, title.position = "top")
-  ) +
-  
-  theme_light(base_size = 12) +
-  theme(
-    legend.position = "none",
-    legend.text = element_text(size = 12),   
-    legend.title = element_text(size = 12)
-  )
-
-combined_plot_cu_minn
-
-# Combine with the Zn plot (when in your working environment)
-# library(patchwork)
-# combined_all <- (combined_plot_zn) / (combined_plot_cu_daph) / (combined_plot_cu_minn)
-
-# ggsave(
-  filename = file.path(out_dir,  "Toxicity_thresholds_Zn_Cu_no_color.png"),
-  plot = combined_all,
-  width = 5,
-  height = 10,
-  units = "in",
-  dpi = 300
-)
 ```
 
 ### b. Fathead minnow
@@ -2861,33 +2999,6 @@ writeData(wb, "Acute tox minnow", prop_acute_tox_min_summary)
 
 # 5. Save
 saveWorkbook(wb, file_path, overwrite = TRUE)
-```
-
-All plots
-
-```{r}
-library(patchwork)
-
-# Create the top row
-row1 <- (chronic_plot_daph + acute_plot_daph) + 
-  plot_annotation(title = 'Daphnia')
-
-# Create the bottom row
-row2 <- (chronic_plot_min + acute_plot_min) + 
-  plot_annotation(title = 'Fathead Minnow')
-
-# Combine them
-all_plots <- wrap_elements(row1) / wrap_elements(row2)
-all_plots
-
-ggsave(
-  filename = file.path(out_dir, "Cu_tox_thresholds.png"),
-  plot = all_plots,
-  width = 12,
-  height = 9,
-  units = "in",
-  dpi = 300
-)
 ```
 
 # Plots by Site within Typology

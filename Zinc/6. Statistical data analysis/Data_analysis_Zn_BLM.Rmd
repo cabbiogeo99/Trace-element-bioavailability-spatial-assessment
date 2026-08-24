@@ -1169,19 +1169,30 @@ all_vars_panel <- ggplot(
     ~ Variable,
     scales   = "free_y",
     ncol     = 3,
-    labeller = facet_labels
+    labeller = facet_labels,
+    axes        = "all",       # draw axis lines/ticks on every panel
+    axis.labels = "margins"    # but only show axis text at the outer margins
   ) +
   labs(
     x     = "Stream Typology",
-    y     = expression(paste("Concentration (µM) [", log[10], "]"))
+    y = expression("Concentration" ~ "(" * mu * M * ")" ~ "[" * log[10] * "]")
   ) +
-  theme_minimal(base_size = 12) +
+  theme_classic(base_size = 12) +
   theme(
+    panel.border = element_rect(
+      colour = "black",
+      fill = NA,
+      linewidth = 0.8),
     legend.position = "bottom",
+    legend.text     = element_text(size = 14),
+    legend.title    = element_text(size = 14),
+    legend.key.size = unit(0.9, "lines"),
+    axis.title.x = element_text(size = 14, face = "bold"),
+    axis.title.y = element_text(size = 14),
     axis.text.x  = element_text(
-      size = 9, angle = 30, hjust = 1, color = "black"),
-    strip.text   = element_text(size = 11, face = "bold"),
-    plot.title   = element_text(size = 14)
+      size = 14, angle = 30, hjust = 1, color = "black"),
+    strip.background = element_blank(),
+    strip.text        = element_text(size = 14, face = "bold")
   )
 
 all_vars_panel
@@ -1194,8 +1205,8 @@ if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
 ggsave(
   filename = file.path(out_dir, "BLM_predictors_panel_Zn.png"),
   plot     = all_vars_panel,
-  width    = 8,
-  height   = 8,
+  width    = 10,
+  height   = 10,
   dpi      = 300
 )
 ```
@@ -1746,11 +1757,30 @@ write.xlsx(
 ### f. Publication plot
 
 ```{r}
+# Create letters_df from combined_kruskal
+letters_df <- combined_kruskal %>%
+  dplyr::select(Variable, Typology, groups) %>%
+  dplyr::distinct() %>%
+  dplyr::rename(Letters = groups)
+
+dat$Typology <- as.factor(dat$Typology)
+
+dat$Typology <- factor(dat$Typology, levels = c("Pooled",
+                                                "Non-Perennial",
+                                                "Perennial",
+                                                "Developed Perennial",
+                                                "Main Stem"))
+
 library(dplyr)
 library(tidyr)
 library(ggplot2)
 library(scales)
 library(ggnewscale)
+library(patchwork)   # r
+
+panel_A_label <- "bold('A')"
+panel_B_label <- "bold('B')"
+panel_C_label <- "bold('C')"
 
 #-------------------------------------------------
 # 1. Typology order
@@ -1797,20 +1827,20 @@ species_dat <- dat %>%
     .groups = "drop"
   ) %>%
   mutate(
-    Panel = "a.~Zn~speciation~(nM)",
+    Panel = panel_A_label,
     Species = 
       dplyr::recode(
-      Species,
-      "Free_Zn_nM"  = "Zn²⁺",
-      "ZnOH_nM"     = "ZnOH",
-      "Zn_OH_2_nM"  = "Zn(OH)₂",
-      "ZnCO3_nM"    = "ZnCO₃",
-      "ZnHCO3_nM"   = "ZnHCO₃",
-      "ZnSO4_nM"    = "ZnSO₄",
-      "ZnCl_nM"     = "ZnCl",
-      "ZnS_nM"      = "ZnS",
-      "TOrg_Zn_nM"  = "Organic-Zn"
-    )
+        Species,
+        "Free_Zn_nM"  = "Free Zn²⁺",
+        "ZnOH_nM"     = "ZnOH",
+        "Zn_OH_2_nM"  = "Zn(OH)₂",
+        "ZnCO3_nM"    = "ZnCO₃",
+        "ZnHCO3_nM"   = "ZnHCO₃",
+        "ZnSO4_nM"    = "ZnSO₄",
+        "ZnCl_nM"     = "ZnCl",
+        "ZnS_nM"      = "ZnS",
+        "TOrg_Zn_nM"  = "Organic-Zn"
+      )
   )
 
 species_levels <- species_dat %>%
@@ -1830,13 +1860,13 @@ species_colors <- colorRampPalette(
 # 3. Boxplot data: free/total Zn and bioavailable Zn
 #-------------------------------------------------
 box_lookup <- c(
-  "rel_prop_Zn"       = "b.~Free~Zn^{2*'+'}/Total~Zn~('%')",
-  "log_TBL_Zn_nmol_g" = "c.~Bioavailable~Zn~(nmol~g^{-1}~wet)~'['~log[10]~']'"
+  "rel_prop_Zn"       = panel_B_label,
+  "log_TBL_Zn_nmol_g" = panel_C_label
 )
 
-box_colors <- c(
-  "b.~Free~Zn^{2*'+'}/Total~Zn~('%')" = "darkgray",
-  "c.~Bioavailable~Zn~(nmol~g^{-1}~wet)~'['~log[10]~']'" = "darkslategray"
+box_colors <- setNames(
+  c("darkgoldenrod", "darkslategray"),
+  c(panel_B_label, panel_C_label)
 )
 
 box_dat <- dat %>%
@@ -1851,11 +1881,7 @@ box_dat <- dat %>%
     Panel = box_lookup[Variable],
     Panel = factor(
       Panel,
-      levels = c(
-  "a.~Zn~speciation~(nM)",
-  "b.~Free~Zn^{2*'+'}/Total~Zn~('%')",
-  "c.~Bioavailable~Zn~(nmol~g^{-1}~wet)~'['~log[10]~']'"
-      )
+      levels = c(panel_A_label, panel_B_label, panel_C_label)
     )
   )
 
@@ -1867,14 +1893,10 @@ species_dat <- species_dat %>%
     )
   )
 
-
 #-------------------------------------------------
 # 4. Letters for boxplot panels only
 #-------------------------------------------------
-letter_nudge <- c(
-  "b.~Free~Zn^{2*'+'}/Total~Zn~('%')" = 0.05,
-  "c.~Bioavailable~Zn~(nmol~g^{-1}~wet)~'['~log[10]~']'" = 0.7
-)
+letter_nudge <- setNames(c(0.08, 0.7), c(panel_B_label, panel_C_label))
 
 letters_box <- letters_df %>%
   filter(Variable %in% names(box_lookup)) %>%
@@ -1895,10 +1917,7 @@ letters_box <- letters_df %>%
 letters_species <- letters_df %>%
   filter(Variable == "Zn_nM") %>%
   mutate(
-    Panel = factor(
-      "a.~Zn~speciation~(nM)",
-      levels = levels(box_dat$Panel)
-    )
+    Panel = factor(panel_A_label, levels = levels(box_dat$Panel))
   ) %>%
   left_join(
     species_dat %>%
@@ -1907,9 +1926,8 @@ letters_species <- letters_df %>%
     by = "Typology"
   ) %>%
   mutate(
-    y_pos = y_max * 1.3
+    y_pos = y_max + 30    # letters lie X units above the bar's max value
   )
-
 
 # Zn error bars
 zn_error <- dat %>%
@@ -1928,17 +1946,15 @@ zn_error <- dat %>%
     by = "Typology"
   ) %>%
   mutate(
-    Panel = factor("a.~Zn~speciation~(nM)", levels = levels(species_dat$Panel)),
+    Panel = factor(panel_A_label, levels = levels(species_dat$Panel)),
     ymin = bar_height - se_Zn,
     ymax = bar_height + se_Zn
   )
 
 #-------------------------------------------------
-# 5. Combined faceted plot
+# 5a. Plot A — Zn speciation stacked barplot
 #-------------------------------------------------
-zn_combined_panel <- ggplot() +
-  
-  # Stacked mean species barplot
+plot_A <- ggplot() +
   geom_col(
     data = species_dat,
     aes(x = Typology, y = mean_conc, fill = Species),
@@ -1946,98 +1962,155 @@ zn_combined_panel <- ggplot() +
     linewidth = 0.3
   ) +
   scale_fill_manual(
-  values = species_colors,
-  name = "Zn species",
-  guide = guide_legend(nrow = 2, byrow = TRUE)
-) +
-  
-  # Error bars for stacked barplot
+    values = species_colors,
+    name = "Zn species",
+    guide = guide_legend(nrow = 3, byrow = TRUE)
+  ) +
   geom_errorbar(
-  data = zn_error,
-  aes(x = Typology, ymin = ymin, ymax = ymax),
-  inherit.aes = FALSE,
-  width = 0.5,
-  linewidth = 0.5,
-  color = "black"
-) +
-  
-  ggnewscale::new_scale_fill() +
-  
-  # Boxplots
-  geom_boxplot(
-  data = box_dat,
-  aes(x = Typology, y = Value, fill = Panel, color = Panel),
-  width = 0.7,
-  alpha = 0.4,   # slightly more transparent
-  linewidth = 0.3
-) +
-geom_jitter(
-  data = box_dat,
-  aes(x = Typology, y = Value, color = Panel),
-  width = 0.15,
-  size = 0.7,    # slightly smaller points
-  alpha = 0.7
-)  +
-  
-  # Letters for Zn speciation stacked bars
+    data = zn_error,
+    aes(x = Typology, ymin = ymin, ymax = ymax),
+    inherit.aes = FALSE,
+    width = 0.5,
+    linewidth = 0.5,
+    color = "black"
+  ) +
   geom_text(
     data = letters_species,
     aes(x = Typology, y = y_pos, label = Letters),
     inherit.aes = FALSE,
-    size = 3.5
+    size = 18 / .pt
   ) +
-  
-  # Letters for boxplot panels
+  facet_wrap(~ Panel, labeller = labeller(Panel = label_parsed)) +
+  labs(x = NULL, y = "Concentration (nM)") +
+  theme_classic(base_size = 14) +
+  theme(
+    panel.border = element_rect(
+      colour = "black",
+      fill = NA,
+      linewidth = 0.8),
+    legend.position = "inside",
+    legend.position.inside = c(0.02, 0.98), # adjust position
+    legend.justification = c(0, 1),
+    legend.text     = element_text(size = 16),
+    legend.title    = element_text(size = 16),
+    legend.key.size = unit(0.9, "lines"),
+    axis.text.x  = element_text(
+      size = 16, angle = 30, hjust = 1, color = "black"),
+    axis.title.x = element_text(size = 16),
+    axis.title.y = element_text(size = 16),
+    axis.text.y  = element_text(size = 14, color = "black"),
+    strip.background = element_blank(),
+    strip.text   = element_text(hjust = 0, size = 18, face = "bold")
+  )
+
+#-------------------------------------------------
+# 5b. Plot B — Free/Total Zn ratio
+#-------------------------------------------------
+plot_B <- ggplot() +
+  geom_boxplot(
+    data = box_dat %>% filter(Panel == panel_B_label),
+    aes(x = Typology, y = Value, fill = Panel, color = Panel),
+    width = 0.7, alpha = 0.4, linewidth = 0.3
+  ) +
+  geom_jitter(
+    data = box_dat %>% filter(Panel == panel_B_label),
+    aes(x = Typology, y = Value, color = Panel),
+    width = 0.15, size = 0.7, alpha = 0.7
+  ) +
   geom_text(
-    data = letters_box,
+    data = letters_box %>% filter(Panel == panel_B_label),
     aes(x = Typology, y = y_pos, label = Letters),
     inherit.aes = FALSE,
-    size = 3.5
+    size = 16 / .pt
   ) +
-  
+  ylim(0, 0.8) +
   scale_fill_manual(values = box_colors, guide = "none") +
   scale_color_manual(values = box_colors, guide = "none") +
-  
-    facet_wrap(
-    ~ Panel,
-    scales = "free_y",
-    ncol = 3,
-    labeller = labeller(Panel = label_parsed)
-  ) +
-  
-  labs(
-    title = "Zinc Speciation and Bioavailability by Stream Typology",
-    x = NULL,
-    y = "Value"
-  ) +
-  
-  theme_minimal(base_size = 12) +
+  facet_wrap(~ Panel, labeller = labeller(Panel = label_parsed)) +
+  labs(x = NULL, y = expression(Free~Zn^{2*'+'}/Total~Zn)) +
+  theme_classic(base_size = 14) +
   theme(
-  legend.position = "bottom",
-  legend.justification = "left",
-  legend.background = element_blank(),
-  legend.title = element_text(size = 10),
-  legend.text = element_text(size = 10),
-  legend.box = "horizontal",
-  axis.text.x = element_text(
-    size = 10,
-    angle = 30,
-    hjust = 1,
-    color = "black"
-  ),
-  axis.text.y = element_text(color = "black"),
-  strip.text = element_text(size = 12),
-  plot.title = element_text(size = 14)
-)
+    panel.border = element_rect(
+      colour = "black",
+      fill = NA,
+      linewidth = 0.8),
+    axis.text.x  = element_blank(),
+    axis.title.y = element_text(size = 16),
+    axis.text.y  = element_text(size = 14, color = "black"),
+    strip.background = element_blank(),
+    strip.text  = element_text(hjust = 0, size = 18, face = "bold")
+  )
 
-zn_combined_panel
+#-------------------------------------------------
+# 5c. Plot C — Bioavailable >n
+#-------------------------------------------------
+plot_C <- ggplot() +
+  geom_boxplot(
+    data = box_dat %>% filter(Panel == panel_C_label),
+    aes(x = Typology, y = Value, fill = Panel, color = Panel),
+    width = 0.7, alpha = 0.4, linewidth = 0.3
+  ) +
+  geom_jitter(
+    data = box_dat %>% filter(Panel == panel_C_label),
+    aes(x = Typology, y = Value, color = Panel),
+    width = 0.15, size = 0.7, alpha = 0.7
+  ) +
+  geom_text(
+    data = letters_box %>% filter(Panel == panel_C_label),
+    aes(x = Typology, y = y_pos, label = Letters),
+    inherit.aes = FALSE,
+    size = 16 / .pt
+  ) +
+  scale_fill_manual(values = box_colors, guide = "none") +
+  scale_color_manual(values = box_colors, guide = "none") +
+  facet_wrap(~ Panel, labeller = labeller(Panel = label_parsed)) +
+  labs(
+    x = NULL, 
+    y = expression('TBL-Zn'~(nmol~g^{-1}~wet)~ '['~log[10]~']')) +
+  theme_classic(base_size = 14) +
+  theme(
+    panel.border = element_rect(
+      colour = "black",
+      fill = NA,
+      linewidth = 0.8),
+    strip.background = element_blank(),
+    axis.title.x = element_text(size = 16),
+    axis.text.x  = element_text(
+      size = 16, angle = 30, hjust = 1, color = "black"),
+    axis.title.y = element_text(size = 16),
+    axis.text.y  = element_text(size = 14, color = "black"),
+    strip.text   = element_text(hjust = 0, size = 18, face = "bold")
+  )
+
+#-------------------------------------------------
+# Combined version 2: A big on left, B/C stacked smaller on right
+#-------------------------------------------------
+zn_combined_panel2 <- (plot_A | (plot_B / plot_C)) +
+  plot_layout(widths = c(3, 2)) +
+  plot_annotation(
+    caption = "Stream Typology",
+    theme = theme(
+      plot.caption = element_text(
+        size = 18,
+        face = "bold",
+        hjust = 0.5,   # center under the whole figure
+        color = "black"
+      )
+    )
+  )
+
+zn_combined_panel2
+
+# Save
+out_dir <- "Plots by typology"
+if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
 
 # Save
 ggsave(
-  filename = file.path(out_dir, "Zn_pub_plot.png"),
-  plot     = zn_combined_panel,
-  width    = 12,
-  height   = 6,
+  filename = file.path(out_dir, "Zn_pub_plot2.png"),
+  plot     = zn_combined_panel2,
+  width    =12,
+  height   = 8,
   dpi      = 300
 )
 ```
@@ -2224,7 +2297,10 @@ p_zn_tox_density <- ggplot(
     linewidth = 0.6,
     color = "black"
   ) +
-  facet_wrap(~ Typology, ncol = 1) +
+  facet_wrap(
+    ~ Typology,
+    ncol = 1) +
+  
   # ---- Zinc legend ----
 scale_fill_manual(
   values = c(
@@ -2234,7 +2310,7 @@ scale_fill_manual(
   ),
   guide = guide_legend(
     override.aes   = list(pattern = "none"),
-    nrow           = 2,
+    nrow           = 1,
     byrow          = TRUE,
     title.position = "top"
   )
@@ -2244,26 +2320,55 @@ scale_fill_manual(
     y     = "Density",
     fill  = "Zinc"
   ) +
-  theme_light(base_size = 12) +
+  theme_classic(base_size = 12) +
   theme(
+    panel.border = element_rect(
+      colour = "black",
+      fill = NA,
+      linewidth = 0.8),
     legend.position = "bottom",
-    strip.text      = element_text(size = 14, color = "black"),
     legend.title    = element_text(size = 14),
     legend.text     = element_text(size = 12),
+    axis.title.x    = element_text(size = 14),
     axis.text.x     = element_text(size = 12),
+    axis.title.y    = element_text(size = 14),
     axis.text.y     = element_text(size = 12),
-    plot.title      = element_text(size = 14)
+    strip.background = element_blank(),
+    strip.text   = element_text(hjust = 0, size = 14, face = "bold"))
+
+facet_labels <- data.frame(
+  Typology = factor(
+    c("Pooled",
+      "Non-Perennial",
+      "Perennial",
+      "Developed Perennial",
+      "Main Stem"),
+    levels = levels(dat_zn_tox$Typology)
+  ),
+  label = c("A", "B", "C", "D", "E"),
+  x = -Inf,
+  y = Inf
+)
+
+p_zn_tox_density <- p_zn_tox_density +
+  geom_text(
+    data = facet_labels,
+    aes(x = x, y = y, label = label),
+    inherit.aes = FALSE,
+    hjust = -0.3,
+    vjust = 1.5,
+    size = 6,
+    fontface = "bold"
   )
 
-# Print plot
 p_zn_tox_density
 
 # 3. Save plot
 
 ggsave(
-  filename = file.path(out_dir, "Zn_toxicity_thresholds.png"),
+  filename = file.path(out_dir, "Zn_toxicity_density.png"),
   plot = p_zn_tox_density,
-  width = 8,
+  width = 6,
   height = 10,
   units = "in",
   dpi = 300
@@ -2583,7 +2688,7 @@ acute_plot <- ggplot(dat, aes(x = log_Zn_acute_tox_nM, y = log_Zn_nM)) +
 acute_plot
 ```
 
-One plot
+### c. Combined plot
 
 ```{r}
 library(ggplot2)
@@ -2675,12 +2780,18 @@ combined_plot_zn <- ggplot(
     shape = "Toxicity Type"
   ) +
   
-  theme_light(base_size = 12) +
+  theme_classic(base_size = 12) +
   theme(
+    title = element_text(face = "bold"),
+    panel.border = element_rect(
+      colour = "black",
+      fill = NA,
+      linewidth = 0.8),
     legend.position = "inside",
     legend.position.inside = c(0.95, 0.05),
     legend.justification = c("right", "bottom"),
-    legend.background = element_rect(fill = "white", color = "grey70"),
+    legend.background = element_rect(
+      fill = "white", color = "grey70"),
     legend.text = element_text(size = 12),
     legend.title = element_text(size = 12)
   )
