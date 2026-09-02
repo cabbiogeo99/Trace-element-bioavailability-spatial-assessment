@@ -447,7 +447,6 @@ write.xlsx(
 
 ```{r}
 library(ggplot2)
-library(ggpubr)
 library(ggpmisc)
 
 bioavail_total_plot <- ggplot(dat, aes(x = log_Cu_nM, y = log_TBL_Cu_nmol_g)) +
@@ -456,29 +455,35 @@ bioavail_total_plot <- ggplot(dat, aes(x = log_Cu_nM, y = log_TBL_Cu_nmol_g)) +
   geom_point(color = "black", size = 1, alpha = 0.7) +
   
   # regression line
-  geom_smooth(method="lm") +
+  geom_smooth(method = "lm") +
   
-  # add linear equation
-  stat_regline_equation(label.x = -0.9, label.y = -6.8) +
+  # equation (top left)
+  stat_poly_eq(
+    use_label(c("eq")),
+    coef.digits = 3,
+    label.x = 0.05, label.y = 0.95
+  ) +
   
-  # adjusted R2
-  stat_poly_eq(use_label(c("adj.R2"))) +
+  # adjusted R2 (just below equation)
+  stat_poly_eq(
+    use_label(c("adj.R2")),
+    rr.digits = 3,
+    label.x = 0.05, label.y = 0.87
+  ) +
   
   labs(
     y = expression(log[10] ~ "Bioavailable Cu" ~ (nmol ~ g^{-1} ~ "wet")),
-    x = expression(log[10]~"Measured Cu (nM)"),
-    title = "Relationship of measured vs bioavailable Cu"
+    x = expression(log[10]~"Measured Cu (nM)")
   ) +
   
   theme_classic(base_size = 12)
-
 bioavail_total_plot
 
 ggsave(
-  filename = file.path( "Total_measured_vs_bioavailable_Cu.png"),
+  filename = file.path(out_dir, "Total_measured_vs_bioavailable_Cu.png"),
   plot = bioavail_total_plot,
   width = 6,
-  height = 6,
+  height = 4,
   units = "in",
   dpi = 300
 )
@@ -2693,10 +2698,10 @@ dat_cu_long <- dat %>%
     )
   )
 
-# Not colored
+# Daphnia
 combined_plot_cu_daph <- ggplot(
   dat_cu_long,
-  aes(y = log_tox_nM, x = log_Cu_nM, shape = tox_type)) +
+  aes(y = log_tox_nM, x = log_Cu_nM, shape = tox_type, color = tox_type)) +
   
   geom_point(size = 2, alpha = 0.7) +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "black") +
@@ -2705,6 +2710,13 @@ combined_plot_cu_daph <- ggplot(
   scale_y_continuous(limits = c(-1, 4), breaks = c(0, 1, 2, 3, 4)) +
 
   scale_shape_manual(values = c("Chronic" = 16, "Acute" = 17)) +
+  
+  scale_color_manual(
+    name = "Toxicity Type",
+    values = c(
+      "Chronic" = "#1f77b4", # blue
+      "Acute" = "#d62728" # red
+    ) ) +
   
   labs(
     x = expression(log[10]~"Measured Cu (nM)"),
@@ -2737,9 +2749,10 @@ dat_cu_long <- dat %>%
     )
   )
 
+# Minnow
 combined_plot_cu_minn <- ggplot(
   dat_cu_long,
-  aes(y = log_tox_nM, x = log_Cu_nM, shape = tox_type)) +
+  aes(y = log_tox_nM, x = log_Cu_nM, shape = tox_type, color = tox_type)) +
   
   geom_point(size = 2, alpha = 0.7) +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "black") +
@@ -2748,6 +2761,13 @@ combined_plot_cu_minn <- ggplot(
   scale_y_continuous(limits = c(-1, 4), breaks = c(0, 1, 2, 3, 4)) +
   
   scale_shape_manual(values = c("Chronic" = 16, "Acute" = 17)) +
+  
+  scale_color_manual(
+    name = "Toxicity Type",
+    values = c(
+      "Chronic" = "#1f77b4", # blue
+      "Acute" = "#d62728" # red
+    ) ) +
   
   labs(
     x = expression(log[10]~"Measured Cu (nM)"),
@@ -2797,7 +2817,7 @@ ggsave(
 )
 ```
 
-Colored
+Colored by typology
 
 ```{r}
 # Plot, mirroring the Zn plot

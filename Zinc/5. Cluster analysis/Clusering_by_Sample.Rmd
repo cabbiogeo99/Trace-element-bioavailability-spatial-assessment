@@ -50,13 +50,15 @@ str(cluster_dat$Flow_state)
 Base theme for all plots
 
 ```{r}
+library(ggplot2)
+
 # Font sizes
 title_size   <- 16
-axis_title   <- 14
-axis_text    <- 12
+axis_title   <- 16
+axis_text    <- 14
 legend_title <- 14
-legend_text  <- 12
-strip_text   <- 12
+legend_text  <- 14
+strip_text   <- 14
 
 base_theme <- theme(
   axis.title.x = element_text(size = axis_title),
@@ -164,7 +166,7 @@ library(ggrepel)
 
 # Rename variables
 chem_labels <- c(
-  "log_Temp_C" = "Temp",
+  "log_Temp_C" = "T",
   "log_DOC_uM" = "DOC",
   "log_DIC_uM" = "DIC",
   "log_Cl_uM"  = "Cl^{'-'}",
@@ -263,7 +265,12 @@ pca_cluster <- ggplot() +
   
   labs(x = "PC1 (46.5%)", y = "PC2 (19.2%)") +
   theme_classic(base_size = axis_text) +
-  theme(plot.title = element_blank()) +
+  theme(
+    panel.border = element_rect(
+      colour = "black",
+      fill = NA,
+      linewidth = 0.8),
+    plot.title = element_blank()) +
   base_theme
 
 pca_cluster
@@ -280,6 +287,202 @@ if (!dir.exists(out_dir)) {
 ggsave(
   filename = file.path(out_dir, "PCA_Biplot_All_Sites_by_Cluster.png"),
   plot     = pca_cluster,
+  width    = 8,
+  height   = 6,
+  dpi      = 300
+)
+```
+
+Repel even more
+
+```{r}
+
+#-------------------------------------------------
+# 3) Build the plot
+#-------------------------------------------------
+pca_cluster2 <- ggplot() +
+  geom_point(
+    data = ind_df,
+    aes(x = PC1, y = PC2, color = cluster),
+    size = 2, alpha = 0.8
+  ) +
+  geom_segment(
+    data = var_df_scaled,
+    aes(x = 0, y = 0, xend = PC1, yend = PC2),
+    arrow = arrow(length = unit(0.1, "cm")),
+    color = "black"
+  ) +
+  geom_text_repel(
+    data = var_df_scaled,
+    aes(x = PC1, y = PC2, label = label_expr),
+    color = "black",
+    size = 5,
+    max.overlaps = Inf,
+    box.padding = 0.5,
+    point.padding = 0.3,
+    force = 8,  # larger
+    force_pull = 0.05, # new
+    max.time = 3, # new
+    max.iter = 20000, # new
+    xlim = c(-8, 14),   # give it more room than your plot panel
+    ylim = c(-12, 9),
+    min.segment.length = 0,
+    segment.color = "grey50",
+    segment.size = 0.3,
+    nudge_x = var_df_scaled$nudge_x,
+    nudge_y = var_df_scaled$nudge_y,
+    parse = TRUE
+  ) +
+  
+  scale_x_continuous(
+    limits = c(-10, 12), breaks = seq(-6, 12, by = 6), expand = c(0, 0)) +
+  scale_y_continuous(
+    limits = c(-12, 10), breaks = seq(-10, 5, by = 5), expand = c(0, 0)) +
+  
+  scale_color_manual(values = cluster_colors, name = "Cluster") +
+  
+  labs(x = "PC1 (46.5%)", y = "PC2 (19.2%)") +
+  theme_classic(base_size = axis_text) +
+  theme(
+    panel.border = element_rect(
+      colour = "black",
+      fill = NA,
+      linewidth = 0.8),
+    plot.title = element_blank()) +
+  base_theme
+
+pca_cluster2
+
+# Save
+ggsave(
+  filename = file.path(out_dir, "PCA_Biplot_All_Sites_by_Cluster2.png"),
+  plot     = pca_cluster2,
+  width    = 8,
+  height   = 6,
+  dpi      = 300
+)
+```
+
+Angle-based label placement - publication
+
+```{r}
+var_df_scaled <- var_df_scaled %>%
+  mutate(
+    angle = atan2(PC2, PC1),  # angle of each vector in radians
+    label_dist = 1, # how far past the tip (1 = at tip, >1 = beyond)
+    label_x = PC1 * label_dist,
+    label_y = PC2 * label_dist,
+    hjust = ifelse(cos(angle) >= 0, 0, 1), # left/right justify based on direction
+    vjust = ifelse(sin(angle) >= 0, 0, 1)
+  )
+
+#-------------------------------------------------
+# 3) Build the plot
+#-------------------------------------------------
+pca_cluster4 <- ggplot() +
+  geom_point(
+    data = ind_df,
+    aes(x = PC1, y = PC2, color = cluster),
+    size = 2, alpha = 0.8
+  ) +
+  geom_segment(
+    data = var_df_scaled,
+    aes(x = 0, y = 0, xend = PC1, yend = PC2),
+    arrow = arrow(length = unit(0.2, "cm")),
+    color = "black",
+    linewidth = 0.5
+  ) +
+  geom_text(
+    data = var_df_scaled,
+    aes(x = label_x, y = label_y, label = label_expr, hjust = hjust, vjust = vjust),
+    color = "black", size = 5, parse = TRUE
+  ) +
+  scale_x_continuous(
+    limits = c(-8, 11), breaks = seq(-6, 12, by = 6), expand = c(0, 0)) +
+  scale_y_continuous(
+    limits = c(-9, 8), breaks = seq(-10, 5, by = 5), expand = c(0, 0)) +
+  scale_color_manual(values = cluster_colors, name = "Cluster") +
+  
+  labs(x = "PC1 (46.5%)", y = "PC2 (19.2%)") +
+  theme_classic(base_size = axis_text) +
+  theme(
+    panel.border = element_rect(
+      colour = "black",
+      fill = NA,
+      linewidth = 0.5),
+    plot.title = element_blank()) +
+  base_theme
+
+pca_cluster4
+
+# Save
+ggsave(
+  filename = file.path(out_dir, "PCA_Biplot_All_Sites_by_Cluster4.png"),
+  plot     = pca_cluster4,
+  width    = 8,
+  height   = 6,
+  dpi      = 300
+)
+```
+
+One last try
+
+```{r}
+var_df_scaled <- var_df_scaled %>%
+  mutate(
+    angle_rad = atan2(PC2, PC1),
+    angle_deg = angle_rad * 180 / pi,
+    label_dist = 1.15,
+    label_x = PC1 * label_dist,
+    label_y = PC2 * label_dist,
+    hjust = ifelse(cos(angle_rad) >= 0, 0, 1),
+    vjust = ifelse(sin(angle_rad) >= 0, 0, 1)
+  )
+
+
+#-------------------------------------------------
+# 3) Build the plot
+#-------------------------------------------------
+pca_cluster4 <- ggplot() +
+  geom_point(
+    data = ind_df,
+    aes(x = PC1, y = PC2, color = cluster),
+    size = 2, alpha = 0.8
+  ) +
+  geom_segment(
+    data = var_df_scaled,
+    aes(x = 0, y = 0, xend = PC1, yend = PC2),
+    arrow = arrow(length = unit(0.2, "cm")),
+    color = "black",
+    linewidth = 0.5
+  ) +
+  geom_text(
+    data = var_df_scaled,
+    aes(x = label_x, y = label_y, label = label_expr, hjust = hjust, vjust = vjust),
+    color = "black", size = 5, parse = TRUE
+  ) +
+  scale_x_continuous(
+    limits = c(-8, 11), breaks = seq(-6, 12, by = 6), expand = c(0, 0)) +
+  scale_y_continuous(
+    limits = c(-9, 8), breaks = seq(-10, 5, by = 5), expand = c(0, 0)) +
+  scale_color_manual(values = cluster_colors, name = "Cluster") +
+  
+  labs(x = "PC1 (46.5%)", y = "PC2 (19.2%)") +
+  theme_classic(base_size = axis_text) +
+  theme(
+    panel.border = element_rect(
+      colour = "black",
+      fill = NA,
+      linewidth = 0.5),
+    plot.title = element_blank()) +
+  base_theme
+
+pca_cluster4
+
+# Save
+ggsave(
+  filename = file.path(out_dir, "PCA_Biplot_All_Sites_by_Cluster4.png"),
+  plot     = pca_cluster4,
   width    = 8,
   height   = 6,
   dpi      = 300
@@ -412,7 +615,12 @@ pca_cluster3 <- ggplot() +
   
   labs(x = "PC1 (46.5%)", y = "PC2 (19.2%)") +
   theme_classic(base_size = axis_text) +
-  theme(plot.title = element_blank()) +
+  theme(
+    panel.border = element_rect(
+      colour = "black",
+      fill = NA,
+      linewidth = 0.8),
+    plot.title = element_blank()) +
   base_theme
 
 # View
@@ -583,6 +791,7 @@ rel_freq <- ggplot(
     legend.position  = "right",
     legend.box       = "vertical",
     legend.direction = "vertical",
+    strip.background = element_blank(),
     strip.text.x = element_text(
       size = 14,
       colour = "black"
@@ -592,7 +801,12 @@ rel_freq <- ggplot(
   scale_fill_manual(
     values = color_map,
     labels = legend_labels
-  )
+  ) +
+  theme(
+    panel.border = element_rect(
+    colour = "black",
+    fill = NA,
+    linewidth = 0.8))
 
 rel_freq
 
@@ -712,7 +926,12 @@ rel_freq3 <- ggplot(
   scale_fill_manual(
     values = color_map,
     labels = legend_labels
-  )
+  ) +
+  theme(
+    panel.border = element_rect(
+      colour = "black",
+      fill = NA,
+      linewidth = 0.8))
 
 rel_freq3
 
@@ -841,11 +1060,11 @@ library(cowplot)
 # Combine plots side by side
 #-------------------------------------------------
 combined_plot <- plot_grid(
-  pca_cluster, rel_freq,
+  pca_cluster4, rel_freq,
   ncol = 1,
   align = "v",       # align vertically stacked plots
   axis = "lr",        # match left and right panel edges
-  rel_heights = c(1.3, 1),
+  rel_heights = c(1, 1),
   labels = "AUTO"      # add alphabetical tags
 )
 
@@ -877,7 +1096,7 @@ combined_plot3 <- plot_grid(
   ncol = 1,
   align = "v",       # align vertically stacked plots
   axis = "lr",        # match left and right panel edges
-  rel_heights = c(1.3, 1),
+  rel_heights = c(1, 1),
   labels = "AUTO"      # add alphabetical tags
 )
 
@@ -1134,9 +1353,11 @@ Create a relative frequency plot of typology assignments by Actual_typology
 library(dplyr)
 library(ggplot2)
 library(scales)
+library(stringr)   # for str_wrap
 
 # 1. Summarize relative frequency of Typology within each site
 cluster_freq_site <- dat %>%
+  filter(Typology != "Pooled") %>%
   count(Actual_typology, Site, Typology, name = "n") %>%
   group_by(Actual_typology, Site) %>%
   mutate(relative_freq = n / sum(n)) %>%
@@ -1149,7 +1370,10 @@ typology_colors <- c(
   "Perennial" = "#56B4E9",
   "Developed Perennial" = "#D55E00",
   "Main Stem" = "#999999"
-  )
+)
+
+# --- NEW: build a labeller with "A. Typology Name" wrapped to 2 lines ---
+facet_levels <- sort(unique(cluster_freq_site$Actual_typology))
 
 # 2. Plot horizontal stacked relative frequency bars
 site_rel_freq <- ggplot(
@@ -1161,19 +1385,17 @@ site_rel_freq <- ggplot(
   )
 ) +
   geom_col(width = 0.8) +
-
-  # Add sample counts within each bar segment
   geom_text(
     aes(label = n),
     position = position_stack(vjust = 0.5),
-    size = 4,
+    size = 6,
     color = "black"
   ) +
-
   facet_wrap(
     ~ Actual_typology,
     scales = "free_y",
-    ncol = 2
+    ncol = 2,
+    labeller = as_labeller(facet_labels)
   ) +
   scale_fill_manual(values = typology_colors) +
   scale_x_continuous(
@@ -1187,24 +1409,29 @@ site_rel_freq <- ggplot(
   ) +
   theme_classic() +
   theme(
-    axis.title.y = element_text(size = 14),
-    axis.title.x = element_text(size = 14),
-    strip.text = element_text(face = "bold", size = 14),
-    axis.text.y = element_text(size = 12),
-    axis.text.x = element_text(size = 12),
-    legend.title = element_text(size = 14),
-    legend.text = element_text(size = 14),
+    panel.border = element_rect(
+      colour = "black",
+      fill = NA,
+      linewidth = 0.8),
     legend.position = "bottom",
-    legend.direction = "horizontal"
+    legend.text     = element_text(size = 16),
+    legend.title    = element_text(size = 16),
+    legend.key.size = unit(0.9, "lines"),
+    axis.text.x  = element_text(
+      size = 16, angle = 30, hjust = 1, color = "black"),
+    axis.title.x = element_text(size = 16),
+    axis.title.y = element_text(size = 16),
+    axis.text.y  = element_text(size = 14, color = "black"),
+    strip.background = element_blank(),
+    strip.text   = element_text(hjust = 0, size = 16, face = "bold", lineheight = 0.9)
   )
-
 site_rel_freq
 
 # Save
 ggsave(
   filename = file.path(out_dir, "Relative_freq_by_site.png"),
   plot     = site_rel_freq,
-  width    = 12,
+  width    = 14,
   height   = 10,
   dpi      = 300
 )
