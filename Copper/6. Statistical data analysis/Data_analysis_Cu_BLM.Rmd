@@ -2599,6 +2599,9 @@ samples_above_chronic_tox_threshold_daph <- dat %>%
   dplyr::select(
     Site,
     Sample_ID,
+    Regime,
+    Flow_state,
+    Type,
     Typology,
       log_Cu_nM,
       log_DOC_nM,
@@ -2640,6 +2643,9 @@ samples_above_chronic_tox_threshold_daph_zscores <-
   dplyr::select(
     Site,
     Sample_ID,
+    Regime,
+    Flow_state,
+    Type,
     Typology,
     Variable,
     Value,
@@ -2996,6 +3002,7 @@ acute_plot_min
 Save results
 
 ```{r}
+library(openxlsx)
 # 1. Define file path
 file_path <- file.path(out_dir, "Relative_prop_on_above_tox_threshold.xlsx")
 
