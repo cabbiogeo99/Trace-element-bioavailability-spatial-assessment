@@ -1,5 +1,6 @@
 # Trace Metal Bioavailability Varies with Flow Regime and Land Cover in a Headwater Stream Network
 
+[![DOI](https://zenodo.org/badge/1119726659.svg)](https://doi.org/10.5281/zenodo.22753577)
 **Last updated:** Sept, 2026  
 **Developed by:** Cecilia Albert Black  
 **Funding/Project:** Watershed Dynamics Evolution (WaDE) Science Focus Area at Oak Ridge National Lab (ORNL), in collaboration with a Powell Center Working Group funded by the United States Geological Survey (USGS)  
