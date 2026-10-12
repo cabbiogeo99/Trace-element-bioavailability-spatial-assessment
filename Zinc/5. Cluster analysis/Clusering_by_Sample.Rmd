@@ -160,6 +160,16 @@ str(cluster_dat$cluster3)
 ### i. 4 clusters
 
 ```{r}
+# Reorder clusters
+cluster_dat <- cluster_dat %>%
+  mutate(
+    cluster4 = recode(cluster4,
+                      "1" = "1",
+                      "2" = "3",
+                      "3" = "2",
+                      "4" = "4")
+  )
+
 library(ggplot2)
 library(dplyr)
 library(ggrepel)
@@ -185,8 +195,8 @@ chem_labels <- c(
 #-------------------------------------------------
 cluster_colors <- c(
   "1" = "#D55E00",
-  "2" = "#009E73",
-  "3" = "#999999",
+  "2" = "#999999",
+  "3" = "#009E73",
   "4" = "#56B4E9"
 )
 
@@ -822,9 +832,9 @@ ggsave(
 
 - Cluster 1: Highly developed perennial tributary sites
 
-- Cluster 2: Non-perennial tributary sites
+- Cluster 2: Mostly main stem sites
 
-- Cluster 3: Mostly main stem sites
+- Cluster 3: Non-perennial tributary sites
 
 - Cluster 4: Perennial tributary sites
 
@@ -963,8 +973,8 @@ cluster_dat <- cluster_dat %>%
   mutate(cluster = dplyr::recode(
     cluster,
     `1` = "Developed Perennial",
-    `2` = "Non-Perennial",
-    `3` = "Main Stem",
+    `2` = "Main Stem",
+    `3` = "Non-Perennial",
     `4` = "Perennial"
   )) %>%
   rename(Typology = cluster)

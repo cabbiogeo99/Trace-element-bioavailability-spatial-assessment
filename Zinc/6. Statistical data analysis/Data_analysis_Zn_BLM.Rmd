@@ -1164,7 +1164,7 @@ all_vars_panel <- ggplot(
     data = letters_long,
     aes(x = Typology, y = y_pos, label = Letters),
     inherit.aes = FALSE,
-    size = 3
+    size = 5
   ) +
   scale_color_manual(
     values = cluster4_colors, name = "Cluster", drop = FALSE) +
